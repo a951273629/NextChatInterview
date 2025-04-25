@@ -52,6 +52,7 @@ export enum Path {
   Artifacts = "/artifacts",
   SearchChat = "/search-chat",
   McpMarket = "/mcp-market",
+  Interview = "/interview",
 }
 
 export enum ApiPath {
@@ -652,15 +653,15 @@ const siliconflowModels = [
 
 let seq = 1000; // 内置的模型序号生成器从1000开始
 export const DEFAULT_MODELS = [
-  ...openaiModels.map((name) => ({
+  ...siliconflowModels.map((name) => ({
     name,
     available: true,
-    sorted: seq++, // Global sequence sort(index)
+    sorted: seq++,
     provider: {
-      id: "openai",
-      providerName: "OpenAI",
-      providerType: "openai",
-      sorted: 1, // 这里是固定的，确保顺序与之前内置的版本一致
+      id: "siliconflow",
+      providerName: "SiliconFlow",
+      providerType: "siliconflow",
+      sorted: 1,
     },
   })),
   ...openaiModels.map((name) => ({
@@ -795,15 +796,15 @@ export const DEFAULT_MODELS = [
       sorted: 13,
     },
   })),
-  ...siliconflowModels.map((name) => ({
+  ...openaiModels.map((name) => ({
     name,
     available: true,
-    sorted: seq++,
+    sorted: seq++, // Global sequence sort(index)
     provider: {
-      id: "siliconflow",
-      providerName: "SiliconFlow",
-      providerType: "siliconflow",
-      sorted: 14,
+      id: "openai",
+      providerName: "OpenAI",
+      providerType: "openai",
+      sorted: 14, // 这里是固定的，确保顺序与之前内置的版本一致
     },
   })),
 ] as const;

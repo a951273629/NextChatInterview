@@ -82,6 +82,11 @@ const McpMarketPage = dynamic(
   },
 );
 
+// const InterviewPage = dynamic(
+//   async ()=>(await import("./interview-overlay")).InterviewOverlay,{
+//     loading: ()=> <Loading noLogo/>
+//   }
+// )
 export function useSwitchTheme() {
   const config = useAppConfig();
 
@@ -202,6 +207,7 @@ function Screen() {
             <Route path={Path.Chat} element={<Chat />} />
             <Route path={Path.Settings} element={<Settings />} />
             <Route path={Path.McpMarket} element={<McpMarketPage />} />
+            {/* <Route path={Path.Interview} element={<InterviewPage/>}/> */}
           </Routes>
         </WindowContent>
       </>

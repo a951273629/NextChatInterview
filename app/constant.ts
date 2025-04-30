@@ -39,14 +39,16 @@ export const SILICONFLOW_BASE_URL = "https://api.siliconflow.cn";
 export const CACHE_URL_PREFIX = "/api/cache";
 export const UPLOAD_URL = `${CACHE_URL_PREFIX}/upload`;
 
+// 添加到现有的Path枚举中
 export enum Path {
   Home = "/",
   Chat = "/chat",
   Settings = "/settings",
   NewChat = "/new-chat",
   Masks = "/masks",
-  Plugins = "/plugins",
   Auth = "/auth",
+  Login = "/login", // 添加登录路径
+  Plugins = "/plugins",
   Sd = "/sd",
   SdNew = "/sd-new",
   Artifacts = "/artifacts",

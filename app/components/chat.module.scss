@@ -620,6 +620,7 @@
   flex-direction: column;
   border-top: var(--border-in-light);
   box-shadow: var(--card-shadow);
+  // height: 15vh; // 添加固定高度为视窗高度的15%
 
   .chat-input-actions {
     .chat-input-action {

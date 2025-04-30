@@ -32,6 +32,8 @@ import { Selector, showConfirm } from "./ui-lib";
 import clsx from "clsx";
 import { isMcpEnabled } from "../mcp/actions";
 
+import { WechatAuthor } from "./WechatAuthor";
+
 const DISCOVERY = [
   { name: Locale.Plugin.Name, path: Path.Plugins },
   { name: "Stable Diffusion", path: Path.Sd },
@@ -223,6 +225,7 @@ export function SideBarTail(props: {
   );
 }
 
+// 在侧边栏组件中添加WechatAuthor
 export function SideBar(props: { className?: string }) {
   useHotKey();
   const { onDragStart, shouldNarrow } = useDragSideBar();
@@ -248,6 +251,7 @@ export function SideBar(props: { className?: string }) {
       shouldNarrow={shouldNarrow}
       {...props}
     >
+      <WechatAuthor /> {/* 添加到最顶部 */}
       <SideBarHeader
         title="NextChat"
         subTitle="Build your own AI assistant."

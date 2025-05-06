@@ -1,10 +1,10 @@
-FROM node:20-alpine AS deps
+FROM node:20-alpine AS base
 
 FROM base AS deps
 
 RUN apk add --no-cache libc6-compat
 
-FROM centos:7 AS deps
+# FROM centos:7 AS deps
 # 添加 NodeSource 仓库并安装 Node.js 20
 RUN curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - \
  && yum install -y nodejs gcc-c++ make \

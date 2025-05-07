@@ -70,7 +70,7 @@
 #     node server.js; \
 #     fi
 # 使用 CentOS 作为基础镜像
-FROM centos:7 AS base
+FROM registry.cn-hangzhou.aliyuncs.com/alinux/centos:7 AS base
 
 # 安装 Node.js 20
 RUN curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - \

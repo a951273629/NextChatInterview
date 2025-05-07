@@ -1,14 +1,11 @@
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
 
 RUN apk add --no-cache libc6-compat
 
-# 添加 NodeSource 仓库并安装 Node.js 20
-RUN curl -fsSL https://rpm.nodesource.com/setup_20.x | bash - \
- && yum install -y nodejs gcc-c++ make \
- && yum clean all
-
- FROM base AS deps
 WORKDIR /app
+
 COPY package.json yarn.lock ./
 
 RUN yarn config set registry 'https://registry.npmmirror.com/'

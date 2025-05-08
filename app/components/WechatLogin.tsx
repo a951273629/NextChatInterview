@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Path } from "../constant";
 import styles from "./WechatLogin.module.scss";
 import LoadingIcon from "../icons/loading.svg";
-// import QRCodeImage from "../icons/wechat-qrcode-mock.svg"; // 假设有一个模拟的二维码SVG
+import QRCodeImage from "../icons/QR-mock-login.svg"; // 假设有一个模拟的二维码SVG
 import SuccessIcon from "../icons/confirm.svg";
 import ErrorIcon from "../icons/close.svg";
 import Locale from "../locales";
@@ -108,7 +108,7 @@ export function WechatLogin() {
 
           {status === LoginStatus.READY && (
             <div className={styles.qrcodeWrapper} onClick={simulateLogin}>
-              {/* <QRCodeImage className={styles.qrcode} /> */}
+              <QRCodeImage className={styles.qrcode} />
               <div className={styles.qrcodeOverlay}>
                 <p>点击模拟扫码</p>
               </div>

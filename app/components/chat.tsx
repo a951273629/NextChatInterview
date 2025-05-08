@@ -862,6 +862,15 @@ export function ChatActions(props: {
         icon={<MenuIcon />}
       />
 
+      {/* 新增：TensorFlow 跳转按钮 */}
+      <ChatAction
+        onClick={() => {
+          navigate(Path.TensorFlow);
+        }}
+        text="TensorFlow"
+        icon={<BrainIcon />}
+      />
+
       <div className={styles["chat-input-actions-end"]}>
         {config.realtimeConfig.enable && (
           <ChatAction

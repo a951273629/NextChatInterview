@@ -31,6 +31,7 @@ import { useAccessStore } from "../store";
 import clsx from "clsx";
 import { initializeMcpSystem, isMcpEnabled } from "../mcp/actions";
 import LoginPage from "../pages/login";
+import TensorFlow from "./TensorFlow";
 
 export function Loading(props: { noLogo?: boolean }) {
   return (
@@ -210,6 +211,7 @@ function Screen() {
             <Route path={Path.Settings} element={<Settings />} />
             <Route path={Path.McpMarket} element={<McpMarketPage />} />
             <Route path={Path.Login} element={<LoginPage />} />
+            <Route path={Path.TensorFlow} element={<TensorFlow />} />
             {/* <Route path={Path.Interview} element={<InterviewPage/>}/> */}
           </Routes>
         </WindowContent>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import * as tf from "@tensorflow/tfjs";
 import { VoicePrint } from "./voice-print/voice-print";
 import styles from "./TensorFlow.module.scss";
-
+import { trainingPrompts } from "../store/voice-text";
 // 声纹识别状态
 enum VoiceRecognitionStatus {
   IDLE = "空闲",
@@ -13,6 +13,13 @@ enum VoiceRecognitionStatus {
   MATCHED = "声纹匹配",
   NOT_MATCHED = "声纹不匹配",
   ERROR = "错误",
+}
+
+// 添加录音模式枚举
+enum RecordingMode {
+  NONE = "无录音",
+  TRAINING = "训练录音",
+  RECOGNITION = "识别录音",
 }
 
 // 声纹特征提取参数
@@ -29,13 +36,17 @@ const TensorFlow: React.FC = () => {
     VoiceRecognitionStatus.IDLE,
   );
   const [message, setMessage] = useState<string>("");
-  const [isRecording, setIsRecording] = useState<boolean>(false);
+  // 替换isRecording为recordingMode
+  const [recordingMode, setRecordingMode] = useState<RecordingMode>(
+    RecordingMode.NONE,
+  );
   const [isTrained, setIsTrained] = useState<boolean>(false);
   const [matchScore, setMatchScore] = useState<number>(0);
   const [frequencies, setFrequencies] = useState<Uint8Array | undefined>(
     undefined,
   );
-
+  // 添加训练提示文本状态
+  const [promptIndex, setPromptIndex] = useState<number>(0);
   // 引用
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -123,9 +134,11 @@ const TensorFlow: React.FC = () => {
   };
 
   // 开始录音
-  const startRecording = async (isTraining: boolean = false) => {
+  const startRecording = async (
+    isRecordingMode: RecordingMode = RecordingMode.NONE,
+  ) => {
     try {
-      if (isRecording) return;
+      if (recordingMode !== RecordingMode.NONE) return;
 
       // 重置录音数据
       recordedChunksRef.current = [];
@@ -162,25 +175,37 @@ const TensorFlow: React.FC = () => {
       processor.connect(audioContext.destination);
 
       // 更新状态
-      setIsRecording(true);
+      // const newMode = forTraining ? RecordingMode.TRAINING : RecordingMode.RECOGNITION;
+      setRecordingMode(isRecordingMode);
       setStatus(
-        isTraining
+        isRecordingMode === RecordingMode.TRAINING
           ? VoiceRecognitionStatus.RECORDING
           : VoiceRecognitionStatus.RECOGNIZING,
       );
+
+      // 如果是训练模式，随机选择一个提示文本
+      if (isRecordingMode === RecordingMode.TRAINING) {
+        setPromptIndex(Math.floor(Math.random() * trainingPrompts.length));
+      }
+
       setMessage(
-        isTraining ? "请说话3-5秒钟用于训练..." : "请说话进行声纹识别...",
+        isRecordingMode === RecordingMode.TRAINING
+          ? "请朗读下方提示文本，用于训练声纹模型..."
+          : "请说话进行声纹识别...",
       );
 
       // 开始频谱可视化
       startVisualization();
-
       // 设置自动停止录音（训练模式下5秒后自动停止）
-      if (isTraining) {
-        setTimeout(() => {
+      if (isRecordingMode === RecordingMode.TRAINING) {
+        const timerId = setTimeout(() => {
+          console.log("训练录音结束");
           stopRecording();
           trainVoiceprint();
-        }, 5000);
+        }, 10000);
+
+        // 返回清理函数，以便在组件卸载或重新录音时清除定时器
+        return () => clearTimeout(timerId);
       }
     } catch (error) {
       console.error("开始录音失败:", error);
@@ -191,7 +216,8 @@ const TensorFlow: React.FC = () => {
 
   // 停止录音
   const stopRecording = () => {
-    if (!isRecording) return;
+    // if (recordingMode === RecordingMode.NONE) return;
+    console.log("have stoped");
 
     // 停止所有音频流
     if (mediaStreamRef.current) {
@@ -211,7 +237,7 @@ const TensorFlow: React.FC = () => {
       animationFrameRef.current = null;
     }
 
-    setIsRecording(false);
+    setRecordingMode(RecordingMode.NONE);
     setFrequencies(undefined);
   };
 
@@ -428,7 +454,7 @@ const TensorFlow: React.FC = () => {
 
   return (
     <div className={styles.voiceRecognitionContainer}>
-      <h2 className={styles.title}>声纹识别系统</h2>
+      <h2 className={styles.title}>TensorFlow声纹识别</h2>
 
       <div className={styles.statusContainer}>
         <div className={styles.statusIndicator}>
@@ -438,10 +464,42 @@ const TensorFlow: React.FC = () => {
           <span className={styles.statusText}>{status}</span>
         </div>
         <p className={styles.message}>{message}</p>
+        {/* <p className={styles.message}>{recordingMode}</p> */}
       </div>
 
+      {/* 添加训练提示文本显示区域 */}
+      {recordingMode === RecordingMode.TRAINING && (
+        <div className={styles.promptContainer}>
+          <div className={styles.promptBox}>
+            <h3>请朗读以下文本：</h3>
+            <p className={styles.promptTextZh}>
+              {trainingPrompts[promptIndex].zh}
+            </p>
+            <p className={styles.promptTextEn}>
+              {trainingPrompts[promptIndex].en}
+            </p>
+            <div className={styles.recordingIndicator}>
+              <span className={styles.recordingDot}></span> 录音中...
+            </div>
+            {/* 添加手动结束录音按钮 */}
+            <button
+              className={`${styles.button} ${styles.stopTrainingButton}`}
+              onClick={() => {
+                stopRecording();
+                trainVoiceprint();
+              }}
+            >
+              结束录音并训练
+            </button>
+          </div>
+        </div>
+      )}
+      {/* 控制按钮区域 */}
       <div className={styles.visualizerContainer}>
-        <VoicePrint frequencies={frequencies} isActive={isRecording} />
+        <VoicePrint
+          frequencies={frequencies}
+          isActive={recordingMode !== RecordingMode.NONE}
+        />
       </div>
 
       <div className={styles.controlsContainer}>
@@ -449,8 +507,8 @@ const TensorFlow: React.FC = () => {
           <h3>训练声纹</h3>
           <button
             className={styles.button}
-            onClick={() => startRecording(true)}
-            disabled={isRecording}
+            onClick={() => startRecording(RecordingMode.TRAINING)}
+            disabled={recordingMode !== RecordingMode.NONE}
           >
             录制训练音频
           </button>
@@ -467,8 +525,8 @@ const TensorFlow: React.FC = () => {
           <h3>声纹识别</h3>
           <button
             className={styles.button}
-            onClick={() => startRecording(false)}
-            disabled={isRecording || !isTrained}
+            onClick={() => startRecording(RecordingMode.RECOGNITION)}
+            disabled={recordingMode !== RecordingMode.NONE || !isTrained}
           >
             开始录音
           </button>
@@ -478,7 +536,7 @@ const TensorFlow: React.FC = () => {
               stopRecording();
               recognizeVoice();
             }}
-            disabled={!isRecording}
+            disabled={recordingMode === RecordingMode.NONE}
           >
             停止并识别
           </button>

@@ -472,3 +472,207 @@ If you want to add a new translation, read this [document](./docs/translation.md
 ## LICENSE
 
 [MIT](https://opensource.org/license/mit/)
+
+### 目录结构
+
+.
+├── .babelrc
+├── .dockerignore
+├── .env.template
+├── .eslintignore
+├── .eslintrc.json
+├── .github
+│   ├── ISSUE_TEMPLATE
+│   │   ├── 1_bug_report.yml
+│   │   ├── 1_bug_report_cn.yml
+│   │   ├── 2_feature_request.yml
+│   │   └── 2_feature_request_cn.yml
+│   ├── PULL_REQUEST_TEMPLATE.md
+│   ├── dependabot.yml
+│   └── workflows
+│       ├── app.yml
+│       ├── deploy_preview.yml
+│       ├── docker.yml
+│       ├── issue-translator.yml
+│       ├── remove_deploy_preview.yml
+│       ├── sync.yml
+│       └── test.yml
+├── .gitignore
+├── .gitpod.yml
+├── .husky
+│   ├── _
+│   └── pre-commit
+├── .lintstagedrc.json
+├── .prettierrc.js
+├── .trae
+│   └── rules
+│       └── project_rules.md
+├── CODE_OF_CONDUCT.md
+├── Dockerfile
+├── LICENSE
+├── README.md
+├── README_CN.md
+├── README_JA.md
+├── app
+│   ├── api
+│   │   ├── [provider]
+│   │   ├── alibaba.ts
+│   │   ├── anthropic.ts
+│   │   ├── artifacts
+│   │   ├── auth.ts
+│   │   ├── azure.ts
+│   │   ├── baidu.ts
+│   │   ├── bytedance.ts
+│   │   ├── common.ts
+│   │   ├── config
+│   │   ├── deepseek.ts
+│   │   ├── glm.ts
+│   │   ├── google.ts
+│   │   ├── iflytek.ts
+│   │   ├── moonshot.ts
+│   │   ├── openai.ts
+│   │   ├── proxy.ts
+│   │   ├── siliconflow.ts
+│   │   ├── stability.ts
+│   │   ├── tencent
+│   │   ├── upstash
+│   │   ├── webdav
+│   │   └── xai.ts
+│   ├── client
+│   │   ├── api.ts
+│   │   ├── controller.ts
+│   │   └── platforms
+│   ├── command.ts
+│   ├── components
+│   │   ├── TensorFlow.module.scss
+│   │   ├── TensorFlow.tsx
+│   │   ├── WechatAuthor.module.scss
+│   │   ├── WechatAuthor.tsx
+│   │   ├── WechatLogin.module.scss
+│   │   ├── WechatLogin.tsx
+│   │   ├── artifacts.module.scss
+│   │   ├── artifacts.tsx
+│   │   ├── auth-wrapper.tsx
+│   │   ├── auth.module.scss
+│   │   ├── auth.tsx
+│   │   ├── button.module.scss
+│   │   ├── button.tsx
+│   │   ├── chat-list.tsx
+│   │   ├── chat.module.scss
+│   │   ├── chat.tsx
+│   │   ├── emoji.tsx
+│   │   ├── error.tsx
+│   │   ├── exporter.module.scss
+│   │   ├── exporter.tsx
+│   │   ├── home.module.scss
+│   │   ├── home.tsx
+│   │   ├── input-range.module.scss
+│   │   ├── input-range.tsx
+│   │   ├── interview-overlay.scss
+│   │   ├── interview-overlay.tsx
+│   │   ├── markdown.tsx
+│   │   ├── mask.module.scss
+│   │   ├── mask.tsx
+│   │   ├── mcp-market.module.scss
+│   │   ├── mcp-market.tsx
+│   │   ├── message-selector.module.scss
+│   │   ├── message-selector.tsx
+│   │   ├── model-config.module.scss
+│   │   ├── model-config.tsx
+│   │   ├── new-chat.module.scss
+│   │   ├── new-chat.tsx
+│   │   ├── plugin.module.scss
+│   │   ├── plugin.tsx
+│   │   ├── realtime-chat
+│   │   ├── sd
+│   │   ├── search-chat.tsx
+│   │   ├── settings.module.scss
+│   │   ├── settings.tsx
+│   │   ├── sidebar.tsx
+│   │   ├── tts-config.tsx
+│   │   ├── tts.module.scss
+│   │   ├── ui-lib.module.scss
+│   │   ├── ui-lib.tsx
+│   │   └── voice-print
+│   ├── config
+│   │   ├── build.ts
+│   │   ├── client.ts
+│   │   └── server.ts
+│   ├── constant.ts
+│   ├── global.d.ts
+│   ├── icons
+│   │   ├── QR-mock-login.png
+│   │   ├── QR-mock-login.svg
+│   │   └── add.svg
+│   ├── layout.tsx
+│   ├── lib
+│   ├── locales
+│   ├── masks
+│   ├── mcp
+│   ├── page.tsx
+│   ├── pages
+│   ├── polyfill.ts
+│   ├── store
+│   ├── styles
+│   ├── typing.ts
+│   ├── utils.ts
+│   └── utils
+├── docker-compose.yml
+├── docs
+│   ├── bt-cn.md
+│   ├── cloudflare-pages-cn.md
+│   ├── cloudflare-pages-en.md
+│   ├── faq-cn.md
+│   ├── faq-en.md
+│   ├── images
+│   ├── synchronise-chat-logs-cn.md
+│   ├── synchronise-chat-logs-en.md
+│   ├── translation.md
+│   ├── user-manual-cn.md
+│   ├── vercel-cn.md
+│   ├── vercel-es.md
+│   ├── vercel-ja.md
+│   └── vercel-ko.md
+├── jest.config.ts
+├── jest.setup.ts
+├── next.config.mjs
+├── package-lock.json
+├── package.json
+├── public
+│   ├── android-chrome-192x192.png
+│   ├── android-chrome-512x512.png
+│   ├── apple-touch-icon.png
+│   ├── audio-processor.js
+│   ├── favicon-16x16.png
+│   ├── favicon-32x32.png
+│   ├── favicon.ico
+│   ├── macos.png
+│   ├── plugins.json
+│   ├── prompts.json
+│   ├── robots.txt
+│   ├── serviceWorker.js
+│   ├── serviceWorkerRegister.js
+│   └── site.webmanifest
+├── scripts
+│   ├── .gitignore
+│   ├── delete-deployment-preview.sh
+│   ├── fetch-prompts.mjs
+│   ├── init-proxy.sh
+│   ├── proxychains.template.conf
+│   └── setup.sh
+├── src-tauri
+│   ├── .gitignore
+│   ├── Cargo.lock
+│   ├── Cargo.toml
+│   ├── build.rs
+│   ├── icons
+│   ├── src
+│   └── tauri.conf.json
+├── test
+│   ├── model-available.test.ts
+│   ├── model-provider.test.ts
+│   ├── sum-module.test.ts
+│   └── vision-model-checker.test.ts
+├── tsconfig.json
+├── vercel.json
+└── yarn.lock

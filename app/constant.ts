@@ -48,6 +48,7 @@ export enum Path {
   Masks = "/masks",
   Auth = "/auth",
   Login = "/login", // 添加登录路径
+  TensorFlow = "/tensorflow", // 添加TensorFlow路径
   Plugins = "/plugins",
   Sd = "/sd",
   SdNew = "/sd-new",

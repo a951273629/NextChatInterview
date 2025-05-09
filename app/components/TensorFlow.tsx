@@ -3,34 +3,30 @@ import * as tf from "@tensorflow/tfjs";
 import { VoicePrint } from "./voice-print/voice-print";
 import styles from "./TensorFlow.module.scss";
 import { trainingPrompts } from "../store/voice-text";
-// 声纹识别状态
-enum VoiceRecognitionStatus {
-  IDLE = "空闲",
-  RECORDING = "录制中",
-  TRAINING = "训练中",
-  RECOGNIZING = "识别中",
-  TRAINED = "已训练",
-  MATCHED = "声纹匹配",
-  NOT_MATCHED = "声纹不匹配",
-  ERROR = "错误",
-}
+import {
+  VoiceRecognitionStatus,
+  extractFeatures,
+  recognizeVoice,
+  RealtimeVoiceprintRecognizer,
+  DEFAULT_VOICEPRINT_CONFIG,
+  FEATURE_LENGTH,
+  MEL_BINS,
+  FFT_SIZE,
+} from "../services/voiceprint-service";
 
 // 添加录音模式枚举
 enum RecordingMode {
   NONE = "无录音",
   TRAINING = "训练录音",
   RECOGNITION = "识别录音",
+  REALTIME = "实时监测",
 }
 
-// 声纹特征提取参数
-const SAMPLE_RATE = 16000; // 采样率
-const FFT_SIZE = 1024; // FFT大小
-const MEL_BINS = 40; // Mel滤波器数量
-const FRAME_LENGTH = 25; // 帧长度(ms)
-const FRAME_STEP = 10; // 帧步长(ms)
-const FEATURE_LENGTH = 100; // 特征序列长度
+interface TensorFlowProps {
+  onVoiceprintResult?: (result: { isMatch: boolean; score: number }) => void;
+}
 
-const TensorFlow: React.FC = () => {
+const TensorFlow: React.FC<TensorFlowProps> = ({ onVoiceprintResult }) => {
   // 状态管理
   const [status, setStatus] = useState<VoiceRecognitionStatus>(
     VoiceRecognitionStatus.IDLE,
@@ -47,6 +43,7 @@ const TensorFlow: React.FC = () => {
   );
   // 添加训练提示文本状态
   const [promptIndex, setPromptIndex] = useState<number>(0);
+
   // 引用
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -55,6 +52,12 @@ const TensorFlow: React.FC = () => {
   const modelRef = useRef<tf.LayersModel | null>(null);
   const voiceprintRef = useRef<Float32Array | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  // 添加实时识别器引用
+  const realtimeRecognizerRef = useRef<RealtimeVoiceprintRecognizer | null>(
+    null,
+  );
+  // 添加处理器节点引用
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
 
   // 初始化
   useEffect(() => {
@@ -126,6 +129,11 @@ const TensorFlow: React.FC = () => {
 
       modelRef.current = model;
       console.log("声纹识别模型已加载");
+
+      // 初始化实时识别器
+      if (modelRef.current && voiceprintRef.current) {
+        initRealtimeRecognizer();
+      }
     } catch (error) {
       console.error("加载模型失败:", error);
       setStatus(VoiceRecognitionStatus.ERROR);
@@ -133,10 +141,36 @@ const TensorFlow: React.FC = () => {
     }
   };
 
+  // 初始化实时识别器
+  const initRealtimeRecognizer = () => {
+    if (!modelRef.current || !voiceprintRef.current) return;
+
+    // 创建实时识别器实例
+    realtimeRecognizerRef.current = new RealtimeVoiceprintRecognizer(
+      modelRef.current,
+      DEFAULT_VOICEPRINT_CONFIG,
+      (result) => {
+        // 回调处理识别结果
+        setMatchScore(result.score);
+        setStatus(
+          result.isMatch
+            ? VoiceRecognitionStatus.MATCHED
+            : VoiceRecognitionStatus.NOT_MATCHED,
+        );
+
+        // 通知父组件
+        if (onVoiceprintResult) {
+          onVoiceprintResult(result);
+        }
+      },
+    );
+
+    // 设置声纹特征
+    realtimeRecognizerRef.current.setVoiceprint(voiceprintRef.current);
+  };
+
   // 开始录音
-  const startRecording = async (
-    isRecordingMode: RecordingMode = RecordingMode.NONE,
-  ) => {
+  const startRecording = async (mode: RecordingMode = RecordingMode.NONE) => {
     try {
       if (recordingMode !== RecordingMode.NONE) return;
 
@@ -163,11 +197,18 @@ const TensorFlow: React.FC = () => {
 
       // 创建处理器节点
       const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      processorRef.current = processor;
 
       // 处理音频数据
       processor.onaudioprocess = (e) => {
         const inputData = e.inputBuffer.getChannelData(0);
-        recordedChunksRef.current.push(new Float32Array(inputData));
+        const audioData = new Float32Array(inputData);
+        recordedChunksRef.current.push(audioData);
+
+        // 如果是实时监测模式，将数据发送给实时识别器
+        if (mode === RecordingMode.REALTIME && realtimeRecognizerRef.current) {
+          realtimeRecognizerRef.current.addAudioData(audioData);
+        }
       };
 
       // 连接节点
@@ -175,29 +216,30 @@ const TensorFlow: React.FC = () => {
       processor.connect(audioContext.destination);
 
       // 更新状态
-      // const newMode = forTraining ? RecordingMode.TRAINING : RecordingMode.RECOGNITION;
-      setRecordingMode(isRecordingMode);
-      setStatus(
-        isRecordingMode === RecordingMode.TRAINING
-          ? VoiceRecognitionStatus.RECORDING
-          : VoiceRecognitionStatus.RECOGNIZING,
-      );
+      setRecordingMode(mode);
 
-      // 如果是训练模式，随机选择一个提示文本
-      if (isRecordingMode === RecordingMode.TRAINING) {
-        setPromptIndex(Math.floor(Math.random() * trainingPrompts.length));
+      switch (mode) {
+        case RecordingMode.TRAINING:
+          setStatus(VoiceRecognitionStatus.RECORDING);
+          setMessage("请朗读下方提示文本，用于训练声纹模型...");
+          // 如果是训练模式，随机选择一个提示文本
+          setPromptIndex(Math.floor(Math.random() * trainingPrompts.length));
+          break;
+        case RecordingMode.RECOGNITION:
+          setStatus(VoiceRecognitionStatus.RECOGNIZING);
+          setMessage("请说话进行声纹识别...");
+          break;
+        case RecordingMode.REALTIME:
+          setStatus(VoiceRecognitionStatus.RECOGNIZING);
+          setMessage("正在实时监测声纹...");
+          break;
       }
-
-      setMessage(
-        isRecordingMode === RecordingMode.TRAINING
-          ? "请朗读下方提示文本，用于训练声纹模型..."
-          : "请说话进行声纹识别...",
-      );
 
       // 开始频谱可视化
       startVisualization();
+
       // 设置自动停止录音（训练模式下5秒后自动停止）
-      if (isRecordingMode === RecordingMode.TRAINING) {
+      if (mode === RecordingMode.TRAINING) {
         const timerId = setTimeout(() => {
           console.log("训练录音结束");
           stopRecording();
@@ -216,13 +258,18 @@ const TensorFlow: React.FC = () => {
 
   // 停止录音
   const stopRecording = () => {
-    // if (recordingMode === RecordingMode.NONE) return;
     console.log("have stoped");
 
     // 停止所有音频流
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
       mediaStreamRef.current = null;
+    }
+
+    // 断开处理器连接
+    if (processorRef.current && audioContextRef.current) {
+      processorRef.current.disconnect();
+      processorRef.current = null;
     }
 
     // 关闭音频上下文
@@ -235,6 +282,14 @@ const TensorFlow: React.FC = () => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
+    }
+
+    // 如果是实时监测模式，清空实时识别器缓冲区
+    if (
+      recordingMode === RecordingMode.REALTIME &&
+      realtimeRecognizerRef.current
+    ) {
+      realtimeRecognizerRef.current.clearBuffer();
     }
 
     setRecordingMode(RecordingMode.NONE);
@@ -259,72 +314,6 @@ const TensorFlow: React.FC = () => {
     };
 
     updateVisualization();
-  };
-
-  // 提取音频特征
-  const extractFeatures = async (
-    audioData: Float32Array[],
-  ): Promise<tf.Tensor | null> => {
-    try {
-      // 合并所有音频块
-      const mergedData = new Float32Array(
-        audioData.reduce((acc, chunk) => acc + chunk.length, 0),
-      );
-      let offset = 0;
-      for (const chunk of audioData) {
-        mergedData.set(chunk, offset);
-        offset += chunk.length;
-      }
-
-      // 转换为张量
-      const audioTensor = tf.tensor1d(mergedData);
-
-      // 计算梅尔频谱图 (简化版)
-      // 在实际应用中，这里应该使用更复杂的信号处理方法
-      // 如MFCC (Mel-frequency cepstral coefficients)
-      const frameLength = Math.round((SAMPLE_RATE * FRAME_LENGTH) / 1000);
-      const frameStep = Math.round((SAMPLE_RATE * FRAME_STEP) / 1000);
-
-      // 使用短时傅里叶变换提取特征
-      // 注意：这是简化版，实际应用中应使用专业的DSP库
-      const frames = [];
-      for (let i = 0; i + frameLength <= mergedData.length; i += frameStep) {
-        const frame = mergedData.slice(i, i + frameLength);
-        frames.push(Array.from(frame));
-      }
-
-      // 限制帧数
-      const limitedFrames = frames.slice(0, FEATURE_LENGTH);
-
-      // 如果帧数不足，用零填充
-      while (limitedFrames.length < FEATURE_LENGTH) {
-        limitedFrames.push(new Array(frameLength).fill(0));
-      }
-
-      // 创建特征张量
-      const featureTensor = tf.tensor(limitedFrames);
-
-      // 简化的梅尔频谱计算
-      // 在实际应用中应使用更准确的方法
-      const melSpectrogram = tf.tidy(() => {
-        // 应用FFT (简化)
-        const fftMag = featureTensor.abs();
-
-        // 降维到MEL_BINS
-        const reshaped = fftMag.reshape([FEATURE_LENGTH, -1]);
-        const melFeatures = reshaped.slice([0, 0], [FEATURE_LENGTH, MEL_BINS]);
-
-        // 归一化
-        const normalized = melFeatures.div(tf.scalar(255.0));
-
-        return normalized.expandDims(0); // 添加批次维度
-      });
-
-      return melSpectrogram;
-    } catch (error) {
-      console.error("特征提取失败:", error);
-      return null;
-    }
   };
 
   // 训练声纹模型
@@ -365,6 +354,9 @@ const TensorFlow: React.FC = () => {
       setStatus(VoiceRecognitionStatus.TRAINED);
       setMessage("声纹模型训练完成并已保存");
 
+      // 初始化实时识别器
+      initRealtimeRecognizer();
+
       // 清理
       voiceprint.dispose();
       features.dispose();
@@ -376,7 +368,7 @@ const TensorFlow: React.FC = () => {
   };
 
   // 识别声纹
-  const recognizeVoice = async () => {
+  const performVoiceRecognition = async () => {
     if (!isTrained || !voiceprintRef.current) {
       setStatus(VoiceRecognitionStatus.ERROR);
       setMessage("请先训练声纹模型");
@@ -390,52 +382,29 @@ const TensorFlow: React.FC = () => {
     }
 
     try {
-      // 提取特征
-      const features = await extractFeatures(recordedChunksRef.current);
-      if (!features) throw new Error("特征提取失败");
+      const result = await recognizeVoice(
+        recordedChunksRef.current,
+        modelRef.current,
+        voiceprintRef.current,
+      );
 
-      // 使用模型提取声纹特征向量
-      const currentVoiceprint = tf.tidy(() => {
-        // 前向传播获取声纹特征
-        const prediction = modelRef.current!.predict(features) as tf.Tensor;
-        // 归一化特征向量
-        return tf.div(prediction, tf.norm(prediction));
-      });
-
-      // 计算与保存的声纹的余弦相似度
-      const similarity = tf.tidy(() => {
-        const savedVoiceprint = tf.tensor1d(voiceprintRef.current!);
-        // 计算点积
-        const dotProduct = tf.sum(
-          tf.mul(currentVoiceprint.reshape([-1]), savedVoiceprint),
-        );
-        return dotProduct;
-      });
-
-      // 获取相似度分数 (范围从-1到1，越接近1表示越相似)
-      const similarityScore = await similarity.data();
-      const score = similarityScore[0];
-      setMatchScore(score);
-
-      // 判断是否为同一人 (阈值可调整)
-      const threshold = 0.7;
-      const isMatch = score > threshold;
-
+      setMatchScore(result.score);
       setStatus(
-        isMatch
+        result.isMatch
           ? VoiceRecognitionStatus.MATCHED
           : VoiceRecognitionStatus.NOT_MATCHED,
       );
+
       setMessage(
-        isMatch
-          ? `声纹匹配成功！相似度: ${(score * 100).toFixed(2)}%`
-          : `声纹不匹配。相似度: ${(score * 100).toFixed(2)}%`,
+        result.isMatch
+          ? `声纹匹配成功！相似度: ${(result.score * 100).toFixed(2)}%`
+          : `声纹不匹配。相似度: ${(result.score * 100).toFixed(2)}%`,
       );
 
-      // 清理
-      currentVoiceprint.dispose();
-      features.dispose();
-      similarity.dispose();
+      // 通知父组件
+      if (onVoiceprintResult) {
+        onVoiceprintResult(result);
+      }
     } catch (error) {
       console.error("识别失败:", error);
       setStatus(VoiceRecognitionStatus.ERROR);
@@ -450,6 +419,22 @@ const TensorFlow: React.FC = () => {
     setIsTrained(false);
     setStatus(VoiceRecognitionStatus.IDLE);
     setMessage("声纹数据已清除");
+
+    // 如果有实时识别器，清空其声纹数据
+    if (realtimeRecognizerRef.current) {
+      realtimeRecognizerRef.current.setVoiceprint(null);
+    }
+  };
+
+  // 开始实时监测
+  const startRealtimeMonitoring = () => {
+    if (!isTrained || !voiceprintRef.current) {
+      setStatus(VoiceRecognitionStatus.ERROR);
+      setMessage("请先训练声纹模型");
+      return;
+    }
+
+    startRecording(RecordingMode.REALTIME);
   };
 
   return (
@@ -464,7 +449,6 @@ const TensorFlow: React.FC = () => {
           <span className={styles.statusText}>{status}</span>
         </div>
         <p className={styles.message}>{message}</p>
-        {/* <p className={styles.message}>{recordingMode}</p> */}
       </div>
 
       {/* 添加训练提示文本显示区域 */}
@@ -534,11 +518,29 @@ const TensorFlow: React.FC = () => {
             className={styles.button}
             onClick={() => {
               stopRecording();
-              recognizeVoice();
+              performVoiceRecognition();
             }}
             disabled={recordingMode === RecordingMode.NONE}
           >
             停止并识别
+          </button>
+          {/* 添加实时监测按钮 */}
+          <button
+            className={`${styles.button} ${
+              recordingMode === RecordingMode.REALTIME ? styles.active : ""
+            }`}
+            onClick={() => {
+              if (recordingMode === RecordingMode.REALTIME) {
+                stopRecording();
+              } else {
+                startRealtimeMonitoring();
+              }
+            }}
+            disabled={!isTrained}
+          >
+            {recordingMode === RecordingMode.REALTIME
+              ? "停止实时监测"
+              : "开始实时监测"}
           </button>
         </div>
       </div>

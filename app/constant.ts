@@ -39,6 +39,25 @@ export const SILICONFLOW_BASE_URL = "https://api.siliconflow.cn";
 export const CACHE_URL_PREFIX = "/api/cache";
 export const UPLOAD_URL = `${CACHE_URL_PREFIX}/upload`;
 
+// 创建常用的状态枚举供应用使用
+export enum KeyStatus {
+  INACTIVE = "inactive", // 未激活
+  ACTIVE = "active", // 激活中
+  EXPIRED = "expired", // 已过期
+}
+
+// 定义Key的数据结构
+export interface Key {
+  id?: number;
+  key_string: string;
+  status: KeyStatus;
+  created_at: number;
+  activated_at?: number | null;
+  expires_at: number;
+  activated_ip?: string | null;
+  hardware_name?: string | null;
+}
+
 // 添加到现有的Path枚举中
 export enum Path {
   Home = "/",
@@ -56,6 +75,7 @@ export enum Path {
   SearchChat = "/search-chat",
   McpMarket = "/mcp-market",
   Interview = "/interview",
+  KeyGenerate = "/key-generate",
 }
 
 export enum ApiPath {

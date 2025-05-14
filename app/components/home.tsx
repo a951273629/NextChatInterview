@@ -84,6 +84,12 @@ const McpMarketPage = dynamic(
   },
 );
 
+const KeyGenerate = dynamic(
+  async () => (await import("./KeyGenerate")).KeyGeneratePage,
+  {
+    loading: () => <Loading noLogo />,
+  },
+);
 // const InterviewPage = dynamic(
 //   async ()=>(await import("./interview-overlay")).InterviewOverlay,{
 //     loading: ()=> <Loading noLogo/>
@@ -212,6 +218,7 @@ function Screen() {
             <Route path={Path.McpMarket} element={<McpMarketPage />} />
             <Route path={Path.Login} element={<LoginPage />} />
             <Route path={Path.TensorFlow} element={<TensorFlow />} />
+            <Route path={Path.KeyGenerate} element={<KeyGenerate />} />
             {/* <Route path={Path.Interview} element={<InterviewPage/>}/> */}
           </Routes>
         </WindowContent>

@@ -246,6 +246,12 @@ export class RealtimeVoiceprintRecognizer {
     // 防止并发处理
     if (this.isProcessing || !this.savedVoiceprint) return;
 
+    // 添加模型有效性检查
+    if (!this.model || (this.model as any).__disposed) {
+      console.log("模型已不可用，跳过处理");
+      return;
+    }
+
     const now = Date.now();
     // 检查冷却期
     if (now - this.lastRecognitionTime < this.config.cooldownPeriod) return;

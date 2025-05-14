@@ -4,56 +4,59 @@ import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 import "./interview-overlay.scss";
+import * as tf from "@tensorflow/tfjs";
+import {
+  RealtimeVoiceprintRecognizer,
+  DEFAULT_VOICEPRINT_CONFIG,
+  VoiceRecognitionStatus,
+} from "../services/voiceprint-service";
 
 interface InterviewOverlayProps {
   onClose: () => void;
   onTextUpdate: (text: string) => void;
   submitMessage: (text: string) => void;
-  // 添加声纹识别相关属性
-  voiceprintEnabled?: boolean; // 是否启用声纹识别
-  isInterviewer?: boolean; // 是否为面试官身份
-  voiceMatchScore?: number; // 声纹匹配分数
-  onAudioDataCollected?: (audioData: Float32Array) => void; // 收集音频数据的回调
 }
 
 export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
   onClose,
   onTextUpdate,
   submitMessage,
-  voiceprintEnabled = false,
-  isInterviewer = false,
-  voiceMatchScore = 0,
-  onAudioDataCollected,
 }) => {
   const [visible, setVisible] = useState(true);
-
-  // 添加暂停状态
   const [isPaused, setIsPaused] = useState(false);
-  // 添加宽度状态和拖动状态
   const [width, setWidth] = useState("33vw");
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(isDragging);
   const dragStartXRef = useRef(0);
   const initialWidthRef = useRef(0);
-  // 记录上次提交的文本，避免重复提交
+
+  // 添加控制面试开始的状态
+  const [isStarted, setIsStarted] = useState(false);
+
+  // 声纹识别相关状态
+  const [voiceprintEnabled, setVoiceprintEnabled] = useState(true);
+  const [isInterviewer, setIsInterviewer] = useState(false);
+  const [voiceMatchScore, setVoiceMatchScore] = useState(0);
+  const [recognitionStatus, setRecognitionStatus] =
+    useState<VoiceRecognitionStatus>(VoiceRecognitionStatus.IDLE);
+
+  // 声纹识别器引用
+  const recognizerRef = useRef<RealtimeVoiceprintRecognizer | null>(null);
+  const modelRef = useRef<tf.LayersModel | null>(null);
+  const voiceprintRef = useRef<Float32Array | null>(null);
+
+  // 其他必要引用
   const lastSubmittedTextRef = useRef("");
-  // 添加声纹识别状态
   const isInterviewerRef = useRef(isInterviewer);
   const voiceMatchScoreRef = useRef(voiceMatchScore);
-  // 记录收集音频数据的计时器
-  const audioCollectionTimerRef = useRef<NodeJS.Timeout | null>(null);
-  // 音频上下文和处理节点
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioStreamRef = useRef<MediaStream | null>(null);
   const audioProcessorRef = useRef<ScriptProcessorNode | null>(null);
-  // 收集的音频数据
   const collectedAudioDataRef = useRef<Float32Array[]>([]);
-  // 收集状态
   const [isCollectingAudio, setIsCollectingAudio] = useState(false);
-  // 自动提交计时器
   const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 使用 react-speech-recognition 的钩子
+  // 语音识别相关
   const {
     transcript,
     listening,
@@ -61,42 +64,171 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
     browserSupportsSpeechRecognition,
     isMicrophoneAvailable,
   } = useSpeechRecognition();
-
-  // 保存当前文本的引用，用于在倒计时结束时提交
   const transcriptRef = useRef(transcript);
 
+  // 加载TensorFlow模型和声纹特征
+  useEffect(() => {
+    const loadModelAndVoiceprint = async () => {
+      try {
+        // 尝试从localStorage加载保存的声纹
+        const savedVoiceprint = localStorage.getItem("userVoiceprint");
+        if (savedVoiceprint) {
+          voiceprintRef.current = new Float32Array(JSON.parse(savedVoiceprint));
+          console.log("已加载保存的声纹模型");
+        } else {
+          console.log("未找到保存的声纹模型，请先在TensorFlow页面训练声纹");
+          setVoiceprintEnabled(false);
+        }
+
+        // 创建简单的声纹识别模型
+        const model = tf.sequential();
+        model.add(
+          tf.layers.conv1d({
+            inputShape: [100, 40],
+            filters: 32,
+            kernelSize: 3,
+            activation: "relu",
+          }),
+        );
+        model.add(tf.layers.maxPooling1d({ poolSize: 2 }));
+        model.add(
+          tf.layers.conv1d({
+            filters: 64,
+            kernelSize: 3,
+            activation: "relu",
+          }),
+        );
+        model.add(tf.layers.maxPooling1d({ poolSize: 2 }));
+        model.add(tf.layers.flatten());
+        model.add(tf.layers.dense({ units: 128, activation: "relu" }));
+        model.add(tf.layers.dropout({ rate: 0.5 }));
+        model.add(tf.layers.dense({ units: 64, activation: "linear" }));
+        model.compile({
+          optimizer: "adam",
+          loss: "meanSquaredError",
+        });
+        modelRef.current = model;
+        console.log("声纹识别模型已加载");
+
+        // 初始化实时识别器
+        if (modelRef.current && voiceprintRef.current) {
+          // 创建实时识别器实例
+          recognizerRef.current = new RealtimeVoiceprintRecognizer(
+            modelRef.current,
+            DEFAULT_VOICEPRINT_CONFIG,
+            handleVoiceprintResult,
+          );
+
+          // 设置声纹特征
+          recognizerRef.current.setVoiceprint(voiceprintRef.current);
+          setRecognitionStatus(VoiceRecognitionStatus.TRAINED);
+        }
+      } catch (error) {
+        console.error("加载模型或声纹失败:", error);
+        setRecognitionStatus(VoiceRecognitionStatus.ERROR);
+        setVoiceprintEnabled(false);
+      }
+    };
+
+    loadModelAndVoiceprint();
+
+    // 组件卸载时清理资源
+    return () => {
+      console.log("InterviewOverlay组件卸载，清理所有资源");
+
+      // 停止语音识别
+      try {
+        SpeechRecognition.abortListening();
+        SpeechRecognition.stopListening();
+      } catch (e) {
+        console.error("停止语音识别失败:", e);
+      }
+
+      // 停止音频采集
+      stopAudioCollection();
+
+      // 清理声纹识别器
+      if (recognizerRef.current) {
+        try {
+          recognizerRef.current.clearBuffer();
+          recognizerRef.current = null;
+        } catch (e) {
+          console.error("清理声纹识别器失败:", e);
+        }
+      }
+
+      // 释放TensorFlow模型
+      if (modelRef.current) {
+        try {
+          modelRef.current.dispose();
+          console.log("卸载时模型已销毁");
+          modelRef.current = null;
+        } catch (e) {
+          console.error("模型销毁出错:", e);
+        }
+      }
+
+      // 最后一次确保所有音频轨道都被停止
+      if (audioStreamRef.current) {
+        try {
+          const tracks = audioStreamRef.current.getTracks();
+          tracks.forEach((track) => {
+            if (track.readyState === "live") {
+              track.stop();
+            }
+          });
+          audioStreamRef.current = null;
+        } catch (e) {
+          console.error("停止音频轨道失败:", e);
+        }
+      }
+
+      // 清除自动提交计时器
+      if (autoSubmitTimerRef.current) {
+        clearTimeout(autoSubmitTimerRef.current);
+        autoSubmitTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  // 处理声纹识别结果
+  const handleVoiceprintResult = (result: {
+    isMatch: boolean;
+    score: number;
+  }) => {
+    setVoiceMatchScore(result.score);
+
+    // 修改：反转逻辑，匹配成功(isMatch=true)表示是面试者，而不是面试官
+    setIsInterviewer(!result.isMatch);
+
+    // 更新引用值，确保effect外部访问最新状态
+    isInterviewerRef.current = !result.isMatch; // 同样需要反转
+    voiceMatchScoreRef.current = result.score;
+
+    // 更新识别状态（保持不变，因为这只代表匹配状态，不代表身份）
+    setRecognitionStatus(
+      result.isMatch
+        ? VoiceRecognitionStatus.MATCHED
+        : VoiceRecognitionStatus.NOT_MATCHED,
+    );
+
+    // 修改日志信息，匹配成功显示为面试者
+    console.log(
+      `声纹识别结果: ${!result.isMatch ? "面试官" : "面试者"}, 相似度: ${(
+        result.score * 100
+      ).toFixed(2)}%`,
+    );
+  };
+
+  // 将transcript更新到父组件
   useEffect(() => {
     transcriptRef.current = transcript;
     onTextUpdate(transcript);
   }, [transcript, onTextUpdate]);
 
-  // 更新声纹识别结果
-  useEffect(() => {
-    isInterviewerRef.current = isInterviewer;
-    voiceMatchScoreRef.current = voiceMatchScore;
-
-    // 当声纹识别状态变化时显示提示信息
-    if (voiceprintEnabled) {
-      console.log(
-        `声纹识别状态更新: ${isInterviewer ? "面试官" : "面试者"}, 相似度: ${(
-          voiceMatchScore * 100
-        ).toFixed(2)}%`,
-      );
-    }
-  }, [isInterviewer, voiceMatchScore, voiceprintEnabled]);
-
-  // 检查浏览器是否支持语音识别
-  useEffect(() => {
-    if (!browserSupportsSpeechRecognition) {
-      console.error("您的浏览器不支持语音识别功能");
-    } else if (!isMicrophoneAvailable) {
-      console.error("无法访问麦克风");
-    }
-  }, [browserSupportsSpeechRecognition, isMicrophoneAvailable]);
-
-  // 开始收集音频数据用于声纹识别
+  // 开始音频收集并处理
   const startAudioCollection = async () => {
-    if (isCollectingAudio || !onAudioDataCollected) return;
+    if (isCollectingAudio) return;
 
     try {
       setIsCollectingAudio(true);
@@ -111,14 +243,17 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
         (window as any).webkitAudioContext)();
       audioContextRef.current = audioContext;
 
-      // 创建处理器节点
-      const processor = audioContext.createScriptProcessor(4096, 1, 1);
-      audioProcessorRef.current = processor;
+      // 创建分析器节点
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 1024;
 
       // 创建音频源
       const source = audioContext.createMediaStreamSource(stream);
-      source.connect(processor);
-      processor.connect(audioContext.destination);
+      source.connect(analyser);
+
+      // 创建处理器节点
+      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      audioProcessorRef.current = processor;
 
       // 处理音频数据
       processor.onaudioprocess = (e) => {
@@ -126,16 +261,15 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
         const audioData = new Float32Array(inputData);
         collectedAudioDataRef.current.push(audioData);
 
-        // 实时传递给声纹分析
-        if (onAudioDataCollected) {
-          onAudioDataCollected(audioData);
+        // 将数据发送给实时识别器
+        if (voiceprintEnabled && recognizerRef.current) {
+          recognizerRef.current.addAudioData(audioData);
         }
       };
 
-      // 设置5秒后停止采集
-      audioCollectionTimerRef.current = setTimeout(() => {
-        stopAudioCollection();
-      }, 5000);
+      // 连接节点
+      analyser.connect(processor);
+      processor.connect(audioContext.destination);
     } catch (error) {
       console.error("开始音频采集失败:", error);
       setIsCollectingAudio(false);
@@ -144,42 +278,79 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
 
   // 停止音频采集
   const stopAudioCollection = () => {
-    if (audioProcessorRef.current && audioContextRef.current) {
-      audioProcessorRef.current.disconnect();
-      audioProcessorRef.current = null;
-    }
+    try {
+      // 确保处理器断开连接
+      if (audioProcessorRef.current && audioContextRef.current) {
+        try {
+          audioProcessorRef.current.disconnect();
+        } catch (e) {
+          console.error("断开处理器连接失败:", e);
+        }
+        audioProcessorRef.current = null;
+      }
 
-    if (audioContextRef.current) {
-      audioContextRef.current
-        .close()
-        .catch((err) => console.error("关闭音频上下文失败:", err));
-      audioContextRef.current = null;
-    }
+      // 确保音频上下文关闭
+      if (audioContextRef.current) {
+        try {
+          // 检查音频上下文状态
+          if (audioContextRef.current.state !== "closed") {
+            audioContextRef.current
+              .close()
+              .catch((err) => console.error("关闭音频上下文失败:", err));
+          }
+        } catch (e) {
+          console.error("音频上下文关闭异常:", e);
+        }
+        audioContextRef.current = null;
+      }
 
-    if (audioStreamRef.current) {
-      audioStreamRef.current.getTracks().forEach((track) => track.stop());
-      audioStreamRef.current = null;
-    }
+      // 确保所有音频轨道都被停止
+      if (audioStreamRef.current) {
+        try {
+          const tracks = audioStreamRef.current.getTracks();
+          tracks.forEach((track) => {
+            try {
+              if (track.readyState === "live") {
+                track.stop();
+                console.log("成功停止音频轨道");
+              }
+            } catch (e) {
+              console.error("停止音频轨道失败:", e);
+            }
+          });
+          // 强制设置为null以帮助垃圾回收
+          audioStreamRef.current = null;
+        } catch (e) {
+          console.error("停止音频流失败:", e);
+        }
+      }
 
-    if (audioCollectionTimerRef.current) {
-      clearTimeout(audioCollectionTimerRef.current);
-      audioCollectionTimerRef.current = null;
-    }
+      // 清空收集的音频数据
+      collectedAudioDataRef.current = [];
+      setIsCollectingAudio(false);
 
-    setIsCollectingAudio(false);
+      // 为确保所有资源被释放，显式请求垃圾回收
+      if (window.gc) {
+        try {
+          window.gc();
+        } catch (e) {}
+      }
+    } catch (error) {
+      console.error("停止音频采集完全失败:", error);
+    }
   };
 
-  // 开始语音识别
+  // 当组件可见且未暂停且已开始面试时开始语音识别
   useEffect(() => {
-    if (visible && !isPaused) {
+    if (visible && !isPaused && isStarted) {
       // 配置语音识别
       SpeechRecognition.startListening({
         continuous: true,
         language: "zh-CN",
       });
 
-      // 如果启用了声纹识别，开始收集音频数据
-      if (voiceprintEnabled && onAudioDataCollected) {
+      // 开始音频采集和声纹识别
+      if (voiceprintEnabled) {
         startAudioCollection();
       }
     }
@@ -188,9 +359,9 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
       SpeechRecognition.stopListening();
       stopAudioCollection();
     };
-  }, [visible, isPaused, voiceprintEnabled, onAudioDataCollected]);
+  }, [visible, isPaused, voiceprintEnabled, isStarted]);
 
-  // 添加监听transcript变化的效果，当检测到是面试官时自动提交
+  // 自动提交面试官语音
   useEffect(() => {
     // 清除之前的计时器
     if (autoSubmitTimerRef.current) {
@@ -198,7 +369,7 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
       autoSubmitTimerRef.current = null;
     }
 
-    // 如果启用了声纹识别，并且被识别为面试官，且有新的文本内容
+    // 如果声纹识别启用，并且被识别为面试官，且有新的文本内容
     if (
       voiceprintEnabled &&
       isInterviewerRef.current &&
@@ -232,17 +403,64 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
     resetTranscript,
   ]);
 
+  // 开始面试的处理函数
+  const startInterview = () => {
+    setIsStarted(true);
+    resetTranscript();
+  };
+
   const stopRecognition = () => {
     try {
-      SpeechRecognition.stopListening();
+      // 先停止语音识别 - 使用更强制的方法
+      SpeechRecognition.abortListening();
+      setTimeout(() => {
+        SpeechRecognition.stopListening();
+      }, 0);
+
+      // 确保停止所有音频采集
       stopAudioCollection();
+      // 重要：确保所有的TensorFlow资源被释放
+      if (recognizerRef.current) {
+        recognizerRef.current.clearBuffer();
+        recognizerRef.current = null;
+      }
+
+      // 确保模型正确释放，防止内存泄漏
+      if (modelRef.current) {
+        try {
+          if (!(modelRef.current as any).__disposed) {
+            modelRef.current.dispose();
+            (modelRef.current as any).__disposed = true;
+            console.log("模型已安全销毁");
+          }
+        } catch (e) {
+          console.error("模型销毁出错:", e);
+        }
+        modelRef.current = null;
+      }
+
       // 提交最终结果
       if (transcriptRef.current) {
         submitMessage(transcriptRef.current);
       }
+
       // 关闭overlay
       setVisible(false);
-      onClose();
+
+      // 确保浏览器回收所有媒体资源
+      setTimeout(() => {
+        if (audioStreamRef.current) {
+          const tracks = audioStreamRef.current.getTracks();
+          tracks.forEach((track) => {
+            if (track.readyState === "live") {
+              track.stop();
+              console.log("强制停止遗留音频轨道");
+            }
+          });
+          audioStreamRef.current = null;
+        }
+        onClose();
+      }, 100);
     } catch (error) {
       console.error("停止语音识别失败:", error);
     }
@@ -257,20 +475,6 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
       setTimeout(() => {
         SpeechRecognition.stopListening();
       }, 0);
-
-      // 如果是面试官，且有内容，则提交
-      if (
-        voiceprintEnabled &&
-        isInterviewerRef.current &&
-        transcriptRef.current &&
-        transcriptRef.current.trim() !== ""
-      ) {
-        // 使用setTimeout将提交操作放到下一个事件循环，避免阻塞UI更新
-        setTimeout(() => {
-          submitMessage(transcriptRef.current);
-          resetTranscript();
-        }, 0);
-      }
 
       // 暂停音频采集
       stopAudioCollection();
@@ -288,7 +492,7 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
       }, 0);
 
       // 重新开始音频采集
-      if (voiceprintEnabled && onAudioDataCollected) {
+      if (voiceprintEnabled) {
         startAudioCollection();
       }
     }
@@ -361,77 +565,93 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
       <div className="drag-handle" onMouseDown={handleDragStart} />
 
       <div className="content-container">
-        {/* 语音识别状态指示器 */}
-        <div className="status-indicator">
-          <div
-            className={`indicator-dot ${
-              listening ? "listening" : "not-listening"
-            }`}
-          />
-          <span className="status-text">
-            {listening ? "正在监听..." : isPaused ? "已暂停" : "未监听"}
-          </span>
-
-          {/* 添加声纹识别状态显示 */}
-          {voiceprintEnabled && (
-            <div className="voiceprint-status">
-              <span
-                className={`identity-indicator ${
-                  isInterviewerRef.current ? "interviewer" : "interviewee"
+        {!isStarted ? (
+          // 未开始面试时显示开始面试按钮
+          <div className="start-interview-container">
+            <div className="start-message">
+              <h3>面试准备就绪</h3>
+              <p>点击下方按钮开始面试</p>
+            </div>
+            <button onClick={startInterview} className="button start-button">
+              开始面试
+            </button>
+          </div>
+        ) : (
+          // 已开始面试时显示面试界面
+          <>
+            {/* 语音识别状态指示器 */}
+            <div className="status-indicator">
+              <div
+                className={`indicator-dot ${
+                  listening ? "listening" : "not-listening"
                 }`}
-              >
-                {isInterviewerRef.current ? "面试官" : "面试者"}
+              />
+              <span className="status-text">
+                {listening ? "正在监听..." : isPaused ? "已暂停" : "未监听"}
               </span>
-              {voiceMatchScoreRef.current > 0 && (
-                <span className="match-score">
-                  相似度: {(voiceMatchScoreRef.current * 100).toFixed(1)}%
-                </span>
+
+              {/* 添加声纹识别状态显示 */}
+              {voiceprintEnabled && (
+                <div className="voiceprint-status">
+                  <span
+                    className={`identity-indicator ${
+                      isInterviewerRef.current ? "interviewer" : "interviewee"
+                    }`}
+                  >
+                    {isInterviewerRef.current ? "面试官" : "面试者"}
+                  </span>
+                  {voiceMatchScoreRef.current > 0 && (
+                    <span className="match-score">
+                      相似度: {(voiceMatchScoreRef.current * 100).toFixed(1)}%
+                    </span>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
 
-        {/* 错误提示 */}
-        {(!browserSupportsSpeechRecognition || !isMicrophoneAvailable) && (
-          <div className="error-message">
-            {!browserSupportsSpeechRecognition
-              ? "您的浏览器不支持语音识别功能,请使用Chrome浏览器"
-              : "无法访问麦克风，请检查麦克风权限"}
-          </div>
+            {/* 错误提示 */}
+            {(!browserSupportsSpeechRecognition || !isMicrophoneAvailable) && (
+              <div className="error-message">
+                {!browserSupportsSpeechRecognition
+                  ? "您的浏览器不支持语音识别功能,请使用Chrome浏览器"
+                  : "无法访问麦克风，请检查麦克风权限"}
+              </div>
+            )}
+
+            {/* 识别文本显示区域 */}
+            {transcript && (
+              <div
+                className={`transcript-display ${
+                  voiceprintEnabled && isInterviewerRef.current
+                    ? "interviewer-text"
+                    : ""
+                }`}
+              >
+                {transcript}
+              </div>
+            )}
+
+            {/* 按钮区域 */}
+            <div className="button-container">
+              {/* 暂停/恢复按钮 */}
+              <button
+                onClick={togglePause}
+                className={`button pause-button ${isPaused ? "paused" : ""}`}
+              >
+                <span>{isPaused ? "▶️ 恢复监听" : "⏸️ 暂停并发送"}</span>
+              </button>
+
+              <button onClick={stopRecognition} className="button stop-button">
+                <StopIcon />
+                <span>结束对话</span>
+              </button>
+
+              <button onClick={resetTranscript} className="button clear-button">
+                <span>🗑️ 清空</span>
+              </button>
+            </div>
+          </>
         )}
-
-        {/* 识别文本显示区域 */}
-        {transcript && (
-          <div
-            className={`transcript-display ${
-              voiceprintEnabled && isInterviewerRef.current
-                ? "interviewer-text"
-                : ""
-            }`}
-          >
-            {transcript}
-          </div>
-        )}
-
-        {/* 按钮区域 */}
-        <div className="button-container">
-          {/* 暂停/恢复按钮 */}
-          <button
-            onClick={togglePause}
-            className={`button pause-button ${isPaused ? "paused" : ""}`}
-          >
-            <span>{isPaused ? "▶️ 恢复监听" : "⏸️ 暂停并发送"}</span>
-          </button>
-
-          <button onClick={stopRecognition} className="button stop-button">
-            <StopIcon />
-            <span>结束对话</span>
-          </button>
-
-          <button onClick={resetTranscript} className="button clear-button">
-            <span>🗑️ 清空</span>
-          </button>
-        </div>
       </div>
     </div>
   );

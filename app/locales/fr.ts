@@ -28,7 +28,7 @@ const fr: PartialLocaleType = {
     SaasTips:
       "La configuration est trop compliquée, je veux l'utiliser immédiatement",
     TopTips:
-      "🥳 Offre de lancement NextChat AI, débloquez OpenAI o1, GPT-4o, Claude-3.5 et les derniers grands modèles",
+      "�� Offre de lancement Sheep Interview AI, débloquez OpenAI o1, GPT-4o, Claude-3.5 et les derniers grands modèles",
   },
   ChatItem: {
     ChatItemCount: (count: number) => `${count} conversations`,
@@ -179,7 +179,7 @@ const fr: PartialLocaleType = {
     InjectSystemPrompts: {
       Title: "Injecter des invites système",
       SubTitle:
-        "Ajouter de manière forcée une invite système simulée de ChatGPT au début de chaque liste de messages",
+        "Ajouter de manière forcée une invite système simulée de Sheep Interview AI au début de chaque liste de messages",
     },
     InputTemplate: {
       Title: "Prétraitement des entrées utilisateur",
@@ -306,10 +306,10 @@ const fr: PartialLocaleType = {
 
     Access: {
       SaasStart: {
-        Title: "Utiliser NextChat AI",
+        Title: "Utiliser Sheep Interview AI",
         Label: "(La solution la plus rentable)",
         SubTitle:
-          "Officiellement maintenu par NextChat, prêt à l'emploi sans configuration, prend en charge les derniers grands modèles comme OpenAI o1, GPT-4o et Claude-3.5",
+          "Officiellement maintenu par Sheep Interview, prêt à l'emploi sans configuration, prend en charge les derniers grands modèles comme OpenAI o1, GPT-4o et Claude-3.5",
         ChatNow: "Discuter maintenant",
       },
 

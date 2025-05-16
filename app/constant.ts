@@ -1,7 +1,7 @@
-export const OWNER = "ChatGPTNextWeb";
-export const REPO = "ChatGPT-Next-Web";
+export const OWNER = "SheepInterviewOwner";
+export const REPO = "Sheep-Interview";
 export const REPO_URL = `https://github.com/${OWNER}/${REPO}`;
-export const PLUGINS_REPO_URL = `https://github.com/${OWNER}/NextChat-Awesome-Plugins`;
+export const PLUGINS_REPO_URL = `https://github.com/${OWNER}/Sheep-Interview-Awesome-Plugins`;
 export const ISSUE_URL = `https://github.com/${OWNER}/${REPO}/issues`;
 export const UPDATE_URL = `${REPO_URL}#keep-updated`;
 export const RELEASE_URL = `${REPO_URL}/releases`;
@@ -44,6 +44,7 @@ export enum KeyStatus {
   INACTIVE = "inactive", // 未激活
   ACTIVE = "active", // 激活中
   EXPIRED = "expired", // 已过期
+  REVOKED = "revoked", // 已撤销
 }
 
 // 定义Key的数据结构
@@ -53,9 +54,11 @@ export interface Key {
   status: KeyStatus;
   created_at: number;
   activated_at?: number | null;
-  expires_at: number;
+  expires_at: number | null;
   activated_ip?: string | null;
   hardware_name?: string | null;
+  duration_hours: number; // 添加密钥有效时长（小时）
+  notes?: string | null; // 附加备注信息
 }
 
 // 添加到现有的Path枚举中
@@ -131,7 +134,7 @@ export const ACCESS_CODE_PREFIX = "nk-";
 export const LAST_INPUT_KEY = "last-input";
 export const UNFINISHED_INPUT = (id: string) => "unfinished-input-" + id;
 
-export const STORAGE_KEY = "chatgpt-next-web";
+export const STORAGE_KEY = "sheep-interview-store";
 
 export const REQUEST_TIMEOUT_MS = 60000;
 export const REQUEST_TIMEOUT_MS_FOR_THINKING = REQUEST_TIMEOUT_MS * 5;
@@ -324,7 +327,7 @@ You are an AI assistant with access to system tools. Your role is to help users 
 2. WHEN TO USE TOOLS:
    - ALWAYS USE TOOLS when they can help answer user questions
    - DO NOT just describe what you could do - TAKE ACTION immediately
-   - If you're not sure whether to use a tool, USE IT
+   - If you\\'re not sure whether to use a tool, USE IT
    - Common triggers for tool use:
      * Questions about files or directories
      * Requests to check, list, or manipulate system resources
@@ -349,7 +352,7 @@ You are an AI assistant with access to system tools. Your role is to help users 
       - Only ONE tool call per message
       - ALWAYS TAKE ACTION instead of just describing what you could do
       - Include the correct clientId in code block language tag
-      - Verify arguments match the primitive's requirements
+      - Verify arguments match the primitive\\'s requirements
 
 4. INTERACTION FLOW:
    A. When user makes a request:
@@ -384,7 +387,7 @@ You are an AI assistant with access to system tools. Your role is to help users 
   "params": {
     "name": "write_file",
     "arguments": {
-      "path": "/Users/river/dev/nextchat/test/joke.txt",
+      "path": "/Users/river/dev/sheep-interview/test/joke.txt",
       "content": "为什么数学书总是感到忧伤？因为它有太多的问题。"
     }
   }
@@ -397,7 +400,7 @@ You are an AI assistant with access to system tools. Your role is to help users 
    {
       "method": "write_file",
       "params": {
-        "path": "NextChat_Information.txt",
+        "path": "Sheep_Interview_Information.txt",
         "content": "1"
     }
    }
@@ -871,5 +874,5 @@ export const internalAllowedWebDavEndpoints = [
 
 export const DEFAULT_GA_ID = "G-89WN60ZK2E";
 
-export const SAAS_CHAT_URL = "https://nextchat.club";
-export const SAAS_CHAT_UTM_URL = "https://nextchat.club?utm=github";
+export const SAAS_CHAT_URL = "https://sheepinterview.club";
+export const SAAS_CHAT_UTM_URL = "https://sheepinterview.club?utm=github";

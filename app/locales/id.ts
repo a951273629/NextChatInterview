@@ -296,10 +296,10 @@ const id: PartialLocaleType = {
 
     Access: {
       SaasStart: {
-        Title: "Gunakan NextChat AI",
+        Title: "Gunakan Sheep Interview AI",
         Label: "(Solusi paling hemat biaya)",
         SubTitle:
-          "Dikelola secara resmi oleh NextChat, siap digunakan tanpa konfigurasi, mendukung model besar terbaru seperti OpenAI o1, GPT-4o, dan Claude-3.5",
+          "Dikelola secara resmi oleh Sheep Interview, siap digunakan tanpa konfigurasi, mendukung model besar terbaru seperti OpenAI o1, GPT-4o, dan Claude-3.5",
         ChatNow: "Chat Sekarang",
       },
 

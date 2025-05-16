@@ -28,7 +28,12 @@ const schema = fs.readFileSync(
   path.join(process.cwd(), "app/db/schema.sql"),
   "utf8",
 );
-db.exec(schema);
 
+// const schema_update = fs.readFileSync(
+//   path.join(process.cwd(), "app/db/update_field.sql"),
+//   "utf8",
+// );
+db.exec(schema);
+// db.exec(schema_update);
 // 导出数据库实例供其他模块使用
 export default db;

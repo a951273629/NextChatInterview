@@ -7,8 +7,9 @@ import {
   getKeysByStatus,
   getKeyByString,
   updateExpiredKeys,
-} from "@/app/services/KeyService";
-import { KeyStatus } from "@/app/db";
+  revokeKey,
+} from "@/app/api/key-generate/back-end-service/KeyService";
+import { KeyStatus } from "../../constant";
 
 // 获取所有密钥
 export async function GET(request: NextRequest) {
@@ -37,6 +38,9 @@ export async function GET(request: NextRequest) {
         case "expired":
           keys = getKeysByStatus(KeyStatus.EXPIRED);
           break;
+        case "revoked":
+          keys = getKeysByStatus(KeyStatus.REVOKED);
+          break;
         default:
           keys = getAllKeys();
       }
@@ -59,9 +63,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { expiresHours = 24 } = body;
+    const { expiresHours = 24, notes } = body;
 
-    const newKey = createKey(expiresHours);
+    const newKey = createKey(expiresHours, notes);
     return NextResponse.json(newKey, { status: 201 });
   } catch (error) {
     console.error("创建密钥失败:", error);
@@ -72,12 +76,23 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 更新密钥（激活密钥）
+// 更新密钥（激活或撤销密钥）
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { keyString, ipAddress, hardwareName } = body;
+    const { keyString, ipAddress, hardwareName, action } = body;
 
+    // 如果是撤销操作
+    if (action === "revoke") {
+      if (!keyString) {
+        return NextResponse.json({ error: "缺少密钥参数" }, { status: 400 });
+      }
+
+      const revokedKey = revokeKey(keyString);
+      return NextResponse.json(revokedKey);
+    }
+
+    // 默认为激活操作
     if (!keyString || !ipAddress || !hardwareName) {
       return NextResponse.json({ error: "缺少必要参数" }, { status: 400 });
     }

@@ -8,7 +8,7 @@
     "withGlobalTauri": true
   },
   "package": {
-    "productName": "NextChat",
+    "productName": "Sheep Interview",
     "version": "2.15.8"
   },
   "tauri": {
@@ -60,7 +60,7 @@
     "bundle": {
       "active": true,
       "category": "DeveloperTool",
-      "copyright": "2023, Zhang Yifei All Rights Reserved.",
+      "copyright": "2023, Sheep Interview Team All Rights Reserved.",
       "deb": {
         "depends": []
       },
@@ -72,8 +72,8 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.yida.chatgpt.next.web",
-      "longDescription": "NextChat is a cross-platform ChatGPT client, including Web/Win/Linux/OSX/PWA.",
+      "identifier": "com.sheepinterview.app",
+      "longDescription": "Sheep Interview is a cross-platform AI-powered interview practice tool, including Web/Win/Linux/OSX/PWA.",
       "macOS": {
         "entitlements": null,
         "exceptionDomain": "",
@@ -82,7 +82,7 @@
         "signingIdentity": null
       },
       "resources": [],
-      "shortDescription": "NextChat App",
+      "shortDescription": "Sheep Interview App",
       "targets": "all",
       "windows": {
         "certificateThumbprint": null,
@@ -97,7 +97,7 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://github.com/ChatGPTNextWeb/ChatGPT-Next-Web/releases/latest/download/latest.json"
+        "https://github.com/SheepInterviewOwner/Sheep-Interview/releases/latest/download/latest.json"
       ],
       "dialog": true,
       "windows": {
@@ -110,7 +110,7 @@
         "fullscreen": false,
         "height": 600,
         "resizable": true,
-        "title": "NextChat",
+        "title": "Sheep Interview",
         "width": 960,
         "hiddenTitle": true,
         "titleBarStyle": "Overlay"

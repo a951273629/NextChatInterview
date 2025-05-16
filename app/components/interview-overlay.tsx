@@ -10,6 +10,7 @@ import {
   DEFAULT_VOICEPRINT_CONFIG,
   VoiceRecognitionStatus,
 } from "../services/voiceprint-service";
+import InterviewPreparation from "./InterviewPreparation";
 
 interface InterviewOverlayProps {
   onClose: () => void;
@@ -39,6 +40,11 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
   const [voiceMatchScore, setVoiceMatchScore] = useState(0);
   const [recognitionStatus, setRecognitionStatus] =
     useState<VoiceRecognitionStatus>(VoiceRecognitionStatus.IDLE);
+
+  // 添加语言选择状态 - 从localStorage初始化
+  const [recognitionLanguage, setRecognitionLanguage] = useState<string>(
+    localStorage.getItem("interviewLanguage") || "zh-CN",
+  );
 
   // 声纹识别器引用
   const recognizerRef = useRef<RealtimeVoiceprintRecognizer | null>(null);
@@ -343,10 +349,14 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
   // 当组件可见且未暂停且已开始面试时开始语音识别
   useEffect(() => {
     if (visible && !isPaused && isStarted) {
+      // 从localStorage获取语言设置
+      const savedLanguage =
+        localStorage.getItem("interviewLanguage") || "zh-CN";
+
       // 配置语音识别
       SpeechRecognition.startListening({
         continuous: true,
-        language: "zh-CN",
+        language: savedLanguage,
       });
 
       // 开始音频采集和声纹识别
@@ -485,7 +495,7 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
       setTimeout(() => {
         SpeechRecognition.startListening({
           continuous: true,
-          language: "zh-CN",
+          language: recognitionLanguage,
         });
         // 重置文本
         resetTranscript();
@@ -525,6 +535,20 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
       setWidth(`${newWidth}vw`);
     }
   };
+
+  // /**
+  //  * 切换声纹识别功能开关
+  //  */
+  // const handleVoiceprintToggleSwitch = () => {
+  //   const hasVoiceprint = localStorage.getItem("userVoiceprint") !== null;
+  //   if (hasVoiceprint) {
+  //     setVoiceprintEnabled((prev) => !prev);
+  //     console.log(`声纹识别已${!voiceprintEnabled ? "启用" : "禁用"}`);
+  //   } else {
+  //     console.log("未找到声纹数据，无法切换声纹识别功能");
+  //     setVoiceprintEnabled(false);
+  //   }
+  // };
 
   const handleDragEnd = () => {
     setIsDragging(() => {
@@ -566,16 +590,12 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
 
       <div className="content-container">
         {!isStarted ? (
-          // 未开始面试时显示开始面试按钮
-          <div className="start-interview-container">
-            <div className="start-message">
-              <h3>面试准备就绪</h3>
-              <p>点击下方按钮开始面试</p>
-            </div>
-            <button onClick={startInterview} className="button start-button">
-              开始面试
-            </button>
-          </div>
+          // 替换为新的面试准备组件
+          <InterviewPreparation
+            onStart={startInterview}
+            voiceprintEnabled={voiceprintEnabled}
+            setVoiceprintEnabled={setVoiceprintEnabled}
+          />
         ) : (
           // 已开始面试时显示面试界面
           <>
@@ -638,7 +658,7 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
                 onClick={togglePause}
                 className={`button pause-button ${isPaused ? "paused" : ""}`}
               >
-                <span>{isPaused ? "▶️ 恢复监听" : "⏸️ 暂停并发送"}</span>
+                <span>{isPaused ? "▶️ 恢复监听" : "⏸️ 暂停获取答案"}</span>
               </button>
 
               <button onClick={stopRecognition} className="button stop-button">

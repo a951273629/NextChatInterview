@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./InterviewPreparation.module.scss";
+import DialogBox from "./comm/DialogBox";
+import { toast } from "react-hot-toast";
 
 interface InterviewPreparationProps {
   voiceprintEnabled: boolean;
@@ -35,7 +37,10 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
   const audioStreamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const animationFrameIdRef = useRef<number | null>(null);
+  const animationFrameIdRef = useRef<number | NodeJS.Timeout | null>(null);
+
+  // 对话框状态
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   // 初始化时检测设备状态
   useEffect(() => {
@@ -95,7 +100,8 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
     const analyser = analyserRef.current;
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-    const updateVolume = () => {
+    // 使用setInterval每100ms更新一次音量
+    const intervalId = setInterval(() => {
       analyser.getByteFrequencyData(dataArray);
 
       // 计算音量平均值
@@ -108,18 +114,16 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
       // 归一化到0-100范围
       const volume = Math.min(100, Math.max(0, average));
       setMicVolume(volume);
+    }, 100);
 
-      // 继续下一帧更新
-      animationFrameIdRef.current = requestAnimationFrame(updateVolume);
-    };
-
-    updateVolume();
+    // 保存intervalId以便清理
+    animationFrameIdRef.current = intervalId;
   };
 
   // 清理音频资源
   const cleanupAudioResources = () => {
     if (animationFrameIdRef.current) {
-      cancelAnimationFrame(animationFrameIdRef.current);
+      clearInterval(animationFrameIdRef.current);
       animationFrameIdRef.current = null;
     }
 
@@ -173,12 +177,38 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
   // 切换声纹识别功能
   const handleVoiceprintToggle = () => {
     const hasVoiceprint = localStorage.getItem("userVoiceprint") !== null;
-    if (hasVoiceprint) {
-      setVoiceprintEnabled(!voiceprintEnabled);
+
+    if (!hasVoiceprint) {
+      // 如果没有声纹数据，显示对话框
+      setDialogOpen(true);
     } else {
-      // 显示声纹训练提示
-      alert("您尚未录制声纹，请先在TensorFlow页面训练声纹");
+      // 如果有声纹数据，启用声纹识别并显示Toast
+      const newState = !voiceprintEnabled;
+      setVoiceprintEnabled(newState);
+
+      // 显示成功Toast
+      if (newState) {
+        toast.success("声纹识别已开启成功！", {
+          duration: 3000,
+          style: {
+            border: "1px solid #4CAF50",
+            padding: "16px",
+            color: "#333",
+          },
+        });
+      } else {
+        toast("声纹识别已关闭", {
+          duration: 2000,
+          icon: "💤",
+        });
+      }
     }
+  };
+
+  // 处理对话框确认事件
+  const handleDialogConfirm = () => {
+    setDialogOpen(false);
+    // 可以在这里添加导航到TensorFlow页面的逻辑
   };
 
   // 处理语言选择
@@ -371,6 +401,22 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
           开始面试
         </button>
       </div>
+
+      {/* 自定义对话框 */}
+      <DialogBox
+        isOpen={dialogOpen}
+        title="声纹识别未配置"
+        content={
+          <div>
+            <p>您尚未录制声纹，无法启用声纹识别功能。</p>
+            <p>请先前往TensorFlow页面录制并训练您的声纹。</p>
+          </div>
+        }
+        confirmText="去训练声纹"
+        cancelText="取消"
+        onConfirm={handleDialogConfirm}
+        onCancel={() => setDialogOpen(false)}
+      />
     </div>
   );
 };

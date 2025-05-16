@@ -11,6 +11,7 @@ import {
   VoiceRecognitionStatus,
 } from "../services/voiceprint-service";
 import InterviewPreparation from "./InterviewPreparation";
+import { Toaster } from "react-hot-toast";
 
 interface InterviewOverlayProps {
   onClose: () => void;
@@ -477,7 +478,7 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
   };
 
   // 添加暂停/恢复功能
-  const togglePause = () => {
+  const togglePauseCommit = () => {
     if (!isPaused) {
       // 使用更强制的中断方式
       SpeechRecognition.abortListening();
@@ -488,6 +489,14 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
 
       // 暂停音频采集
       stopAudioCollection();
+
+      // 新增：检查并提交当前已识别的文字
+      if (transcriptRef.current && transcriptRef.current.trim() !== "") {
+        console.log("暂停时提交识别内容:", transcriptRef.current);
+        submitMessage(transcriptRef.current);
+        // 提交后清空内容
+        resetTranscript();
+      }
     } else {
       // 先确保停止当前可能存在的监听
       SpeechRecognition.abortListening();
@@ -535,20 +544,6 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
       setWidth(`${newWidth}vw`);
     }
   };
-
-  // /**
-  //  * 切换声纹识别功能开关
-  //  */
-  // const handleVoiceprintToggleSwitch = () => {
-  //   const hasVoiceprint = localStorage.getItem("userVoiceprint") !== null;
-  //   if (hasVoiceprint) {
-  //     setVoiceprintEnabled((prev) => !prev);
-  //     console.log(`声纹识别已${!voiceprintEnabled ? "启用" : "禁用"}`);
-  //   } else {
-  //     console.log("未找到声纹数据，无法切换声纹识别功能");
-  //     setVoiceprintEnabled(false);
-  //   }
-  // };
 
   const handleDragEnd = () => {
     setIsDragging(() => {
@@ -653,9 +648,9 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
 
             {/* 按钮区域 */}
             <div className="button-container">
-              {/* 暂停/恢复按钮 */}
+              {/* 暂停恢复按钮 - 暂停时提交识别到的文字并清空 */}
               <button
-                onClick={togglePause}
+                onClick={togglePauseCommit}
                 className={`button pause-button ${isPaused ? "paused" : ""}`}
               >
                 <span>{isPaused ? "▶️ 恢复监听" : "⏸️ 暂停获取答案"}</span>
@@ -673,6 +668,20 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
           </>
         )}
       </div>
+
+      {/* 添加Toaster组件用于显示Toast通知 */}
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            borderRadius: "8px",
+            background: "#fff",
+            color: "#333",
+            boxShadow: "0 3px 10px rgba(0, 0, 0, 0.1)",
+          },
+        }}
+      />
     </div>
   );
 };

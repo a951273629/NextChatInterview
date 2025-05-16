@@ -32,6 +32,7 @@ import clsx from "clsx";
 import { initializeMcpSystem, isMcpEnabled } from "../mcp/actions";
 import LoginPage from "../pages/login";
 import TensorFlow from "./TensorFlow";
+import { ActivationProvider } from "./valid-wrapper/ActivationWrapper";
 
 export function Loading(props: { noLogo?: boolean }) {
   return (
@@ -282,9 +283,11 @@ export function Home() {
 
   return (
     <ErrorBoundary>
-      <Router>
-        <Screen />
-      </Router>
+      <ActivationProvider>
+        <Router>
+          <Screen />
+        </Router>
+      </ActivationProvider>
     </ErrorBoundary>
   );
 }

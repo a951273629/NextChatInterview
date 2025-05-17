@@ -29,11 +29,18 @@ const schema = fs.readFileSync(
   "utf8",
 );
 
+// 加载通知系统表结构
+const noticeSchema = fs.readFileSync(
+  path.join(process.cwd(), "app/db/update_notice.sql"),
+  "utf8",
+);
+
 // const schema_update = fs.readFileSync(
 //   path.join(process.cwd(), "app/db/update_field.sql"),
 //   "utf8",
 // );
 db.exec(schema);
+db.exec(noticeSchema); // 执行通知系统表创建
 // db.exec(schema_update);
 // 导出数据库实例供其他模块使用
 export default db;

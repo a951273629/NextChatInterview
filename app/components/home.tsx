@@ -33,6 +33,8 @@ import { initializeMcpSystem, isMcpEnabled } from "../mcp/actions";
 import LoginPage from "../pages/login";
 import TensorFlow from "./TensorFlow";
 import { ActivationProvider } from "./valid-wrapper/ActivationWrapper";
+import { NoticeManager } from "./notice/notice-announcement";
+import { AuthWrapper } from "./auth-wrapper";
 
 export function Loading(props: { noLogo?: boolean }) {
   return (
@@ -85,12 +87,19 @@ const McpMarketPage = dynamic(
   },
 );
 
-const KeyGenerate = dynamic(
-  async () => (await import("./KeyGenerate")).KeyGeneratePage,
-  {
-    loading: () => <Loading noLogo />,
-  },
-);
+// const KeyGenerate = dynamic(
+//   async () => (await import("./KeyGenerate")).KeyGeneratePage,
+//   {
+//     loading: () => <Loading noLogo />,
+//   },
+// );
+
+// const NoticeSet = dynamic(
+//   async () => (await import("./notice/notice-set")).NoticeSet,
+//   {
+//     loading: () => <Loading noLogo />,
+//   },
+// );
 // const InterviewPage = dynamic(
 //   async ()=>(await import("./interview-overlay")).InterviewOverlay,{
 //     loading: ()=> <Loading noLogo/>
@@ -207,21 +216,25 @@ function Screen() {
           })}
         />
         <WindowContent>
-          {/* <AuthWrapper></AuthWrapper>   只有登录时才可以路由到其他页面，相当于拦截器*/}
-          <Routes>
-            <Route path={Path.Home} element={<Chat />} />
-            <Route path={Path.NewChat} element={<NewChat />} />
-            <Route path={Path.Masks} element={<MaskPage />} />
-            <Route path={Path.Plugins} element={<PluginPage />} />
-            <Route path={Path.SearchChat} element={<SearchChat />} />
-            <Route path={Path.Chat} element={<Chat />} />
-            <Route path={Path.Settings} element={<Settings />} />
-            <Route path={Path.McpMarket} element={<McpMarketPage />} />
-            <Route path={Path.Login} element={<LoginPage />} />
-            <Route path={Path.TensorFlow} element={<TensorFlow />} />
-            <Route path={Path.KeyGenerate} element={<KeyGenerate />} />
-            {/* <Route path={Path.Interview} element={<InterviewPage/>}/> */}
-          </Routes>
+          {/* 只有登录时才可以路由到其他页面，相当于拦截器 */}
+          <AuthWrapper>
+            <Routes>
+              <Route path={Path.Home} element={<Chat />} />
+              <Route path={Path.NewChat} element={<NewChat />} />
+              <Route path={Path.Masks} element={<MaskPage />} />
+              <Route path={Path.Plugins} element={<PluginPage />} />
+              <Route path={Path.SearchChat} element={<SearchChat />} />
+              <Route path={Path.Chat} element={<Chat />} />
+              <Route path={Path.Settings} element={<Settings />} />
+              <Route path={Path.McpMarket} element={<McpMarketPage />} />
+              <Route path={Path.Login} element={<LoginPage />} />
+              <Route path={Path.TensorFlow} element={<TensorFlow />} />
+
+              {/* <Route path={Path.KeyGenerate} element={<KeyGenerate />} />
+            <Route path={Path.SetNotice} element={<NoticeSet />} /> */}
+              {/* <Route path={Path.Interview} element={<InterviewPage/>}/> */}
+            </Routes>
+          </AuthWrapper>
         </WindowContent>
       </>
     );
@@ -286,6 +299,7 @@ export function Home() {
       <ActivationProvider>
         <Router>
           <Screen />
+          <NoticeManager />
         </Router>
       </ActivationProvider>
     </ErrorBoundary>

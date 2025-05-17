@@ -79,6 +79,7 @@ export enum Path {
   McpMarket = "/mcp-market",
   Interview = "/interview",
   KeyGenerate = "/key-generate",
+  SetNotice = "/set-notice", // 添加通知设置路径
 }
 
 export enum ApiPath {

@@ -1,0 +1,291 @@
+// 通知组件样式
+.notice-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.notice-container {
+  background-color: var(--white);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 20px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.notice-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 16px;
+  color: var(--black);
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.notice-content {
+  margin-bottom: 20px;
+  color: var(--black);
+  line-height: 1.6;
+  flex: 1;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+.notice-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.confirm-button {
+  background-color: #10b981; /* 绿色按钮 */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+  
+  &:hover {
+    background-color: #059669;
+  }
+}
+
+// 设置页面样式
+.notice-set-container {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.notice-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.form-label {
+  font-weight: 500;
+  color: #0c0c0b !important;
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
+}
+
+.form-input, 
+.form-textarea {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 100%;
+  color: #0f0f0fec !important;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.form-textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.form-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-input {
+  width: 18px;
+  height: 18px;
+}
+
+.checkbox-label {
+  font-size: 14px;
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.save-button {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+  
+  &:hover {
+    background-color: #059669;
+  }
+}
+
+.cancel-button {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+  
+  &:hover {
+    background-color: #e5e7eb;
+  }
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+  .notice-container {
+    width: 95%;
+    padding: 15px;
+  }
+  
+  .notice-title {
+    font-size: 16px;
+  }
+  
+  .notice-set-container {
+    padding: 15px;
+  }
+  
+  .button-group {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .save-button, .cancel-button {
+    width: 100%;
+  }
+}
+
+// 暗黑模式
+:global(.dark) {
+  .notice-container {
+    background-color: var(--dark-50);
+  }
+  
+  .notice-title {
+    color: var(--white);
+    border-bottom-color: var(--dark-30);
+  }
+  
+  .notice-content {
+    color: var(--white);
+  }
+  
+  .form-input, 
+  .form-textarea {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-color: #444;
+  }
+  
+  .cancel-button {
+    background-color: var(--dark-30);
+    color: var(--white);
+    
+    &:hover {
+      background-color: var(--dark-20);
+    }
+  }
+}
+
+// 表单标题和内容区的样式增强
+.notice-form h2,
+.notice-set-container h1,
+.notice-set-container h2 {
+  color: #111110 !important;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.7);
+}
+
+// 为表格标题添加样式
+.notice-table th {
+  color: #141414 !important;
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
+}
+
+// 增强表格和表格内容的可读性
+.notice-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.notice-table th,
+.notice-table td {
+  padding: 10px;
+  border-bottom: 1px solid rgba(221, 221, 221, 0.4);
+  text-align: left;
+}
+
+.notice-table th {
+  color: #131210 !important; // 表格标题也使用金黄色
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.notice-table td {
+  color: #FFD700 !important; // 单元格内容也使用金黄色
+}
+
+// 增强表格行悬停效果
+.notice-table tr:hover {
+  background-color: rgba(255, 215, 0, 0.1); // 淡黄色背景
+}
+
+// 表格中的按钮样式增强
+.notice-table button {
+  background-color: transparent;
+  border: 1px solid #FFD700;
+  color: #080808;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 5px;
+  transition: all 0.3s ease;
+}
+
+.notice-table button:hover {
+  background-color: rgba(255, 215, 0, 0.2);
+}
+
+// 删除按钮特殊样式
+.notice-table button[style*="color: red"] {
+  border-color: #ff6b6b;
+  color: #ff6b6b !important;
+}
+
+.notice-table button[style*="color: red"]:hover {
+  background-color: rgba(255, 107, 107, 0.2);
+}
+
+// 添加表格行的鼠标样式
+.notice-table tr {
+  cursor: pointer; // 表示可点击
+  transition: background-color 0.2s ease;
+} 

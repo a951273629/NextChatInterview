@@ -297,6 +297,7 @@ export function Home() {
   return (
     <ErrorBoundary>
       <ActivationProvider>
+        {/*  React Router在这里初始化 */}
         <Router>
           <Screen />
           <NoticeManager />

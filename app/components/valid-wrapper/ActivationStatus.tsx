@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from "react";
-import {
-  isActivated,
-  getRemainingTime,
-  formatRemainingTime,
-} from "./activation";
+import { formatRemainingTime } from "./activation";
 import KeyIcon from "../../icons/key.svg";
 import { IconButton } from "../button";
 import ActivateKeyDialog from "./ActivateKeyDialog";
+import { safeLocalStorage } from "../../utils";
 
 const KEY_COLOR = "#FFD700"; // 明亮的黄色
+const localStorage = safeLocalStorage();
 
 interface ActivationStatusProps {
   className?: string;
@@ -21,12 +19,34 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
 
   // 每秒更新一次激活状态和剩余时间
   useEffect(() => {
-    const updateStatus = () => {
-      const active = isActivated();
-      setIsActive(active);
+    let isUpdating = false;
 
-      if (active) {
-        setRemainingTime(getRemainingTime());
+    const updateStatus = () => {
+      // 防止并发更新
+      if (isUpdating) return;
+
+      try {
+        isUpdating = true;
+
+        // 获取激活状态，直接从localStorage获取以避免可能的循环调用
+        const status = localStorage.getItem("user_activation_status");
+        const active = status === "active";
+        setIsActive(active);
+
+        if (active) {
+          // 直接计算剩余时间而不调用getRemainingTime，避免可能的循环调用
+          const expiryTime = localStorage.getItem("user_activation_expiry");
+          if (expiryTime) {
+            const expiryTimestamp = parseInt(expiryTime);
+            const remaining = Math.max(0, expiryTimestamp - Date.now());
+            setRemainingTime(remaining);
+          }
+        }
+
+        isUpdating = false;
+      } catch (error) {
+        console.error("更新激活状态失败:", error);
+        isUpdating = false;
       }
     };
 
@@ -48,8 +68,17 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
 
   // 激活成功后刷新状态
   const handleActivateSuccess = () => {
-    setIsActive(isActivated());
-    setRemainingTime(getRemainingTime());
+    // 直接从localStorage获取激活状态，避免调用isActivated可能引起的递归
+    const status = localStorage.getItem("user_activation_status");
+    setIsActive(status === "active");
+
+    // 直接计算剩余时间
+    const expiryTime = localStorage.getItem("user_activation_expiry");
+    if (expiryTime) {
+      const expiryTimestamp = parseInt(expiryTime);
+      const remaining = Math.max(0, expiryTimestamp - Date.now());
+      setRemainingTime(remaining);
+    }
   };
 
   return (

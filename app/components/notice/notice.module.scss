@@ -9,11 +9,11 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 100;
 }
 
 .notice-container {
-  background-color: var(--white);
+  background-color: #FFF !important;
   border-radius: 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   padding: 20px;
@@ -24,20 +24,21 @@
   display: flex;
   flex-direction: column;
   position: relative;
+  z-index: 200;
 }
 
 .notice-title {
   font-size: 18px;
   font-weight: bold;
   margin-bottom: 16px;
-  color: var(--black);
+  color: #FFF;
   padding-bottom: 10px;
   border-bottom: 1px solid #eee;
 }
 
 .notice-content {
   margin-bottom: 20px;
-  color: var(--black);
+  color: #FFF;
   line-height: 1.6;
   flex: 1;
   overflow-y: auto;

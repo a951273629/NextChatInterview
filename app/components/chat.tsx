@@ -45,6 +45,7 @@ import QualityIcon from "../icons/hd.svg";
 import StyleIcon from "../icons/palette.svg";
 import McpToolIcon from "../icons/tool.svg";
 import HeadphoneIcon from "../icons/headphone.svg";
+import InterViewIcon from "../icons/interview_start.svg";
 import {
   BOT_HELLO,
   ChatMessage,
@@ -435,6 +436,7 @@ export function ChatAction(props: {
         {
           "--icon-width": `${width.icon}px`,
           "--full-width": `${width.full}px`,
+          color: "red",
         } as React.CSSProperties
       }
     >
@@ -488,6 +490,8 @@ export function ChatActionVoice(props: {
         {
           "--icon-width": `${width.icon}px`,
           "--full-width": `${width.full}px`,
+          // 只会让字体变为红色图标还是 them 继承的颜色
+          color: "red",
         } as React.CSSProperties
       }
     >
@@ -543,6 +547,7 @@ export function ChatActions(props: {
   const currentProviderName =
     session.mask.modelConfig?.providerName || ServiceProvider.OpenAI;
   const allModels = useAllModels();
+
   const models = useMemo(() => {
     const filteredModels = allModels.filter((m) => m.available);
     const defaultModel = filteredModels.find((m) => m.isDefault);
@@ -557,6 +562,7 @@ export function ChatActions(props: {
       return filteredModels;
     }
   }, [allModels]);
+
   const currentModelName = useMemo(() => {
     const model = models.find(
       (m) =>
@@ -693,41 +699,58 @@ export function ChatActions(props: {
             }}
           />
 
-          {/* <ChatAction
+          <ChatAction
             onClick={() => setShowModelSelector(true)}
             text={currentModelName}
             icon={<RobotIcon />}
-          /> */}
+          />
 
+          {/* 当showModelSelector为true时显示模型选择器 */}
           {showModelSelector && (
             <Selector
+              // 设置默认选中值为当前使用的模型和提供商名称组合
               defaultSelectedValue={`${currentModel}@${currentProviderName}`}
+              // 构建选择器项目列表，每个项目包含显示名称和值
               items={models.map((m) => ({
+                // 标题格式：模型显示名称 (提供商名称)
                 title: `${m.displayName}${
                   m?.provider?.providerName
                     ? " (" + m?.provider?.providerName + ")"
                     : ""
                 }`,
+                // 值格式：模型名称@提供商名称
                 value: `${m.name}@${m?.provider?.providerName}`,
               }))}
+              // 关闭选择器的回调函数
               onClose={() => setShowModelSelector(false)}
+              // 选择模型后的回调函数
               onSelection={(s) => {
+                // 如果没有选择任何项，直接返回
                 if (s.length === 0) return;
+                // 解析所选值，获取模型名称和提供商名称
                 const [model, providerName] = getModelProvider(s[0]);
+                // 更新当前会话的模型配置
                 chatStore.updateTargetSession(session, (session) => {
+                  // 设置新的模型名称
                   session.mask.modelConfig.model = model as ModelType;
+                  // 设置新的提供商名称
                   session.mask.modelConfig.providerName =
                     providerName as ServiceProvider;
+                  // 关闭与全局配置的同步
                   session.mask.syncGlobalConfig = false;
                 });
+                // 特殊处理：如果提供商是ByteDance，则显示模型的显示名称
                 if (providerName == "ByteDance") {
+                  // 查找完整的模型信息
                   const selectedModel = models.find(
                     (m) =>
                       m.name == model &&
                       m?.provider?.providerName == providerName,
                   );
+                  // 显示模型的显示名称，如果没有则显示空字符串
                   showToast(selectedModel?.displayName ?? "");
                 } else {
+                  // 其他提供商直接显示模型名称
                   showToast(model);
                 }
               }}
@@ -834,7 +857,7 @@ export function ChatActions(props: {
               checkActivation(() => props.setShowOverlay(true));
             }}
             text="interView"
-            icon={<RobotIcon />}
+            icon={<InterViewIcon />}
           />
 
           {/* 新增：TensorFlow 跳转按钮 */}
@@ -1201,18 +1224,19 @@ function _Chat() {
   const { checkActivation } = useActivation();
 
   const doSubmit = (userInput: string) => {
+    console.log("发送消息");
+
     if (userInput.trim() === "" && isEmpty(attachImages)) return;
 
-    // 检查激活状态
-    if (!checkActivation(() => doSubmit(userInput))) return;
-
-    const matchCommand = chatCommands.match(userInput);
-    if (matchCommand) {
-      setUserInput("");
-      setPromptHints([]);
-      matchCommand.invoke();
-      return;
-    }
+    // const matchCommand = chatCommands.match(userInput);
+    // console.log(`发送消息 - 作为命令处理: ${userInput}`);
+    // if (matchCommand) {
+    //   setUserInput("");
+    //   setPromptHints([]);
+    //   matchCommand.invoke();
+    //   return;
+    // }
+    console.log("发送消息 - 即将调用 chatStore.onUserInput");
     setIsLoading(true);
     chatStore
       .onUserInput(userInput, attachImages)
@@ -1793,7 +1817,8 @@ function _Chat() {
       });
       return;
     }
-    doSubmit(text);
+
+    checkActivation(() => doSubmit(text));
   };
   const toastShowDebounce = debounce(toastShow, 500);
 
@@ -2254,7 +2279,6 @@ function _Chat() {
                   className={styles["chat-input-send"]}
                   type="primary"
                   onClick={() => {
-                    // 使用激活检查
                     checkActivation(() => doSubmit(userInput));
                   }}
                 />

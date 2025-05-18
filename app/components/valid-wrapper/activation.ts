@@ -1,5 +1,8 @@
 import { safeLocalStorage } from "../../utils";
 
+// 导出以便其他组件使用
+export { safeLocalStorage };
+
 const ACTIVATION_KEY = "user_activation_status";
 const ACTIVATION_HARDWARE = "user_activation_hardware";
 const ACTIVATION_IP = "user_activation_ip";
@@ -13,7 +16,7 @@ let syncIntervalId: NodeJS.Timeout | null = null;
 
 /**
  * 检查用户是否已激活
- * @returns 用户是否已激活
+ * @returns 用户是否已激活 激活返回true 未激活返回false
  */
 export function isActivated(): boolean {
   try {
@@ -23,11 +26,15 @@ export function isActivated(): boolean {
 
     // 检查过期时间
     const expiryTime = localStorage.getItem(ACTIVATION_EXPIRY);
+    console.log(`expiryTime:${expiryTime}`);
+
     if (expiryTime) {
       const expiryTimestamp = parseInt(expiryTime);
-      if (Date.now() > expiryTimestamp) {
-        // 如果已过期，清除激活状态
-        clearActivation();
+      // 添加5秒的缓冲时间，避免时间精度问题导致刚激活就被判定为过期
+      if (Date.now() > expiryTimestamp + 5000) {
+        // 如果已过期，记录日志但不调用clearActivation以避免潜在的递归
+        console.log("激活已过期");
+        // 仅返回未激活状态，让调用者处理清理工作
         return false;
       }
     }
@@ -46,8 +53,9 @@ export function isActivated(): boolean {
  */
 export function getRemainingTime(): number {
   try {
-    // 首先检查是否已激活
-    if (!isActivated()) return 0;
+    // 首先检查激活标志，不调用isActivated避免可能的递归
+    const status = localStorage.getItem(ACTIVATION_KEY);
+    if (status !== "active") return 0;
 
     // 获取过期时间
     const expiryTime = localStorage.getItem(ACTIVATION_EXPIRY);
@@ -63,11 +71,15 @@ export function getRemainingTime(): number {
       Date.now() - parseInt(lastSyncTime) > SYNC_INTERVAL * 2
     ) {
       // 异步触发同步，不阻塞当前函数返回
-      syncActivationWithServer().catch(console.error);
+      setTimeout(() => {
+        console.log("触发延迟同步");
+        syncActivationWithServer().catch(console.error);
+      }, 2000); // 延迟2秒执行同步，避免立即执行
     }
 
-    // 如果已同步但剩余时间小于等于0，说明已过期
-    if (remainingTime <= 0) {
+    // 添加5秒缓冲时间，避免时间精度问题导致刚激活就被判定为过期
+    if (remainingTime <= -5000) {
+      console.log("剩余时间检测为负值，清除激活状态", remainingTime);
       clearActivation();
       return 0;
     }
@@ -147,6 +159,8 @@ export function setActivated(
  */
 export function clearActivation(): void {
   try {
+    console.log("清除激活status");
+
     localStorage.removeItem(ACTIVATION_KEY);
     localStorage.removeItem(ACTIVATION_HARDWARE);
     localStorage.removeItem(ACTIVATION_IP);
@@ -197,27 +211,47 @@ export async function getDeviceInfo(): Promise<{
  * @returns {Promise<boolean>} 同步是否成功
  */
 export async function syncActivationWithServer(): Promise<boolean> {
+  // 防止在同步过程中再次调用此函数
+  const syncInProgress = localStorage.getItem("sync_in_progress");
+  if (syncInProgress === "true") {
+    console.log("同步已在进行中，跳过");
+    return false;
+  }
+
   try {
+    localStorage.setItem("sync_in_progress", "true");
+
     // 获取密钥字符串
     const keyString = localStorage.getItem(ACTIVATION_KEY_STRING);
-    if (!keyString) return false;
+    if (!keyString) {
+      localStorage.removeItem("sync_in_progress");
+      return false;
+    }
 
     // 调用API获取密钥当前状态
     const response = await fetch(`/api/key-generate?key=${keyString}`);
-    if (!response.ok) return false;
+
+    // 处理网络错误或服务器错误
+    if (!response.ok) {
+      console.warn("同步激活状态时遇到网络错误，稍后重试");
+      // 不清除激活状态，等待下次同步
+      localStorage.removeItem("sync_in_progress");
+      return false;
+    }
 
     const key = await response.json();
     if (!key) {
       // 密钥不存在，清除本地激活
-      clearActivation();
-      return false;
-    }
-
-    // 检查密钥状态
-    if (key.status !== 1) {
-      // KeyStatus.ACTIVE = 1
-      // 密钥不是激活状态，清除本地激活
-      clearActivation();
+      console.warn("密钥不存在，清除本地激活");
+      // 直接清除激活状态，不通过isActivated函数
+      localStorage.removeItem(ACTIVATION_KEY);
+      localStorage.removeItem(ACTIVATION_HARDWARE);
+      localStorage.removeItem(ACTIVATION_IP);
+      localStorage.removeItem(ACTIVATION_EXPIRY);
+      localStorage.removeItem(ACTIVATION_KEY_STRING);
+      localStorage.removeItem(LAST_SYNC_TIME);
+      stopActivationSync();
+      localStorage.removeItem("sync_in_progress");
       return false;
     }
 
@@ -226,12 +260,17 @@ export async function syncActivationWithServer(): Promise<boolean> {
       localStorage.setItem(ACTIVATION_EXPIRY, key.expires_at.toString());
       // 更新最后同步时间
       localStorage.setItem(LAST_SYNC_TIME, Date.now().toString());
+      console.log("同步激活状态成功，更新过期时间");
+      localStorage.removeItem("sync_in_progress");
       return true;
     }
 
+    localStorage.removeItem("sync_in_progress");
     return false;
   } catch (error) {
     console.error("同步激活状态失败:", error);
+    // 异常情况下不清除激活状态，等待下次同步
+    localStorage.removeItem("sync_in_progress");
     return false;
   }
 }
@@ -243,13 +282,26 @@ export function startActivationSync(): void {
   // 防止重复启动
   stopActivationSync();
 
-  // 立即进行一次同步
-  syncActivationWithServer().catch(console.error);
+  // 使用延迟而非立即同步，避免频繁请求导致激活失败
+  // 设置一个合理的延迟（30秒），给服务器和网络留出充分时间
+  const firstSyncDelay = 30 * 1000; // 30秒后首次同步
 
-  // 设置定期同步
-  syncIntervalId = setInterval(() => {
-    syncActivationWithServer().catch(console.error);
-  }, SYNC_INTERVAL);
+  console.log(`激活状态已设置，将在${firstSyncDelay / 1000}秒后开始同步`);
+
+  setTimeout(() => {
+    console.log("开始首次同步激活状态");
+    syncActivationWithServer().catch((error) => {
+      console.error("首次同步激活状态失败:", error);
+    });
+
+    // 设置定期同步
+    syncIntervalId = setInterval(() => {
+      console.log("执行定期同步激活状态");
+      syncActivationWithServer().catch((error) => {
+        console.error("定期同步激活状态失败:", error);
+      });
+    }, SYNC_INTERVAL);
+  }, firstSyncDelay);
 }
 
 /**
@@ -263,9 +315,16 @@ export function stopActivationSync(): void {
 }
 
 // 在模块加载时自动启动同步（仅在浏览器环境）
-if (typeof window !== "undefined") {
-  // 只有在已激活状态下才启动同步
-  if (isActivated()) {
-    startActivationSync();
-  }
+let hasInitialized = false;
+if (typeof window !== "undefined" && !hasInitialized) {
+  hasInitialized = true;
+  // 使用setTimeout移到下一个事件循环，避免模块加载时的递归问题
+  setTimeout(() => {
+    // 直接检查localStorage状态，而不是调用isActivated
+    const status = localStorage.getItem(ACTIVATION_KEY);
+    if (status === "active") {
+      console.log("初始化：检测到激活状态，启动同步");
+      startActivationSync();
+    }
+  }, 0);
 }

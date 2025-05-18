@@ -89,6 +89,10 @@ import { ProviderType } from "../utils/cloud";
 import { TTSConfigList } from "./tts-config";
 import { RealtimeConfigList } from "./realtime-chat/realtime-config";
 
+/**
+ * 编辑提示模板的模态框组件
+ * 用于编辑单个提示模板的标题和内容
+ */
 function EditPromptModal(props: { id: string; onClose: () => void }) {
   const promptStore = usePromptStore();
   const prompt = promptStore.get(props.id);
@@ -138,17 +142,24 @@ function EditPromptModal(props: { id: string; onClose: () => void }) {
   ) : null;
 }
 
+/**
+ * 用户提示模板管理模态框组件
+ * 用于展示、搜索、添加、编辑和删除提示模板
+ */
 function UserPromptModal(props: { onClose?: () => void }) {
   const promptStore = usePromptStore();
+  // 获取用户定义的提示模板和内置提示模板
   const userPrompts = promptStore.getUserPrompts();
   const builtinPrompts = SearchService.builtinPrompts;
   const allPrompts = userPrompts.concat(builtinPrompts);
   const [searchInput, setSearchInput] = useState("");
   const [searchPrompts, setSearchPrompts] = useState<Prompt[]>([]);
+  // 根据搜索输入决定显示全部提示还是搜索结果
   const prompts = searchInput.length > 0 ? searchPrompts : allPrompts;
 
   const [editingPromptId, setEditingPromptId] = useState<string>();
 
+  // 当搜索输入变化时执行搜索
   useEffect(() => {
     if (searchInput.length > 0) {
       const searchResult = SearchService.search(searchInput);
@@ -167,6 +178,7 @@ function UserPromptModal(props: { onClose?: () => void }) {
           <IconButton
             key="add"
             onClick={() => {
+              // 添加新的空提示模板并开始编辑
               const promptId = promptStore.add({
                 id: nanoid(),
                 createdAt: Date.now(),
@@ -233,6 +245,7 @@ function UserPromptModal(props: { onClose?: () => void }) {
         </div>
       </Modal>
 
+      {/* 编辑提示模板的模态框 */}
       {editingPromptId !== undefined && (
         <EditPromptModal
           id={editingPromptId!}
@@ -243,6 +256,10 @@ function UserPromptModal(props: { onClose?: () => void }) {
   );
 }
 
+/**
+ * 危险操作组件
+ * 包含重置应用设置和清除所有聊天数据的功能
+ */
 function DangerItems() {
   const chatStore = useChatStore();
   const appConfig = useAppConfig();
@@ -283,17 +300,24 @@ function DangerItems() {
   );
 }
 
+/**
+ * 同步检查按钮组件
+ * 用于检查云同步连接状态
+ */
 function CheckButton() {
   const syncStore = useSyncStore();
 
+  // 判断是否可以执行云同步检查
   const couldCheck = useMemo(() => {
     return syncStore.cloudSync();
   }, [syncStore]);
 
+  // 检查状态: 未检查/检查中/成功/失败
   const [checkState, setCheckState] = useState<
     "none" | "checking" | "success" | "failed"
   >("none");
 
+  // 执行连接检查
   async function check() {
     setCheckState("checking");
     const valid = await syncStore.check();
@@ -324,6 +348,10 @@ function CheckButton() {
   );
 }
 
+/**
+ * 同步配置模态框组件
+ * 用于配置云同步服务的各项参数
+ */
 function SyncConfigModal(props: { onClose?: () => void }) {
   const syncStore = useSyncStore();
 
@@ -344,6 +372,7 @@ function SyncConfigModal(props: { onClose?: () => void }) {
         ]}
       >
         <List>
+          {/* 同步类型选择 */}
           <ListItem
             title={Locale.Settings.Sync.Config.SyncType.Title}
             subTitle={Locale.Settings.Sync.Config.SyncType.SubTitle}
@@ -365,6 +394,7 @@ function SyncConfigModal(props: { onClose?: () => void }) {
             </select>
           </ListItem>
 
+          {/* 代理设置 */}
           <ListItem
             title={Locale.Settings.Sync.Config.Proxy.Title}
             subTitle={Locale.Settings.Sync.Config.Proxy.SubTitle}
@@ -397,6 +427,7 @@ function SyncConfigModal(props: { onClose?: () => void }) {
           ) : null}
         </List>
 
+        {/* WebDAV同步配置 */}
         {syncStore.provider === ProviderType.WebDAV && (
           <>
             <List>
@@ -440,6 +471,7 @@ function SyncConfigModal(props: { onClose?: () => void }) {
           </>
         )}
 
+        {/* UpStash同步配置 */}
         {syncStore.provider === ProviderType.UpStash && (
           <List>
             <ListItem title={Locale.Settings.Sync.Config.UpStash.Endpoint}>
@@ -485,17 +517,24 @@ function SyncConfigModal(props: { onClose?: () => void }) {
   );
 }
 
+/**
+ * 同步项目组件
+ * 显示同步状态、配置云同步和导入导出数据的功能
+ */
 function SyncItems() {
   const syncStore = useSyncStore();
   const chatStore = useChatStore();
   const promptStore = usePromptStore();
   const maskStore = useMaskStore();
+
+  // 检查是否可以进行云同步
   const couldSync = useMemo(() => {
     return syncStore.cloudSync();
   }, [syncStore]);
 
   const [showSyncConfigModal, setShowSyncConfigModal] = useState(false);
 
+  // 统计当前数据状态
   const stateOverview = useMemo(() => {
     const sessions = chatStore.sessions;
     const messageCount = sessions.reduce((p, c) => p + c.messages.length, 0);
@@ -511,6 +550,7 @@ function SyncItems() {
   return (
     <>
       <List>
+        {/* 云端数据状态 */}
         <ListItem
           title={Locale.Settings.Sync.CloudState}
           subTitle={
@@ -548,6 +588,7 @@ function SyncItems() {
           </div>
         </ListItem>
 
+        {/* 本地数据状态 */}
         <ListItem
           title={Locale.Settings.Sync.LocalState}
           subTitle={Locale.Settings.Sync.Overview(stateOverview)}
@@ -573,6 +614,7 @@ function SyncItems() {
         </ListItem>
       </List>
 
+      {/* 同步配置模态框 */}
       {showSyncConfigModal && (
         <SyncConfigModal onClose={() => setShowSyncConfigModal(false)} />
       )}
@@ -580,12 +622,17 @@ function SyncItems() {
   );
 }
 
+/**
+ * Settings主组件
+ * 应用的主要设置界面，包含各种配置选项
+ */
 export function Settings() {
   const navigate = useNavigate();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const config = useAppConfig();
   const updateConfig = config.update;
 
+  // 更新相关状态
   const updateStore = useUpdateStore();
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const currentVersion = updateStore.formatVersion(updateStore.version);
@@ -593,6 +640,10 @@ export function Settings() {
   const hasNewVersion = semverCompare(currentVersion, remoteId) === -1;
   const updateUrl = getClientConfig()?.isApp ? RELEASE_URL : UPDATE_URL;
 
+  /**
+   * 检查应用更新
+   * @param force 是否强制检查
+   */
   function checkUpdate(force = false) {
     setCheckingUpdate(true);
     updateStore.getLatestVersion(force).then(() => {
@@ -603,7 +654,9 @@ export function Settings() {
     console.log("[Update] remote version ", updateStore.remoteVersion);
   }
 
+  // 访问控制相关状态
   const accessStore = useAccessStore();
+  // 判断是否应该隐藏余额查询
   const shouldHideBalanceQuery = useMemo(() => {
     const isOpenAiUrl = accessStore.openaiUrl.includes(OPENAI_BASE_URL);
 
@@ -618,11 +671,17 @@ export function Settings() {
     accessStore.provider,
   ]);
 
+  // 使用情况统计
   const usage = {
     used: updateStore.used,
     subscription: updateStore.subscription,
   };
   const [loadingUsage, setLoadingUsage] = useState(false);
+
+  /**
+   * 检查API使用情况
+   * @param force 是否强制检查
+   */
   function checkUsage(force = false) {
     if (shouldHideBalanceQuery) {
       return;
@@ -634,18 +693,23 @@ export function Settings() {
     });
   }
 
+  // 是否启用访问控制
   const enabledAccessControl = useMemo(
     () => accessStore.enabledAccessControl(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
+  // 提示模板相关状态
   const promptStore = usePromptStore();
   const builtinCount = SearchService.count.builtin;
   const customCount = promptStore.getUserPrompts().length ?? 0;
   const [shouldShowPromptModal, setShowPromptModal] = useState(false);
 
+  // 是否显示使用情况
   const showUsage = accessStore.isAuthorized();
+
+  // 组件挂载后检查更新和使用情况
   useEffect(() => {
     // checks per minutes
     checkUpdate();
@@ -653,7 +717,9 @@ export function Settings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 添加键盘事件监听和App特定设置
   useEffect(() => {
+    // 添加ESC键退出设置页面的快捷键
     const keydownEvent = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         navigate(Path.Home);
@@ -675,6 +741,7 @@ export function Settings() {
   const clientConfig = useMemo(() => getClientConfig(), []);
   const showAccessCode = enabledAccessControl && !clientConfig?.isApp;
 
+  // 访问代码输入组件
   const accessCodeComponent = showAccessCode && (
     <ListItem
       title={Locale.Settings.Access.AccessCode.Title}
@@ -693,6 +760,7 @@ export function Settings() {
     </ListItem>
   );
 
+  // SaaS服务引导组件
   const saasStartComponent = (
     <ListItem
       className={styles["subtitle-button"]}
@@ -718,6 +786,7 @@ export function Settings() {
     </ListItem>
   );
 
+  // 自定义配置开关组件(仅非App环境显示)
   const useCustomConfigComponent = // Conditionally render the following ListItem based on clientConfig.isApp
     !clientConfig?.isApp && ( // only show if isApp is false
       <ListItem
@@ -737,6 +806,7 @@ export function Settings() {
       </ListItem>
     );
 
+  // OpenAI配置组件
   const openAIConfigComponent = accessStore.provider ===
     ServiceProvider.OpenAI && (
     <>
@@ -776,6 +846,7 @@ export function Settings() {
     </>
   );
 
+  // Azure配置组件
   const azureConfigComponent = accessStore.provider ===
     ServiceProvider.Azure && (
     <>
@@ -832,6 +903,7 @@ export function Settings() {
     </>
   );
 
+  // Google配置组件
   const googleConfigComponent = accessStore.provider ===
     ServiceProvider.Google && (
     <>
@@ -911,6 +983,7 @@ export function Settings() {
     </>
   );
 
+  // Anthropic配置组件
   const anthropicConfigComponent = accessStore.provider ===
     ServiceProvider.Anthropic && (
     <>
@@ -968,6 +1041,7 @@ export function Settings() {
     </>
   );
 
+  // Baidu配置组件
   const baiduConfigComponent = accessStore.provider ===
     ServiceProvider.Baidu && (
     <>
@@ -1022,6 +1096,7 @@ export function Settings() {
     </>
   );
 
+  // Tencent配置组件
   const tencentConfigComponent = accessStore.provider ===
     ServiceProvider.Tencent && (
     <>
@@ -1076,6 +1151,7 @@ export function Settings() {
     </>
   );
 
+  // ByteDance配置组件
   const byteDanceConfigComponent = accessStore.provider ===
     ServiceProvider.ByteDance && (
     <>
@@ -1117,6 +1193,7 @@ export function Settings() {
     </>
   );
 
+  // Alibaba配置组件
   const alibabaConfigComponent = accessStore.provider ===
     ServiceProvider.Alibaba && (
     <>
@@ -1158,6 +1235,7 @@ export function Settings() {
     </>
   );
 
+  // Moonshot配置组件
   const moonshotConfigComponent = accessStore.provider ===
     ServiceProvider.Moonshot && (
     <>
@@ -1199,6 +1277,7 @@ export function Settings() {
     </>
   );
 
+  // DeepSeek配置组件
   const deepseekConfigComponent = accessStore.provider ===
     ServiceProvider.DeepSeek && (
     <>
@@ -1240,6 +1319,7 @@ export function Settings() {
     </>
   );
 
+  // XAI配置组件
   const XAIConfigComponent = accessStore.provider === ServiceProvider.XAI && (
     <>
       <ListItem
@@ -1279,6 +1359,7 @@ export function Settings() {
     </>
   );
 
+  // ChatGLM配置组件
   const chatglmConfigComponent = accessStore.provider ===
     ServiceProvider.ChatGLM && (
     <>
@@ -1319,6 +1400,8 @@ export function Settings() {
       </ListItem>
     </>
   );
+
+  // SiliconFlow配置组件
   const siliconflowConfigComponent = accessStore.provider ===
     ServiceProvider.SiliconFlow && (
     <>
@@ -1360,6 +1443,7 @@ export function Settings() {
     </>
   );
 
+  // Stability配置组件
   const stabilityConfigComponent = accessStore.provider ===
     ServiceProvider.Stability && (
     <>
@@ -1400,6 +1484,8 @@ export function Settings() {
       </ListItem>
     </>
   );
+
+  // Iflytek配置组件
   const lflytekConfigComponent = accessStore.provider ===
     ServiceProvider.Iflytek && (
     <>
@@ -1460,6 +1546,7 @@ export function Settings() {
 
   return (
     <ErrorBoundary>
+      {/* 窗口标题栏 */}
       <div className="window-header" data-tauri-drag-region>
         <div className="window-header-title">
           <div className="window-header-main-title">
@@ -1483,7 +1570,9 @@ export function Settings() {
         </div>
       </div>
       <div className={styles["settings"]}>
+        {/* 基础设置部分 */}
         <List>
+          {/* 头像设置 */}
           <ListItem title={Locale.Settings.Avatar}>
             <Popover
               onClose={() => setShowEmojiPicker(false)}
@@ -1510,6 +1599,7 @@ export function Settings() {
             </Popover>
           </ListItem>
 
+          {/* 版本更新检查 */}
           <ListItem
             title={Locale.Settings.Update.Version(currentVersion ?? "unknown")}
             subTitle={
@@ -1543,6 +1633,7 @@ export function Settings() {
             )}
           </ListItem>
 
+          {/* 发送键设置 */}
           <ListItem title={Locale.Settings.SendKey}>
             <Select
               aria-label={Locale.Settings.SendKey}
@@ -1562,6 +1653,7 @@ export function Settings() {
             </Select>
           </ListItem>
 
+          {/* 主题设置 */}
           <ListItem title={Locale.Settings.Theme}>
             <Select
               aria-label={Locale.Settings.Theme}
@@ -1580,6 +1672,7 @@ export function Settings() {
             </Select>
           </ListItem>
 
+          {/* 语言设置 */}
           <ListItem title={Locale.Settings.Lang.Name}>
             <Select
               aria-label={Locale.Settings.Lang.Name}
@@ -1596,6 +1689,7 @@ export function Settings() {
             </Select>
           </ListItem>
 
+          {/* 字体大小设置 */}
           <ListItem
             title={Locale.Settings.FontSize.Title}
             subTitle={Locale.Settings.FontSize.SubTitle}
@@ -1616,6 +1710,7 @@ export function Settings() {
             ></InputRange>
           </ListItem>
 
+          {/* 字体系列设置 */}
           <ListItem
             title={Locale.Settings.FontFamily.Title}
             subTitle={Locale.Settings.FontFamily.SubTitle}
@@ -1633,6 +1728,7 @@ export function Settings() {
             ></input>
           </ListItem>
 
+          {/* 自动生成标题设置 */}
           <ListItem
             title={Locale.Settings.AutoGenerateTitle.Title}
             subTitle={Locale.Settings.AutoGenerateTitle.SubTitle}
@@ -1650,6 +1746,7 @@ export function Settings() {
             ></input>
           </ListItem>
 
+          {/* 发送预览气泡设置 */}
           <ListItem
             title={Locale.Settings.SendPreviewBubble.Title}
             subTitle={Locale.Settings.SendPreviewBubble.SubTitle}
@@ -1667,6 +1764,7 @@ export function Settings() {
             ></input>
           </ListItem>
 
+          {/* 制品启用设置 */}
           <ListItem
             title={Locale.Mask.Config.Artifacts.Title}
             subTitle={Locale.Mask.Config.Artifacts.SubTitle}
@@ -1683,6 +1781,8 @@ export function Settings() {
               }
             ></input>
           </ListItem>
+
+          {/* 代码折叠设置 */}
           <ListItem
             title={Locale.Mask.Config.CodeFold.Title}
             subTitle={Locale.Mask.Config.CodeFold.SubTitle}
@@ -1701,8 +1801,10 @@ export function Settings() {
           </ListItem>
         </List>
 
+        {/* 同步设置部分 */}
         <SyncItems />
 
+        {/* Mask相关设置 */}
         <List>
           <ListItem
             title={Locale.Settings.Mask.Splash.Title}
@@ -1740,6 +1842,7 @@ export function Settings() {
           </ListItem>
         </List>
 
+        {/* 提示相关设置 */}
         <List>
           <ListItem
             title={Locale.Settings.Prompt.Disable.Title}
@@ -1774,6 +1877,7 @@ export function Settings() {
           </ListItem>
         </List>
 
+        {/* 自定义模型设置 */}
         <List id={SlotID.CustomModel}>
           {saasStartComponent}
           {accessCodeComponent}
@@ -1784,6 +1888,7 @@ export function Settings() {
 
               {accessStore.useCustomConfig && (
                 <>
+                  {/* 服务提供商选择 */}
                   <ListItem
                     title={Locale.Settings.Access.Provider.Title}
                     subTitle={Locale.Settings.Access.Provider.SubTitle}
@@ -1807,8 +1912,9 @@ export function Settings() {
                     </Select>
                   </ListItem>
 
+                  {/* 根据选择的服务提供商显示对应的配置组件 */}
                   {openAIConfigComponent}
-                  {azureConfigComponent}
+                  {/* {azureConfigComponent}
                   {googleConfigComponent}
                   {anthropicConfigComponent}
                   {baiduConfigComponent}
@@ -1820,13 +1926,14 @@ export function Settings() {
                   {stabilityConfigComponent}
                   {lflytekConfigComponent}
                   {XAIConfigComponent}
-                  {chatglmConfigComponent}
+                  {chatglmConfigComponent} */}
                   {siliconflowConfigComponent}
                 </>
               )}
             </>
           )}
 
+          {/* API使用情况查询 */}
           {!shouldHideBalanceQuery && !clientConfig?.isApp ? (
             <ListItem
               title={Locale.Settings.Usage.Title}
@@ -1853,6 +1960,7 @@ export function Settings() {
             </ListItem>
           ) : null}
 
+          {/* 自定义模型设置 */}
           <ListItem
             title={Locale.Settings.Access.CustomModel.Title}
             subTitle={Locale.Settings.Access.CustomModel.SubTitle}
@@ -1873,6 +1981,7 @@ export function Settings() {
           </ListItem>
         </List>
 
+        {/* 模型配置列表 */}
         <List>
           <ModelConfigList
             modelConfig={config.modelConfig}
@@ -1884,9 +1993,12 @@ export function Settings() {
           />
         </List>
 
+        {/* 提示模板模态框 */}
         {shouldShowPromptModal && (
           <UserPromptModal onClose={() => setShowPromptModal(false)} />
         )}
+
+        {/* 实时聊天配置 */}
         <List>
           <RealtimeConfigList
             realtimeConfig={config.realtimeConfig}
@@ -1899,6 +2011,8 @@ export function Settings() {
             }}
           />
         </List>
+
+        {/* TTS配置 */}
         <List>
           <TTSConfigList
             ttsConfig={config.ttsConfig}
@@ -1910,6 +2024,7 @@ export function Settings() {
           />
         </List>
 
+        {/* 危险操作区域 */}
         <DangerItems />
       </div>
     </ErrorBoundary>

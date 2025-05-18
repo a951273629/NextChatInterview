@@ -1,6 +1,10 @@
 import React, { useState, createContext, useContext, useCallback } from "react";
 import { isActivated } from "./activation";
 import ActivateKeyDialog from "./ActivateKeyDialog";
+import { safeLocalStorage } from "../../utils";
+
+// 初始化localStorage
+const localStorage = safeLocalStorage();
 
 // 创建激活上下文
 type ActivationContextType = {

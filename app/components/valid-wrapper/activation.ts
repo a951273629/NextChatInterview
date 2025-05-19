@@ -3,13 +3,13 @@ import { safeLocalStorage } from "../../utils";
 // 导出以便其他组件使用
 export { safeLocalStorage };
 
-const ACTIVATION_KEY = "user_activation_status";
-const ACTIVATION_HARDWARE = "user_activation_hardware";
-const ACTIVATION_IP = "user_activation_ip";
-const ACTIVATION_EXPIRY = "user_activation_expiry";
-const ACTIVATION_KEY_STRING = "user_activation_key_string";
-const LAST_SYNC_TIME = "user_activation_last_sync";
-const SYNC_INTERVAL = 5 * 60 * 1000; // 5分钟，单位：毫秒
+export const ACTIVATION_KEY = "user_activation_status";
+export const ACTIVATION_HARDWARE = "user_activation_hardware";
+export const ACTIVATION_IP = "user_activation_ip";
+export const ACTIVATION_EXPIRY = "user_activation_expiry";
+export const ACTIVATION_KEY_STRING = "user_activation_key_string";
+export const LAST_SYNC_TIME = "user_activation_last_sync";
+export const SYNC_INTERVAL = 3 * 60 * 1000; // 3分钟，单位：毫秒
 
 const localStorage = safeLocalStorage();
 let syncIntervalId: NodeJS.Timeout | null = null;
@@ -53,7 +53,6 @@ export function isActivated(): boolean {
  */
 export function getRemainingTime(): number {
   try {
-    // 首先检查激活标志，不调用isActivated避免可能的递归
     const status = localStorage.getItem(ACTIVATION_KEY);
     if (status !== "active") return 0;
 
@@ -64,29 +63,11 @@ export function getRemainingTime(): number {
     const expiryTimestamp = parseInt(expiryTime);
     const remainingTime = expiryTimestamp - Date.now();
 
-    // 检查上次同步时间，如果从未同步或超过同步间隔的两倍时间未同步，立即触发同步
-    const lastSyncTime = localStorage.getItem(LAST_SYNC_TIME);
-    if (
-      !lastSyncTime ||
-      Date.now() - parseInt(lastSyncTime) > SYNC_INTERVAL * 2
-    ) {
-      // 异步触发同步，不阻塞当前函数返回
-      setTimeout(() => {
-        console.log("触发延迟同步");
-        syncActivationWithServer().catch(console.error);
-      }, 2000); // 延迟2秒执行同步，避免立即执行
-    }
-
     // 添加5秒缓冲时间，避免时间精度问题导致刚激活就被判定为过期
-    if (remainingTime <= -5000) {
+    if (remainingTime <= -1000) {
       console.log("剩余时间检测为负值，清除激活状态", remainingTime);
       clearActivation();
       return 0;
-    }
-
-    // 确保应用启动后开始同步
-    if (typeof window !== "undefined" && !syncIntervalId) {
-      startActivationSync();
     }
 
     return Math.max(0, remainingTime);
@@ -244,29 +225,31 @@ export async function syncActivationWithServer(): Promise<boolean> {
       // 密钥不存在，清除本地激活
       console.warn("密钥不存在，清除本地激活");
       // 直接清除激活状态，不通过isActivated函数
-      localStorage.removeItem(ACTIVATION_KEY);
-      localStorage.removeItem(ACTIVATION_HARDWARE);
-      localStorage.removeItem(ACTIVATION_IP);
-      localStorage.removeItem(ACTIVATION_EXPIRY);
-      localStorage.removeItem(ACTIVATION_KEY_STRING);
-      localStorage.removeItem(LAST_SYNC_TIME);
-      stopActivationSync();
+      clearActivation();
+      localStorage.removeItem("sync_in_progress");
+      return false;
+    }
+    if (key.status === "expired" || key.status === "revoked") {
+      // 判断秘钥是不是过期
+      console.warn("密钥失效或者被撤销，清除本地激活");
+      clearActivation();
+      localStorage.removeItem("sync_in_progress");
+      return false;
+    }
+    if (!key.expires_at || Date.now() - key.expires_at > 0) {
+      // 过期时间小于当前时间，清除本地激活
+      console.warn("密钥已过期，清除本地激活");
+      clearActivation();
       localStorage.removeItem("sync_in_progress");
       return false;
     }
 
-    // 更新过期时间
-    if (key.expires_at) {
-      localStorage.setItem(ACTIVATION_EXPIRY, key.expires_at.toString());
-      // 更新最后同步时间
-      localStorage.setItem(LAST_SYNC_TIME, Date.now().toString());
-      console.log("同步激活状态成功，更新过期时间");
-      localStorage.removeItem("sync_in_progress");
-      return true;
-    }
-
+    localStorage.setItem(ACTIVATION_EXPIRY, key.expires_at.toString());
+    // 更新最后同步时间
+    localStorage.setItem(LAST_SYNC_TIME, Date.now().toString());
+    console.log("同步激活状态成功，更新过期时间");
     localStorage.removeItem("sync_in_progress");
-    return false;
+    return true;
   } catch (error) {
     console.error("同步激活状态失败:", error);
     // 异常情况下不清除激活状态，等待下次同步

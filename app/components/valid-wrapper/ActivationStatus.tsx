@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { formatRemainingTime } from "./activation";
+import {
+  formatRemainingTime,
+  ACTIVATION_KEY,
+  getRemainingTime,
+} from "./activation";
 import KeyIcon from "../../icons/key.svg";
 import { IconButton } from "../button";
 import ActivateKeyDialog from "./ActivateKeyDialog";
@@ -24,23 +28,17 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
     const updateStatus = () => {
       // 防止并发更新
       if (isUpdating) return;
-
       try {
         isUpdating = true;
-
-        // 获取激活状态，直接从localStorage获取以避免可能的循环调用
-        const status = localStorage.getItem("user_activation_status");
+        // 获取激活状态直接从localStorage获取
+        const status = localStorage.getItem(ACTIVATION_KEY);
         const active = status === "active";
         setIsActive(active);
 
         if (active) {
-          // 直接计算剩余时间而不调用getRemainingTime，避免可能的循环调用
-          const expiryTime = localStorage.getItem("user_activation_expiry");
-          if (expiryTime) {
-            const expiryTimestamp = parseInt(expiryTime);
-            const remaining = Math.max(0, expiryTimestamp - Date.now());
-            setRemainingTime(remaining);
-          }
+          // getRemainingTime
+          const remaining = getRemainingTime();
+          setRemainingTime(remaining);
         }
 
         isUpdating = false;
@@ -72,13 +70,9 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
     const status = localStorage.getItem("user_activation_status");
     setIsActive(status === "active");
 
-    // 直接计算剩余时间
-    const expiryTime = localStorage.getItem("user_activation_expiry");
-    if (expiryTime) {
-      const expiryTimestamp = parseInt(expiryTime);
-      const remaining = Math.max(0, expiryTimestamp - Date.now());
-      setRemainingTime(remaining);
-    }
+    // getRemainingTime
+    const remaining = getRemainingTime();
+    setRemainingTime(remaining);
   };
 
   return (

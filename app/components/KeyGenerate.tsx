@@ -584,8 +584,6 @@ export function KeyGeneratePage() {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>密钥管理</h1>
-
       {/* 通知组件 */}
       {notification.visible && (
         <div className={`${styles.notification} ${styles[notification.type]}`}>

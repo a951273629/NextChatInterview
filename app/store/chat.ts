@@ -460,7 +460,7 @@ export const useChatStore = createPersistStore(
         // make request
         api.llm.chat({
           messages: sendMessages,
-          config: { ...modelConfig, stream: true },
+          config: { ...modelConfig, stream: true }, // stream 被硬编码为 true
           onUpdate(message) {
             botMessage.streaming = true;
             if (message) {

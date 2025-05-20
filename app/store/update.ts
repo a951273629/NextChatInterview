@@ -7,7 +7,7 @@ import {
 import { getClientConfig } from "../config/client";
 import { createPersistStore } from "../utils/store";
 import { clientUpdate } from "../utils";
-import ChatGptIcon from "../icons/chatgpt.png";
+import YangIcon from "../icons/yang.png";
 import Locale from "../locales";
 import { ClientApi } from "../client/api";
 
@@ -107,7 +107,7 @@ export const useUpdateStore = createPersistStore(
                         window.__TAURI__?.notification.sendNotification({
                           title: "NextChat",
                           body: `${Locale.Settings.Update.IsLatest}`,
-                          icon: `${ChatGptIcon.src}`,
+                          icon: `${YangIcon.src}`,
                           sound: "Default",
                         });
                       } else {
@@ -117,7 +117,7 @@ export const useUpdateStore = createPersistStore(
                         window.__TAURI__?.notification.sendNotification({
                           title: "NextChat",
                           body: updateMessage,
-                          icon: `${ChatGptIcon.src}`,
+                          icon: `${YangIcon.src}`,
                           sound: "Default",
                         });
                         clientUpdate();

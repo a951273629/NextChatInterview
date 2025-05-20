@@ -1,0 +1,67 @@
+########## 基础镜像 ###########################################################
+FROM node:20-alpine AS base
+
+########## 依赖层：仅安装包 ###################################################
+FROM base AS deps
+# ① 一次性安装所需系统包并启用 Corepack + Yarn
+RUN apk add --no-cache libc6-compat \
+    && corepack enable \
+    && corepack prepare yarn@stable --activate
+
+WORKDIR /app
+COPY package.json yarn.lock ./
+
+# ② 设置国内镜像；使用 --immutable 保证锁文件一致
+RUN yarn config set registry 'https://registry.npmmirror.com/' \
+    && yarn install --immutable
+
+########## 构建层 #############################################################
+FROM base AS builder
+RUN apk add --no-cache git
+
+ENV OPENAI_API_KEY="" \
+    GOOGLE_API_KEY="" \
+    CODE=""
+
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+RUN yarn build
+
+########## 运行时层 ###########################################################
+FROM base AS runner
+WORKDIR /app
+RUN apk add --no-cache proxychains-ng         # 运行期仅装所需工具
+
+ENV PROXY_URL="" \
+    OPENAI_API_KEY="" \
+    GOOGLE_API_KEY="" \
+    CODE="" \
+    ENABLE_MCP=""
+
+# 静态资源与 Server
+COPY --from=builder /app/public              ./public
+COPY --from=builder /app/.next/standalone    ./
+COPY --from=builder /app/.next/static        ./.next/static
+COPY --from=builder /app/.next/server        ./.next/server
+
+# MCP 配置（保持原逻辑）
+RUN mkdir -p /app/app/mcp && chmod 777 /app/app/mcp
+COPY --from=builder /app/app/mcp/mcp_config.default.json /app/app/mcp/mcp_config.json
+
+EXPOSE 3000
+
+# 与原脚本一致：按需代理
+CMD if [ -n "$PROXY_URL" ]; then \
+      export HOSTNAME="0.0.0.0"; \
+      protocol=$(echo $PROXY_URL | cut -d: -f1); \
+      host=$(echo $PROXY_URL | cut -d/ -f3 | cut -d: -f1); \
+      port=$(echo $PROXY_URL | cut -d: -f3); \
+      conf=/etc/proxychains.conf; \
+      echo "strict_chain\nproxy_dns\nremote_dns_subnet 224\ntcp_read_time_out 15000\ntcp_connect_time_out 8000\nlocalnet 127.0.0.0/255.0.0.0\nlocalnet ::1/128\n[ProxyList]\n$protocol $host $port" > $conf; \
+      cat $conf; \
+      proxychains -f $conf node server.js; \
+    else \
+      node server.js; \
+    fi

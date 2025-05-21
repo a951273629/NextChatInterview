@@ -7,11 +7,19 @@ import "./interview-overlay.scss";
 import * as tf from "@tensorflow/tfjs";
 import {
   RealtimeVoiceprintRecognizer,
-  DEFAULT_VOICEPRINT_CONFIG,
   VoiceRecognitionStatus,
+  loadVoiceprintModelAndRecognizer,
 } from "../services/voiceprint-service";
 import InterviewPreparation from "./InterviewPreparation";
 import { Toaster } from "react-hot-toast";
+
+// 消息类型接口
+interface Message {
+  id: string;
+  text: string;
+  isInterviewer: boolean;
+  timestamp: number;
+}
 
 interface InterviewOverlayProps {
   onClose: () => void;
@@ -41,6 +49,10 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
   const [voiceMatchScore, setVoiceMatchScore] = useState(0);
   const [recognitionStatus, setRecognitionStatus] =
     useState<VoiceRecognitionStatus>(VoiceRecognitionStatus.IDLE);
+
+  // 添加消息历史记录状态
+  const [messages, setMessages] = useState<Message[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 添加语言选择状态 - 从localStorage初始化
   const [recognitionLanguage, setRecognitionLanguage] = useState<string>(
@@ -73,71 +85,56 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
   } = useSpeechRecognition();
   const transcriptRef = useRef(transcript);
 
+  // 滚动到最新消息
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // 消息添加函数
+  const addMessage = (text: string, isInterviewer: boolean) => {
+    if (!text || text.trim() === "") return;
+
+    const newMessage: Message = {
+      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      text: text.trim(),
+      isInterviewer,
+      timestamp: Date.now(),
+    };
+
+    setMessages((prev) => [...prev, newMessage]);
+    // 在消息添加后滚动到底部
+    setTimeout(scrollToBottom, 100);
+  };
+
+  // 消息点击处理函数
+  const handleMessageClick = (messageText: string) => {
+    console.log("消息被点击:", messageText);
+    submitMessage(messageText);
+  };
+
   // 加载TensorFlow模型和声纹特征
   useEffect(() => {
-    const loadModelAndVoiceprint = async () => {
+    const setupVoiceprintSystem = async () => {
       try {
-        // 尝试从localStorage加载保存的声纹
-        const savedVoiceprint = localStorage.getItem("userVoiceprint");
-        if (savedVoiceprint) {
-          voiceprintRef.current = new Float32Array(JSON.parse(savedVoiceprint));
-          console.log("已加载保存的声纹模型");
-        } else {
-          console.log("未找到保存的声纹模型，请先在TensorFlow页面训练声纹");
-          setVoiceprintEnabled(false);
-        }
-
-        // 创建简单的声纹识别模型
-        const model = tf.sequential();
-        model.add(
-          tf.layers.conv1d({
-            inputShape: [100, 40],
-            filters: 32,
-            kernelSize: 3,
-            activation: "relu",
-          }),
+        // 使用提取到服务中的函数加载模型和声纹
+        const result = await loadVoiceprintModelAndRecognizer(
+          setRecognitionStatus,
+          setVoiceprintEnabled,
+          handleVoiceprintResult,
         );
-        model.add(tf.layers.maxPooling1d({ poolSize: 2 }));
-        model.add(
-          tf.layers.conv1d({
-            filters: 64,
-            kernelSize: 3,
-            activation: "relu",
-          }),
-        );
-        model.add(tf.layers.maxPooling1d({ poolSize: 2 }));
-        model.add(tf.layers.flatten());
-        model.add(tf.layers.dense({ units: 128, activation: "relu" }));
-        model.add(tf.layers.dropout({ rate: 0.5 }));
-        model.add(tf.layers.dense({ units: 64, activation: "linear" }));
-        model.compile({
-          optimizer: "adam",
-          loss: "meanSquaredError",
-        });
-        modelRef.current = model;
-        console.log("声纹识别模型已加载");
 
-        // 初始化实时识别器
-        if (modelRef.current && voiceprintRef.current) {
-          // 创建实时识别器实例
-          recognizerRef.current = new RealtimeVoiceprintRecognizer(
-            modelRef.current,
-            DEFAULT_VOICEPRINT_CONFIG,
-            handleVoiceprintResult,
-          );
-
-          // 设置声纹特征
-          recognizerRef.current.setVoiceprint(voiceprintRef.current);
-          setRecognitionStatus(VoiceRecognitionStatus.TRAINED);
-        }
+        // 更新引用
+        modelRef.current = result.model;
+        voiceprintRef.current = result.voiceprint;
+        recognizerRef.current = result.recognizer;
       } catch (error) {
-        console.error("加载模型或声纹失败:", error);
+        console.error("声纹系统初始化失败:", error);
         setRecognitionStatus(VoiceRecognitionStatus.ERROR);
         setVoiceprintEnabled(false);
       }
     };
 
-    loadModelAndVoiceprint();
+    setupVoiceprintSystem();
 
     // 组件卸载时清理资源
     return () => {
@@ -232,6 +229,11 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
     transcriptRef.current = transcript;
     onTextUpdate(transcript);
   }, [transcript, onTextUpdate]);
+
+  // 每当消息列表更新时，滚动到底部
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   // 开始音频收集并处理
   const startAudioCollection = async () => {
@@ -380,24 +382,30 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
       autoSubmitTimerRef.current = null;
     }
 
-    // 如果声纹识别启用，并且被识别为面试官，且有新的文本内容
-    if (
-      voiceprintEnabled &&
-      isInterviewerRef.current &&
-      transcript &&
-      transcript.trim() !== "" &&
-      transcript !== lastSubmittedTextRef.current
-    ) {
+    // 如果有文本内容
+    if (transcript && transcript.trim() !== "") {
       // 设置一个短暂的延迟，确保收集到完整的句子
       autoSubmitTimerRef.current = setTimeout(() => {
-        // 只有当transcript没有变化时才提交，避免句子还在形成过程中就提交
+        // 只有当transcript没有变化时才处理，避免句子还在形成过程中就处理
         if (transcript === transcriptRef.current) {
-          console.log("检测到面试官语音，自动提交:", transcript);
-          submitMessage(transcript);
-          lastSubmittedTextRef.current = transcript;
-          resetTranscript();
+          // 如果声纹识别启用，并且被识别为面试官
+          if (voiceprintEnabled && isInterviewerRef.current) {
+            console.log("检测到面试官语音，添加到消息历史:", transcript);
+            // 添加到消息历史
+            addMessage(transcript, true);
+            lastSubmittedTextRef.current = transcript;
+            resetTranscript();
+          }
+          // 如果是面试者或声纹未启用，只添加到消息历史，不自动提交
+          else if (transcript !== lastSubmittedTextRef.current) {
+            console.log("检测到面试者语音，添加到消息历史:", transcript);
+            // 添加到消息历史
+            addMessage(transcript, false);
+            lastSubmittedTextRef.current = transcript;
+            resetTranscript();
+          }
         }
-      }, 1500); // 1.5秒延迟，可根据需要调整
+      }, 2000); // 2秒延迟，可根据需要调整
     }
 
     return () => {
@@ -450,10 +458,12 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
         modelRef.current = null;
       }
 
-      // 提交最终结果
-      if (transcriptRef.current) {
-        submitMessage(transcriptRef.current);
-      }
+      // // 提交最终结果
+      // if (transcriptRef.current && transcriptRef.current.trim() !== "") {
+      //   submitMessage(transcriptRef.current);
+      //   // 添加到消息历史
+      //   addMessage(transcriptRef.current, isInterviewerRef.current);
+      // }
 
       // 关闭overlay
       setVisible(false);
@@ -494,6 +504,8 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
       if (transcriptRef.current && transcriptRef.current.trim() !== "") {
         console.log("暂停时提交识别内容:", transcriptRef.current);
         submitMessage(transcriptRef.current);
+        // 添加到消息历史
+        addMessage(transcriptRef.current, isInterviewerRef.current);
         // 提交后清空内容
         resetTranscript();
       }
@@ -585,7 +597,7 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
 
       <div className="content-container">
         {!isStarted ? (
-          // 替换为新的面试准备组件
+          // 面试准备组件
           <InterviewPreparation
             onStart={startInterview}
             voiceprintEnabled={voiceprintEnabled}
@@ -633,15 +645,34 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
               </div>
             )}
 
-            {/* 识别文本显示区域 */}
-            {transcript && (
+            {/* 消息历史记录区域 */}
+            <div className="messages-container">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`message ${
+                    message.isInterviewer
+                      ? "interviewer-message"
+                      : "interviewee-message"
+                  }`}
+                  onClick={() => handleMessageClick(message.text)}
+                >
+                  {message.text}
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* 当前识别文本显示区域 */}
+            {transcript && transcript.trim() !== "" && (
               <div
                 className={`transcript-display ${
                   voiceprintEnabled && isInterviewerRef.current
                     ? "interviewer-text"
-                    : ""
+                    : "interviewee-text"
                 }`}
               >
+                <div className="transcript-label">当前识别:</div>
                 {transcript}
               </div>
             )}

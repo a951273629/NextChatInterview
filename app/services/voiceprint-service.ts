@@ -34,11 +34,19 @@ export interface VoiceprintConfig {
 
 // 默认配置
 export const DEFAULT_VOICEPRINT_CONFIG: VoiceprintConfig = {
-  matchThreshold: 0.7,
-  cooldownPeriod: 2000,
+  matchThreshold: 0.6,
+  cooldownPeriod: 1500,
   slidingWindowSize: 3000,
   slidingWindowStep: 1000,
 };
+
+// 添加模型缓存版本号，用于未来兼容性管理
+export const MODEL_CACHE_VERSION = "1.0";
+
+// 模型缓存键名
+const MODEL_CACHE_KEY = "voiceprintModelCache";
+const TRAINING_SAMPLES_KEY = "voiceprintTrainingSamples";
+const MODEL_VERSION_KEY = "voiceprintModelVersion";
 
 /**
  * 提取音频特征
@@ -59,17 +67,39 @@ export const extractFeatures = async (
       offset += chunk.length;
     }
 
-    // 转换为张量
-    const audioTensor = tf.tensor1d(mergedData);
+    // 预加重滤波 - 增强高频信号 (y[n] = x[n] - α * x[n-1], α通常为0.95)
+    const preEmphasisCoeff = 0.95;
+    const preEmphasisData = new Float32Array(mergedData.length);
+    preEmphasisData[0] = mergedData[0];
+    for (let i = 1; i < mergedData.length; i++) {
+      preEmphasisData[i] = mergedData[i] - preEmphasisCoeff * mergedData[i - 1];
+    }
 
-    // 计算梅尔频谱图 (简化版)
+    // 转换为张量
+    const audioTensor = tf.tensor1d(preEmphasisData);
+
+    // 帧分割参数
     const frameLength = Math.round((SAMPLE_RATE * FRAME_LENGTH) / 1000);
     const frameStep = Math.round((SAMPLE_RATE * FRAME_STEP) / 1000);
 
-    // 使用短时傅里叶变换提取特征
+    // 创建Hamming窗口
+    const hammingWindow = new Float32Array(frameLength);
+    for (let i = 0; i < frameLength; i++) {
+      hammingWindow[i] =
+        0.54 - 0.46 * Math.cos((2 * Math.PI * i) / (frameLength - 1));
+    }
+
+    // 帧分割并应用Hamming窗口
     const frames = [];
-    for (let i = 0; i + frameLength <= mergedData.length; i += frameStep) {
-      const frame = mergedData.slice(i, i + frameLength);
+    for (let i = 0; i + frameLength <= preEmphasisData.length; i += frameStep) {
+      const frame = new Float32Array(frameLength);
+      const originalFrame = preEmphasisData.slice(i, i + frameLength);
+
+      // 应用窗口函数
+      for (let j = 0; j < frameLength; j++) {
+        frame[j] = originalFrame[j] * hammingWindow[j];
+      }
+
       frames.push(Array.from(frame));
     }
 
@@ -84,17 +114,29 @@ export const extractFeatures = async (
     // 创建特征张量
     const featureTensor = tf.tensor(limitedFrames);
 
-    // 简化的梅尔频谱计算
+    // 改进的梅尔频谱计算
     const melSpectrogram = tf.tidy(() => {
-      // 应用FFT (简化)
+      // 对每帧应用FFT并计算功率谱
+      // 在TensorFlow.js中没有直接的FFT实现，使用abs作为简化的频谱幅度
       const fftMag = featureTensor.abs();
 
-      // 降维到MEL_BINS
-      const reshaped = fftMag.reshape([FEATURE_LENGTH, -1]);
+      // 计算功率谱 (幅度平方)
+      const powerSpectrum = fftMag.square();
+
+      // 降维到MEL_BINS (简化的梅尔滤波器实现)
+      const reshaped = powerSpectrum.reshape([FEATURE_LENGTH, -1]);
       const melFeatures = reshaped.slice([0, 0], [FEATURE_LENGTH, MEL_BINS]);
 
-      // 归一化
-      const normalized = melFeatures.div(tf.scalar(255.0));
+      // 应用对数变换 (log(melFeatures + 小的常数)防止对0取对数)
+      const logMelFeatures = tf.log(tf.add(melFeatures, tf.scalar(1e-6)));
+
+      // 特征归一化: 减均值除标准差
+      const mean = tf.mean(logMelFeatures);
+      const std = tf.sqrt(tf.mean(tf.square(tf.sub(logMelFeatures, mean))));
+      const normalized = tf.div(
+        tf.sub(logMelFeatures, mean),
+        tf.add(std, tf.scalar(1e-6)),
+      );
 
       return normalized.expandDims(0); // 添加批次维度
     });
@@ -136,10 +178,19 @@ export const recognizeVoice = async (
     // 计算与保存的声纹的余弦相似度
     const similarity = tf.tidy(() => {
       const savedVoiceprintTensor = tf.tensor1d(savedVoiceprint);
-      // 计算点积
-      const dotProduct = tf.sum(
-        tf.mul(currentVoiceprint.reshape([-1]), savedVoiceprintTensor),
+
+      // 归一化保存的声纹向量
+      const normalizedSavedVoiceprint = tf.div(
+        savedVoiceprintTensor,
+        tf.norm(savedVoiceprintTensor),
       );
+
+      // 计算归一化向量间的点积 (余弦相似度)
+      // 两个单位向量的点积等于余弦相似度
+      const dotProduct = tf.sum(
+        tf.mul(currentVoiceprint.reshape([-1]), normalizedSavedVoiceprint),
+      );
+
       return dotProduct;
     });
 
@@ -323,3 +374,258 @@ export class RealtimeVoiceprintRecognizer {
     this.config = { ...this.config, ...config };
   }
 }
+
+/**
+ * 声纹识别模型加载结果
+ */
+export interface VoiceprintModelLoadResult {
+  model: tf.LayersModel;
+  voiceprint: Float32Array | null;
+  recognizer: RealtimeVoiceprintRecognizer | null;
+}
+
+/**
+ * 加载声纹识别模型和识别器
+ *
+ * 从localStorage加载保存的声纹特征，创建并初始化TensorFlow模型，
+ * 以及初始化实时声纹识别器。
+ *
+ * @param onStatusChange 状态变化回调函数
+ * @param onVoiceprintEnabled 声纹功能启用状态回调函数
+ * @param onVoiceprintResult 声纹识别结果回调函数
+ * @returns 包含模型、声纹和识别器的对象
+ */
+export const loadVoiceprintModelAndRecognizer = async (
+  onStatusChange: (status: VoiceRecognitionStatus) => void,
+  onVoiceprintEnabled: (enabled: boolean) => void,
+  onVoiceprintResult: (result: { isMatch: boolean; score: number }) => void,
+): Promise<VoiceprintModelLoadResult> => {
+  let voiceprint: Float32Array | null = null;
+  let model: tf.LayersModel | null = null;
+  let recognizer: RealtimeVoiceprintRecognizer | null = null;
+
+  try {
+    // 尝试从localStorage加载保存的声纹
+    const savedVoiceprint = localStorage.getItem("userVoiceprint");
+    if (savedVoiceprint) {
+      voiceprint = new Float32Array(JSON.parse(savedVoiceprint));
+      console.log("已加载保存的声纹模型");
+    } else {
+      console.log("未找到保存的声纹模型，请先在TensorFlow页面训练声纹");
+      onVoiceprintEnabled(false);
+    }
+
+    // 尝试从缓存加载模型
+    let cachedModel = null;
+    try {
+      cachedModel = await loadModelFromCache();
+    } catch (cacheError) {
+      console.warn("加载缓存模型失败，将创建新模型:", cacheError);
+    }
+
+    // 如果成功从缓存加载模型，则使用缓存的模型
+    if (cachedModel) {
+      model = cachedModel;
+      console.log("使用缓存的声纹识别模型");
+    } else {
+      // 如果没有缓存或加载失败，创建新模型
+      console.log("创建新的声纹识别模型");
+      const sequentialModel = tf.sequential();
+      sequentialModel.add(
+        tf.layers.conv1d({
+          inputShape: [FEATURE_LENGTH, MEL_BINS],
+          filters: 32,
+          kernelSize: 3,
+          activation: "relu",
+        }),
+      );
+      sequentialModel.add(tf.layers.maxPooling1d({ poolSize: 2 }));
+      sequentialModel.add(
+        tf.layers.conv1d({
+          filters: 64,
+          kernelSize: 3,
+          activation: "relu",
+        }),
+      );
+      sequentialModel.add(tf.layers.maxPooling1d({ poolSize: 2 }));
+      sequentialModel.add(tf.layers.flatten());
+      sequentialModel.add(tf.layers.dense({ units: 128, activation: "relu" }));
+      sequentialModel.add(tf.layers.dropout({ rate: 0.5 }));
+      sequentialModel.add(tf.layers.dense({ units: 64, activation: "linear" }));
+      sequentialModel.compile({
+        optimizer: "adam",
+        loss: "meanSquaredError",
+      });
+
+      // 将Sequential模型赋值给通用的LayersModel引用
+      model = sequentialModel;
+    }
+
+    // 如果有缓存的训练样本，尝试进行模型校准
+    if (voiceprint) {
+      const trainingSamples = loadTrainingSamplesFromCache();
+      if (trainingSamples && trainingSamples.length > 0) {
+        console.log("使用缓存的训练样本校准模型");
+        // 使用存储的样本进行快速校准，这里只是简单前向传播，不是完整训练
+        // 实际应用中可以添加更复杂的校准逻辑
+        try {
+          const features = await extractFeatures(trainingSamples);
+          if (features) {
+            // 仅做前向传播让模型预热，不更新权重
+            tf.tidy(() => {
+              model!.predict(features);
+            });
+            features.dispose();
+          }
+        } catch (calibrateError) {
+          console.warn("模型校准失败，继续使用未校准模型:", calibrateError);
+        }
+      }
+    }
+
+    // 初始化实时识别器
+    if (model && voiceprint) {
+      // 创建实时识别器实例
+      recognizer = new RealtimeVoiceprintRecognizer(
+        model,
+        DEFAULT_VOICEPRINT_CONFIG,
+        onVoiceprintResult,
+      );
+
+      // 设置声纹特征
+      recognizer.setVoiceprint(voiceprint);
+      onStatusChange(VoiceRecognitionStatus.TRAINED);
+    }
+  } catch (error) {
+    console.error("加载模型或声纹失败:", error);
+    onStatusChange(VoiceRecognitionStatus.ERROR);
+    onVoiceprintEnabled(false);
+  }
+
+  return {
+    model: model as tf.LayersModel,
+    voiceprint,
+    recognizer,
+  };
+};
+
+/**
+ * 保存模型到IndexedDB
+ * @param model 要保存的模型
+ * @returns 是否保存成功
+ */
+export const saveModelToCache = async (
+  model: tf.LayersModel,
+): Promise<boolean> => {
+  try {
+    // 检查是否支持IndexedDB
+    if (!window.indexedDB) {
+      console.warn("浏览器不支持IndexedDB，无法缓存模型");
+      return false;
+    }
+
+    // 保存模型到IndexedDB
+    await model.save(`indexeddb://${MODEL_CACHE_KEY}`);
+
+    // 记录模型版本
+    localStorage.setItem(MODEL_VERSION_KEY, MODEL_CACHE_VERSION);
+
+    console.log("声纹识别模型已缓存到IndexedDB");
+    return true;
+  } catch (error) {
+    console.error("保存模型到缓存失败:", error);
+    return false;
+  }
+};
+
+/**
+ * 从缓存中加载模型
+ * @returns 加载的模型或null（如果加载失败）
+ */
+export const loadModelFromCache = async (): Promise<tf.LayersModel | null> => {
+  try {
+    // 检查版本兼容性
+    const savedVersion = localStorage.getItem(MODEL_VERSION_KEY);
+    if (!savedVersion || savedVersion !== MODEL_CACHE_VERSION) {
+      console.log("未找到匹配版本的模型缓存或版本不兼容");
+      return null;
+    }
+
+    // 尝试从IndexedDB加载模型
+    const model = await tf.loadLayersModel(`indexeddb://${MODEL_CACHE_KEY}`);
+    if (!model) return null;
+
+    // 确保模型已编译
+    model.compile({
+      optimizer: "adam",
+      loss: "meanSquaredError",
+    });
+
+    console.log("从IndexedDB加载模型成功");
+    return model;
+  } catch (error) {
+    console.error("从缓存加载模型失败:", error);
+    return null;
+  }
+};
+
+/**
+ * 保存训练样本到缓存
+ * @param audioData 训练音频样本
+ * @returns 是否保存成功
+ */
+export const saveTrainingSamplesToCache = async (
+  audioData: Float32Array[],
+): Promise<boolean> => {
+  try {
+    // 限制样本数量和大小，防止存储过大
+    const maxSamples = 3; // 最多保存3个样本
+    const mergedData = [];
+
+    for (let i = 0; i < Math.min(audioData.length, maxSamples); i++) {
+      mergedData.push(Array.from(audioData[i]));
+    }
+
+    // 保存到localStorage
+    localStorage.setItem(TRAINING_SAMPLES_KEY, JSON.stringify(mergedData));
+    return true;
+  } catch (error) {
+    console.error("保存训练样本到缓存失败:", error);
+    return false;
+  }
+};
+
+/**
+ * 从缓存中加载训练样本
+ * @returns 训练样本数组或null（如果加载失败）
+ */
+export const loadTrainingSamplesFromCache = (): Float32Array[] | null => {
+  try {
+    const savedSamples = localStorage.getItem(TRAINING_SAMPLES_KEY);
+    if (!savedSamples) return null;
+
+    const parsedSamples = JSON.parse(savedSamples);
+    return parsedSamples.map((sample: number[]) => new Float32Array(sample));
+  } catch (error) {
+    console.error("从缓存加载训练样本失败:", error);
+    return null;
+  }
+};
+
+/**
+ * 删除所有缓存的模型和训练数据
+ */
+export const clearModelCache = async (): Promise<void> => {
+  try {
+    // 删除IndexedDB中的模型
+    await tf.io.removeModel(`indexeddb://${MODEL_CACHE_KEY}`);
+
+    // 删除localStorage中的数据
+    localStorage.removeItem(MODEL_VERSION_KEY);
+    localStorage.removeItem(TRAINING_SAMPLES_KEY);
+
+    console.log("已清除所有模型缓存和训练样本");
+  } catch (error) {
+    console.error("清除模型缓存失败:", error);
+  }
+};

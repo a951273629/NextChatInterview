@@ -41,6 +41,80 @@
     align-items: flex-start;
     justify-content: flex-start;
     width: 100%;
+    height: 100%;
+  }
+
+  // 消息容器样式
+  .messages-container {
+    width: 100%;
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding-right: 5px;
+    max-height: calc(100% - 150px);
+
+    // 滚动条样式
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 3px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+    
+    &::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  // 消息样式
+  .message {
+    padding: 12px 15px;
+    border-radius: 8px;
+    max-width: 85%;
+    word-break: break-word;
+    font-size: 14px;
+    line-height: 1.5;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    
+    // 点击效果
+    &:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    }
+    
+    &:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    // 面试官消息样式 (红色)
+    &.interviewer-message {
+      background-color: rgba(255, 99, 71, 0.15);
+      border: 1px solid rgba(255, 99, 71, 0.3);
+      color: #ff6347;
+      align-self: flex-start;
+    }
+    
+    // 面试者消息样式 (绿色)
+    &.interviewee-message {
+      background-color: rgba(76, 175, 80, 0.15);
+      border: 1px solid rgba(76, 175, 80, 0.3);
+      color: #4caf50;
+      align-self: flex-end;
+    }
   }
 
   .status-indicator {
@@ -91,12 +165,32 @@
     padding: 1rem;
     background-color: rgba(0, 0, 0, 0.5);
     border-radius: 0.5rem;
-    max-height: 120px;
+    max-height: 80px;
     overflow-y: auto;
     text-align: left;
     font-size: 0.9rem;
     line-height: 1.5;
     border: 1px solid rgba(0, 0, 0, 0.5);
+    position: relative;
+
+    .transcript-label {
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.5);
+      font-style: italic;
+    }
+
+    &.interviewer-text {
+      border-left: 3px solid #ff6347;
+      background-color: rgba(255, 99, 71, 0.05);
+    }
+
+    &.interviewee-text {
+      border-left: 3px solid #4caf50;
+      background-color: rgba(76, 175, 80, 0.05);
+    }
   }
 
   .button-container {
@@ -175,13 +269,13 @@
     font-weight: 500;
     
     &.interviewer {
-      background-color: rgba(76, 175, 80, 0.2);
-      color: #2e7d32;
+      background-color: rgba(255, 99, 71, 0.2);
+      color: #e74c3c;
     }
     
     &.interviewee {
-      background-color: rgba(33, 150, 243, 0.2);
-      color: #1565c0;
+      background-color: rgba(76, 175, 80, 0.2);
+      color: #4caf50;
     }
   }
   
@@ -192,12 +286,7 @@
 }
 
 .interviewer-mode {
-  .transcript-display {
-    &.interviewer-text {
-      border-left: 3px solid #4caf50;
-      background-color: rgba(76, 175, 80, 0.05);
-    }
-  }
+  // 移除冗余样式，已经在transcript-display中直接定义了
 }
 
 /* 正在收集音频数据的指示器 */

@@ -269,3 +269,141 @@
       }
     }
   }
+
+// 添加响应式媒体查询 - 移动设备样式
+@media only screen and (max-width: 600px) {
+  .interview-prep-container {
+    padding: 0.75rem;
+    min-height: 100vh; // 确保至少占满屏幕高度
+    justify-content: space-between; // 内容分布在容器两端
+    
+    .prep-header {
+      margin-bottom: 15px;
+      
+      h3 {
+        font-size: 1.2rem;
+      }
+      
+      p {
+        font-size: 0.85rem;
+      }
+    }
+    
+    .prep-main-content {
+      padding-bottom: 1rem; // 增加内容区底部间距
+      max-height: calc(100vh - 180px); // 限制内容区高度，留出底部空间
+      -webkit-overflow-scrolling: touch; // 提升iOS滚动体验
+    }
+    
+    .prep-section {
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      
+      .section-title {
+        font-size: 0.95rem;
+      }
+    }
+    
+    .device-status-item {
+      padding: 0.6rem;
+      
+      .status-icon {
+        font-size: 1.3rem;
+        margin-right: 0.75rem;
+        width: 1.75rem;
+      }
+      
+      .status-text {
+        font-size: 0.85rem;
+      }
+    }
+    
+    .setting-item {
+      padding: 0.6rem;
+      
+      .setting-label {
+        width: 5rem;
+        font-size: 0.85rem;
+      }
+      
+      .setting-control {
+        .setting-status {
+          font-size: 0.8rem;
+        }
+        
+        .setting-warning {
+          font-size: 0.75rem;
+        }
+      }
+    }
+    
+    // 底部按钮区域在移动设备上的优化
+    .prep-footer {
+      margin-top: 1.5rem;
+      margin-bottom: 2rem; // 增加底部间距
+      padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0)); // 考虑安全区域
+      width: 100%;
+      position: relative; // 相对定位
+      bottom: 0; // 确保位于底部
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      
+      .start-button {
+        width: 80%; // 设定宽度占父容器80%
+        max-width: 280px; // 限制最大宽度
+        padding: 1rem 2rem; // 增大按钮内边距，使其更易点击
+        margin-right: 3rem;
+        font-size: 1.1rem; // 增大字体
+        display: flex; // 使用flex确保内容居中
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); // 增强视觉效果
+        border-radius: 2.5rem; // 增大圆角
+      }
+    }
+  }
+}
+
+// 额外添加针对特小尺寸设备的调整
+@media only screen and (max-width: 400px) {
+  .interview-prep-container {
+    padding: 0.6rem;
+    
+    .prep-footer {
+      margin-bottom: 1.5rem;
+      .start-button {
+        width: 90%; // 在更小屏幕上增加按钮宽度
+        padding: 0.9rem 1.5rem;
+        font-size: 1rem;
+      }
+    }
+    
+    .prep-section, 
+    .device-status-item, 
+    .setting-item {
+      padding: 0.5rem;
+    }
+    
+    .setting-label {
+      width: 4.5rem !important; // 强制覆盖
+      font-size: 0.8rem !important;
+    }
+  }
+}
+
+// 针对iPhone X及以上全面屏设备的适配
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  @media only screen and (max-width: 600px) {
+    .interview-prep-container {
+      // 添加安全区域内边距
+      padding-top: env(safe-area-inset-top, 0);
+      padding-bottom: env(safe-area-inset-bottom, 0);
+      
+      .prep-footer {
+        // 确保按钮上方的空间足够，不被底部栏遮挡
+        padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0));
+      }
+    }
+  }
+}

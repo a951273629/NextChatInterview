@@ -607,7 +607,7 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
       className={`interview-overlay ${isDragging ? "dragging" : ""} ${
         isInterviewerRef.current && voiceprintEnabled ? "interviewer-mode" : ""
       }`}
-      style={{ width }}
+      // style={{ width }}
     >
       {/* 添加左侧拖动条 */}
       <div className="drag-handle" onMouseDown={handleDragStart} />

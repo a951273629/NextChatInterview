@@ -1,8 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./InterviewPreparation.module.scss";
-import DialogBox from "./comm/DialogBox";
 import { toast } from "react-hot-toast";
 import PreparationResumesUpload from "./preparation-resumes-upload";
+import { useActivation } from "./valid-wrapper/ActivationWrapper";
+import ActivationStatus from "./valid-wrapper/ActivationStatus";
+import { safeLocalStorage } from "../utils";
+import { useNavigate } from "react-router-dom";
+import { Path } from "../constant";
+
+const localStorage = safeLocalStorage();
 
 interface InterviewPreparationProps {
   voiceprintEnabled: boolean;
@@ -43,6 +49,28 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
   // 对话框状态
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  // 判断是否已激活
+  const [isActivated, setIsActivated] = useState<boolean>(false);
+
+  // 导航hook
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // 检查本地存储中的激活状态
+    const checkActivationStatus = () => {
+      const status = localStorage.getItem("user_activation_status");
+      setIsActivated(status === "active");
+    };
+
+    checkActivationStatus();
+    // 添加事件监听器，以便在其他地方更新激活状态时刷新
+    window.addEventListener("storage", checkActivationStatus);
+
+    return () => {
+      window.removeEventListener("storage", checkActivationStatus);
+    };
+  }, []);
+
   // 初始化时检测设备状态
   useEffect(() => {
     checkMicrophoneStatus();
@@ -54,6 +82,8 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
     };
   }, []);
 
+  // 获取激活检查函数
+  const { checkActivation } = useActivation();
   // 检测麦克风状态
   const checkMicrophoneStatus = async () => {
     try {
@@ -206,10 +236,15 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
     }
   };
 
+  // 导航到TensorFlow页面进行声纹训练
+  const navigateToTensorFlow = () => {
+    navigate(Path.TensorFlow);
+  };
+
   // 处理对话框确认事件
   const handleDialogConfirm = () => {
     setDialogOpen(false);
-    // 可以在这里添加导航到TensorFlow页面的逻辑
+    navigateToTensorFlow();
   };
 
   // 处理语言选择
@@ -290,6 +325,7 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
     <div className={styles["interview-prep-container"]}>
       <div className={styles["prep-header"]}>
         <h3>面试准备就绪</h3>
+        <ActivationStatus className={styles["activation-status"]} />
         <p>请确认以下设置后开始面试</p>
       </div>
 
@@ -351,7 +387,13 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
           <h4 className={styles["section-title"]}>面试设置</h4>
 
           {/* 声纹识别设置 */}
-          <div className={styles["setting-item"]}>
+          <div
+            className={`${styles["setting-item"]} ${
+              !hasVoiceprint ? styles["clickable-setting"] : ""
+            }`}
+            onClick={() => !hasVoiceprint && navigateToTensorFlow()}
+            style={{ cursor: !hasVoiceprint ? "pointer" : "default" }}
+          >
             <div className={styles["setting-label"]}>声纹识别：</div>
             <div className={styles["setting-control"]}>
               <label className={styles["switch"]}>
@@ -372,7 +414,7 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
               </span>
               {!hasVoiceprint && (
                 <div className={styles["setting-warning"]}>
-                  未找到声纹数据，请先在TensorFlow页面训练声纹
+                  未找到声纹数据，请先在TensorFlow页面训练声纹 (点击此区域跳转)
                 </div>
               )}
             </div>
@@ -399,30 +441,16 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
       <div className={styles["prep-footer"]}>
         <button
           className={`${styles["button"]} ${styles["start-button"]} ${
-            micStatus !== "ready" ? styles["disabled"] : ""
+            micStatus !== "ready" || !isActivated ? styles["disabled"] : ""
           }`}
-          onClick={handleStartInterview}
+          onClick={() => {
+            checkActivation(() => handleStartInterview());
+          }}
           disabled={micStatus !== "ready"}
         >
-          开始面试
+          {isActivated ? "开始面试" : "请先激活"}
         </button>
       </div>
-
-      {/* 自定义对话框 */}
-      <DialogBox
-        isOpen={dialogOpen}
-        title="声纹识别未配置"
-        content={
-          <div>
-            <p>您尚未录制声纹，无法启用声纹识别功能。</p>
-            <p>请先前往TensorFlow页面录制并训练您的声纹。</p>
-          </div>
-        }
-        confirmText="去训练声纹"
-        cancelText="取消"
-        onConfirm={handleDialogConfirm}
-        onCancel={() => setDialogOpen(false)}
-      />
     </div>
   );
 };

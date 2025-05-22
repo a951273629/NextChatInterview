@@ -611,6 +611,27 @@
   }
 }
 
+/* 用户消息的特殊样式 */
+.user-message-item {
+  background-color: var(--second) !important;
+  border-radius: 10px;
+  padding: 10px;
+  max-width: 100%;
+  cursor: pointer;
+}
+
+.collapsed-message {
+  text-align: center;
+  color: var(--black);
+  opacity: 0.8;
+  font-size: 14px;
+  padding: 4px;
+  border: 1px dashed rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  margin: 4px;
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
 .chat-input-panel {
   position: relative;
   width: 100%;

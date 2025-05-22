@@ -10,12 +10,19 @@
     
     .prep-header {
       text-align: center;
-      margin-bottom: 1.5rem;
+      margin-bottom: 20px;
       
       h3 {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-        font-weight: 600;
+        margin: 0 0 10px 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+      
+      .activation-status {
+        display: inline-flex;
+        margin-left: 10px;
+        vertical-align: middle;
       }
       
       p {
@@ -109,6 +116,16 @@
       padding: 0.75rem;
       border-radius: 0.4rem;
       background-color: rgba(0, 0, 0, 0.3);
+      
+      &.clickable-setting {
+        transition: all 0.2s ease;
+        
+        &:hover {
+          background-color: rgba(33, 150, 243, 0.15);
+          border-left: 3px solid #2196F3;
+          transform: translateX(2px);
+        }
+      }
       
       .setting-label {
         width: 6rem;

@@ -199,6 +199,12 @@
     gap: 0.5rem;
     margin-top: 1rem;
     width: 100%;
+    flex-wrap: wrap;
+
+    .setting-item {
+      width: 100%;
+      margin-bottom: 0.75rem;
+    }
 
     .button {
       display: flex;
@@ -282,6 +288,111 @@
   .match-score {
     font-size: 0.8rem;
     color: #666;
+  }
+}
+
+/* 添加自动提交开关和气泡提示样式 */
+.setting-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.4rem;
+  background-color: rgba(0, 0, 0, 0.3);
+  
+  .setting-label {
+    width: 6rem;
+    font-size: 0.9rem;
+  }
+  
+  .setting-control {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    
+    .setting-status {
+      margin-left: 0.75rem;
+      font-size: 0.85rem;
+    }
+  }
+}
+
+.switch {
+  position: relative;
+  width: 50px;
+  height: 24px;
+  
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    
+    &:checked + .slider {
+      background-color: #2196F3;
+      
+      &:before {
+        transform: translateX(26px);
+      }
+    }
+  }
+  
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+    
+    &:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+  }
+}
+
+.clickable-tooltip {
+  display: flex;
+  align-items: center;
+  background-color: rgba(76, 175, 80, 0.2);
+  border-radius: 1rem;
+  padding: 0.5rem 1rem;
+  margin-left: 0.75rem;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  max-width: 200px;
+  
+  .tooltip-content {
+    font-size: 0.85rem;
+    color: #4caf50;
+    margin-right: 0.5rem;
+  }
+  
+  .tooltip-close-btn {
+    background: none;
+    border: none;
+    color: #4caf50;
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    
+    &:hover {
+      color: darken(#4caf50, 10%);
+    }
   }
 }
 

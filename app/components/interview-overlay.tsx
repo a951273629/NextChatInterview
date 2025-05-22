@@ -43,6 +43,11 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
   // 添加控制面试开始的状态
   const [isStarted, setIsStarted] = useState(false);
 
+  // 添加自动提交控制状态
+  const [isAutoSubmit, setIsAutoSubmit] = useState(false);
+  // 添加气泡提示显示控制
+  const [showTooltip, setShowTooltip] = useState(true);
+
   // 声纹识别相关状态
   const [voiceprintEnabled, setVoiceprintEnabled] = useState(true);
   const [isInterviewer, setIsInterviewer] = useState(false);
@@ -396,7 +401,7 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
             lastSubmittedTextRef.current = transcript;
             resetTranscript();
           }
-          // 如果是面试者或声纹未启用，只添加到消息历史，不自动提交
+          // 如果是面试者或声纹未启用
           else if (transcript !== lastSubmittedTextRef.current) {
             console.log("检测到面试者语音，添加到消息历史:", transcript);
             // 添加到消息历史
@@ -404,8 +409,18 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
             lastSubmittedTextRef.current = transcript;
             resetTranscript();
           }
+
+          // submitMessage
+          // 如果自动提交开启
+          if (
+            isAutoSubmit &&
+            (isInterviewerRef.current || !voiceprintEnabled)
+          ) {
+            console.log("自动提交面试者语音:", transcript);
+            submitMessage(transcript);
+          }
         }
-      }, 2000); // 2秒延迟，可根据需要调整
+      }, 1800); // 1.8秒延迟，可根据需要调整
     }
 
     return () => {
@@ -420,6 +435,7 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
     isInterviewer,
     submitMessage,
     resetTranscript,
+    isAutoSubmit,
   ]);
 
   // 开始面试的处理函数
@@ -500,15 +516,16 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
       // 暂停音频采集
       stopAudioCollection();
 
-      // 新增：检查并提交当前已识别的文字
-      if (transcriptRef.current && transcriptRef.current.trim() !== "") {
-        console.log("暂停时提交识别内容:", transcriptRef.current);
-        submitMessage(transcriptRef.current);
-        // 添加到消息历史
-        addMessage(transcriptRef.current, isInterviewerRef.current);
-        // 提交后清空内容
-        resetTranscript();
-      }
+      // // 新增：检查并提交当前已识别的文字
+      // if (transcriptRef.current && transcriptRef.current.trim() !== "") {
+      //   console.log("暂停时提交识别内容:", transcriptRef.current);
+      //   submitMessage(transcriptRef.current);
+      //   // 添加到消息历史
+      //   addMessage(transcriptRef.current, isInterviewerRef.current);
+      //   // 提交后清空内容
+
+      // }
+      resetTranscript();
     } else {
       // 先确保停止当前可能存在的监听
       SpeechRecognition.abortListening();
@@ -617,6 +634,19 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
                 {listening ? "正在监听..." : isPaused ? "已暂停" : "未监听"}
               </span>
 
+              {/* 添加可点击提示气泡 */}
+              {showTooltip && (
+                <div className="clickable-tooltip">
+                  <div className="tooltip-content">单击下面的消息获取回答</div>
+                  <button
+                    className="tooltip-close-btn"
+                    onClick={() => setShowTooltip(false)}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               {/* 添加声纹识别状态显示 */}
               {voiceprintEnabled && (
                 <div className="voiceprint-status">
@@ -679,17 +709,41 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
 
             {/* 按钮区域 */}
             <div className="button-container">
-              {/* 暂停恢复按钮 - 暂停时提交识别到的文字并清空 */}
+              {/* 添加自动提交的开关 */}
+              <div className="setting-item">
+                <div className="setting-label">自动提交：</div>
+                <div className="setting-control">
+                  <label className="switch">
+                    <input
+                      type="checkbox"
+                      checked={isAutoSubmit}
+                      onChange={
+                        voiceprintEnabled
+                          ? () => setIsAutoSubmit(!isAutoSubmit)
+                          : () => {}
+                      }
+                    />
+                    <span className="slider"></span>
+                  </label>
+                  <span className="setting-status">
+                    {voiceprintEnabled
+                      ? "可启用"
+                      : "声纹未启用,请先打开声纹识别"}
+                  </span>
+                </div>
+              </div>
+
+              {/* 暂停恢复按钮 */}
               <button
                 onClick={togglePauseCommit}
                 className={`button pause-button ${isPaused ? "paused" : ""}`}
               >
-                <span>{isPaused ? "▶️ 恢复监听" : "⏸️ 暂停获取答案"}</span>
+                <span>{isPaused ? "▶️ 恢复监听" : "⏸️ 暂停监听"}</span>
               </button>
 
               <button onClick={stopRecognition} className="button stop-button">
                 <StopIcon />
-                <span>结束对话</span>
+                <span>结束面试</span>
               </button>
 
               <button onClick={resetTranscript} className="button clear-button">

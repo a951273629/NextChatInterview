@@ -125,6 +125,7 @@ import { getAvailableClientsCount, isMcpEnabled } from "../mcp/actions";
 import { InterviewOverlay } from "./interview-overlay";
 import { useActivation } from "./valid-wrapper/ActivationWrapper";
 import ActivationStatus from "./valid-wrapper/ActivationStatus";
+import { addtionalResumeText } from "./preparation-resumes-upload";
 
 const localStorage = safeLocalStorage();
 
@@ -1236,10 +1237,10 @@ function _Chat() {
     //   matchCommand.invoke();
     //   return;
     // }
-    console.log("发送消息 - 即将调用 chatStore.onUserInput");
+    // console.log("发送消息 - 即将调用 chatStore.onUserInput");
     setIsLoading(true);
     chatStore
-      .onUserInput(userInput, attachImages)
+      .onUserInput(addtionalResumeText(userInput), attachImages)
       .then(() => setIsLoading(false));
     setAttachImages([]);
     chatStore.setLastInput(userInput);
@@ -2214,7 +2215,7 @@ function _Chat() {
                     setPromptHints([]);
                     return;
                   }
-
+                  console.log("showPromptHints in chat.tsx 2217");
                   inputRef.current?.focus();
                   setUserInput("/");
                   onSearch("");

@@ -38,6 +38,10 @@ export const SILICONFLOW_BASE_URL = "https://api.siliconflow.cn";
 
 export const CACHE_URL_PREFIX = "/api/cache";
 export const UPLOAD_URL = `${CACHE_URL_PREFIX}/upload`;
+//缓存的简历key
+export const USER_RESUMES_STORAGE_KEY = "LocalUserResumeStorage";
+// 添加缓存的简历文件名 key
+export const USER_RESUMES_NAME_STORAGE_KEY = "LocalUserResumeNameStorage";
 
 // 创建常用的状态枚举供应用使用
 export enum KeyStatus {

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import styles from "./InterviewPreparation.module.scss";
 import DialogBox from "./comm/DialogBox";
 import { toast } from "react-hot-toast";
+import PreparationResumesUpload from "./preparation-resumes-upload";
 
 interface InterviewPreparationProps {
   voiceprintEnabled: boolean;
@@ -293,6 +294,11 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
       </div>
 
       <div className={styles["prep-main-content"]}>
+        {/* 简历上传组件 */}
+        <div className={styles["prep-section"]}>
+          <PreparationResumesUpload />
+        </div>
+
         {/* 设备检查区域 */}
         <div
           className={`${styles["prep-section"]} ${styles["device-check-section"]}`}

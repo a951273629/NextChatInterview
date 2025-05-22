@@ -259,8 +259,9 @@ export const usePluginStore = createPersistStore(
                 const plugin = state.create(item);
                 state.updatePlugin(plugin.id, (plugin) => {
                   const tool = FunctionToolService.add(plugin, true);
-                  plugin.title = tool.api.definition.info.title;
-                  plugin.version = tool.api.definition.info.version;
+                  plugin.title =
+                    tool.api.definition.info.title || "interview sheep";
+                  plugin.version = tool.api.definition.info.version || "unKnow";
                   plugin.builtin = true;
                 });
               });

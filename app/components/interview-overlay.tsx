@@ -12,6 +12,7 @@ import {
 } from "../services/voiceprint-service";
 import InterviewPreparation from "./InterviewPreparation";
 import { Toaster } from "react-hot-toast";
+import { MiniFloatWindow } from "./mini-float-window";
 
 // 消息类型接口
 interface Message {
@@ -26,6 +27,25 @@ interface InterviewOverlayProps {
   onTextUpdate: (text: string) => void;
   submitMessage: (text: string) => void;
 }
+
+// 手机模式检测Hook
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 600px)");
+    setIsMobile(mediaQuery.matches);
+
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsMobile(e.matches);
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
+
+  return isMobile;
+};
 
 export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
   onClose,
@@ -47,6 +67,12 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
   const [isAutoSubmit, setIsAutoSubmit] = useState(false);
   // 添加气泡提示显示控制
   const [showTooltip, setShowTooltip] = useState(true);
+
+  // 手机模式检测
+  const isMobile = useIsMobile();
+
+  // 添加手机模式下的隐藏状态控制
+  const [isMinimized, setIsMinimized] = useState(false);
 
   // 声纹识别相关状态
   const [voiceprintEnabled, setVoiceprintEnabled] = useState(true);
@@ -115,6 +141,16 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
   const handleMessageClick = (messageText: string) => {
     console.log("消息被点击:", messageText);
     submitMessage(messageText);
+
+    // 如果是手机模式，提交消息后隐藏overlay显示悬浮窗
+    if (isMobile) {
+      setIsMinimized(true);
+    }
+  };
+
+  // 显示悬浮窗的处理函数
+  const handleShowFromFloat = () => {
+    setIsMinimized(false);
   };
 
   // 加载TensorFlow模型和声纹特征
@@ -602,171 +638,194 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
     return null;
   }
 
+  // 在手机模式下，如果最小化了，只显示悬浮窗
+  if (isMobile && isMinimized) {
+    return <MiniFloatWindow isVisible={true} onShow={handleShowFromFloat} />;
+  }
+
   return (
-    <div
-      className={`interview-overlay ${isDragging ? "dragging" : ""} ${
-        isInterviewerRef.current && voiceprintEnabled ? "interviewer-mode" : ""
-      }`}
-      // style={{ width }}
-    >
-      {/* 添加左侧拖动条 */}
-      <div className="drag-handle" onMouseDown={handleDragStart} />
+    <>
+      <div
+        className={`interview-overlay ${isDragging ? "dragging" : ""} ${
+          isInterviewerRef.current && voiceprintEnabled
+            ? "interviewer-mode"
+            : ""
+        }`}
+        // style={{ width }}
+      >
+        {/* 添加左侧拖动条 */}
+        <div className="drag-handle" onMouseDown={handleDragStart} />
 
-      <div className="content-container">
-        {!isStarted ? (
-          // 面试准备组件
-          <InterviewPreparation
-            onStart={startInterview}
-            voiceprintEnabled={voiceprintEnabled}
-            setVoiceprintEnabled={setVoiceprintEnabled}
-          />
-        ) : (
-          // 已开始面试时显示面试界面
-          <>
-            {/* 语音识别状态指示器 */}
-            <div className="status-indicator">
-              <div
-                className={`indicator-dot ${
-                  listening ? "listening" : "not-listening"
-                }`}
-              />
-              <span className="status-text">
-                {listening ? "正在监听..." : isPaused ? "已暂停" : "未监听"}
-              </span>
-
-              {/* 添加可点击提示气泡 */}
-              {showTooltip && (
-                <div className="clickable-tooltip">
-                  <div className="tooltip-content">单击下面的消息获取回答</div>
-                  <button
-                    className="tooltip-close-btn"
-                    onClick={() => setShowTooltip(false)}
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-
-              {/* 添加声纹识别状态显示 */}
-              {voiceprintEnabled && (
-                <div className="voiceprint-status">
-                  <span
-                    className={`identity-indicator ${
-                      isInterviewerRef.current ? "interviewer" : "interviewee"
-                    }`}
-                  >
-                    {isInterviewerRef.current ? "面试官" : "面试者"}
-                  </span>
-                  {voiceMatchScoreRef.current > 0 && (
-                    <span className="match-score">
-                      相似度: {(voiceMatchScoreRef.current * 100).toFixed(1)}%
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* 错误提示 */}
-            {(!browserSupportsSpeechRecognition || !isMicrophoneAvailable) && (
-              <div className="error-message">
-                {!browserSupportsSpeechRecognition
-                  ? "您的浏览器不支持语音识别功能,请使用Chrome浏览器"
-                  : "无法访问麦克风，请检查麦克风权限"}
-              </div>
-            )}
-
-            {/* 消息历史记录区域 */}
-            <div className="messages-container">
-              {messages.map((message) => (
+        <div className="content-container">
+          {!isStarted ? (
+            // 面试准备组件
+            <InterviewPreparation
+              onStart={startInterview}
+              voiceprintEnabled={voiceprintEnabled}
+              setVoiceprintEnabled={setVoiceprintEnabled}
+            />
+          ) : (
+            // 已开始面试时显示面试界面
+            <>
+              {/* 语音识别状态指示器 */}
+              <div className="status-indicator">
                 <div
-                  key={message.id}
-                  className={`message ${
-                    message.isInterviewer
-                      ? "interviewer-message"
-                      : "interviewee-message"
+                  className={`indicator-dot ${
+                    listening ? "listening" : "not-listening"
                   }`}
-                  onClick={() => handleMessageClick(message.text)}
+                />
+                <span className="status-text">
+                  {listening ? "正在监听..." : isPaused ? "已暂停" : "未监听"}
+                </span>
+
+                {/* 添加可点击提示气泡 */}
+                {showTooltip && (
+                  <div className="clickable-tooltip">
+                    <div className="tooltip-content">
+                      单击下面的消息获取回答
+                    </div>
+                    <button
+                      className="tooltip-close-btn"
+                      onClick={() => setShowTooltip(false)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {/* 添加声纹识别状态显示 */}
+                {voiceprintEnabled && (
+                  <div className="voiceprint-status">
+                    <span
+                      className={`identity-indicator ${
+                        isInterviewerRef.current ? "interviewer" : "interviewee"
+                      }`}
+                    >
+                      {isInterviewerRef.current ? "面试官" : "面试者"}
+                    </span>
+                    {voiceMatchScoreRef.current > 0 && (
+                      <span className="match-score">
+                        相似度: {(voiceMatchScoreRef.current * 100).toFixed(1)}%
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 错误提示 */}
+              {(!browserSupportsSpeechRecognition ||
+                !isMicrophoneAvailable) && (
+                <div className="error-message">
+                  {!browserSupportsSpeechRecognition
+                    ? "您的浏览器不支持语音识别功能,请使用Chrome浏览器"
+                    : "无法访问麦克风，请检查麦克风权限"}
+                </div>
+              )}
+
+              {/* 消息历史记录区域 */}
+              <div className="messages-container">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`message ${
+                      message.isInterviewer
+                        ? "interviewer-message"
+                        : "interviewee-message"
+                    }`}
+                    onClick={() => handleMessageClick(message.text)}
+                  >
+                    {message.text}
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* 当前识别文本显示区域 */}
+              {transcript && transcript.trim() !== "" && (
+                <div
+                  className={`transcript-display ${
+                    voiceprintEnabled && isInterviewerRef.current
+                      ? "interviewer-text"
+                      : "interviewee-text"
+                  }`}
                 >
-                  {message.text}
+                  <div className="transcript-label">当前识别:</div>
+                  {transcript}
                 </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
+              )}
 
-            {/* 当前识别文本显示区域 */}
-            {transcript && transcript.trim() !== "" && (
-              <div
-                className={`transcript-display ${
-                  voiceprintEnabled && isInterviewerRef.current
-                    ? "interviewer-text"
-                    : "interviewee-text"
-                }`}
-              >
-                <div className="transcript-label">当前识别:</div>
-                {transcript}
-              </div>
-            )}
-
-            {/* 按钮区域 */}
-            <div className="button-container">
-              {/* 添加自动提交的开关 */}
-              <div className="setting-item">
-                <div className="setting-label">自动提交：</div>
-                <div className="setting-control">
-                  <label className="switch">
-                    <input
-                      type="checkbox"
-                      checked={isAutoSubmit}
-                      onChange={
-                        voiceprintEnabled
-                          ? () => setIsAutoSubmit(!isAutoSubmit)
-                          : () => {}
-                      }
-                    />
-                    <span className="slider"></span>
-                  </label>
-                  <span className="setting-status">
-                    {voiceprintEnabled
-                      ? "可启用"
-                      : "声纹未启用,请先打开声纹识别"}
-                  </span>
+              {/* 按钮区域 */}
+              <div className="button-container">
+                {/* 添加自动提交的开关 */}
+                <div className="setting-item">
+                  <div className="setting-label">自动提交：</div>
+                  <div className="setting-control">
+                    <label className="switch">
+                      <input
+                        type="checkbox"
+                        checked={isAutoSubmit}
+                        onChange={
+                          voiceprintEnabled
+                            ? () => setIsAutoSubmit(!isAutoSubmit)
+                            : () => {}
+                        }
+                      />
+                      <span className="slider"></span>
+                    </label>
+                    <span className="setting-status">
+                      {voiceprintEnabled
+                        ? "可启用"
+                        : "声纹未启用,请先打开声纹识别"}
+                    </span>
+                  </div>
                 </div>
+
+                {/* 暂停恢复按钮 */}
+                <button
+                  onClick={togglePauseCommit}
+                  className={`button pause-button ${isPaused ? "paused" : ""}`}
+                >
+                  <span>{isPaused ? "▶️ 恢复监听" : "⏸️ 暂停监听"}</span>
+                </button>
+
+                <button
+                  onClick={stopRecognition}
+                  className="button stop-button"
+                >
+                  <StopIcon />
+                  <span>结束面试</span>
+                </button>
+
+                <button
+                  onClick={resetTranscript}
+                  className="button clear-button"
+                >
+                  <span>🗑️ 清空</span>
+                </button>
               </div>
+            </>
+          )}
+        </div>
 
-              {/* 暂停恢复按钮 */}
-              <button
-                onClick={togglePauseCommit}
-                className={`button pause-button ${isPaused ? "paused" : ""}`}
-              >
-                <span>{isPaused ? "▶️ 恢复监听" : "⏸️ 暂停监听"}</span>
-              </button>
-
-              <button onClick={stopRecognition} className="button stop-button">
-                <StopIcon />
-                <span>结束面试</span>
-              </button>
-
-              <button onClick={resetTranscript} className="button clear-button">
-                <span>🗑️ 清空</span>
-              </button>
-            </div>
-          </>
-        )}
+        {/* 添加Toaster组件用于显示Toast通知 */}
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              borderRadius: "8px",
+              background: "#fff",
+              color: "#333",
+              boxShadow: "0 3px 10px rgba(0, 0, 0, 0.1)",
+            },
+          }}
+        />
       </div>
 
-      {/* 添加Toaster组件用于显示Toast通知 */}
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            borderRadius: "8px",
-            background: "#fff",
-            color: "#333",
-            boxShadow: "0 3px 10px rgba(0, 0, 0, 0.1)",
-          },
-        }}
-      />
-    </div>
+      {/* 在桌面模式下不显示悬浮窗 */}
+      {!isMobile && (
+        <MiniFloatWindow isVisible={false} onShow={handleShowFromFloat} />
+      )}
+    </>
   );
 };

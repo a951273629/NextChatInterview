@@ -101,6 +101,12 @@
     .content-container {
       height: 100%;
     }
+    
+    .message {
+      &.interviewee-message {
+        margin-right: 2rem;
+      }
+    }
   }
 
   // 消息样式
@@ -141,6 +147,7 @@
       border: 1px solid rgba(76, 175, 80, 0.3);
       color: #4caf50;
       align-self: flex-end;
+      // margin-right: 2rem;
     }
   }
 
@@ -284,10 +291,19 @@
     /* 响应式调整 */
     @media only screen and (max-width: 600px) {
       gap: 0.3rem;
+      margin-top: 0.75rem;
       
       .button {
-        padding: 0.5rem 0.75rem;
-        font-size: 0.85rem;
+        padding: 0.5rem 0.5rem;
+        font-size: 0.8rem;
+        flex: 1;
+        min-height: 40px;
+        margin-bottom: 2rem;
+      }
+      
+      .setting-item {
+        margin-bottom: 0.5rem;
+        order: -1; /* 确保设置项在按钮之前 */
       }
     }
   }

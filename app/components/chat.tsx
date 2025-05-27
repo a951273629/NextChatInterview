@@ -122,10 +122,10 @@ import { getModelProvider } from "../utils/model";
 import { RealtimeChat } from "@/app/components/realtime-chat";
 import clsx from "clsx";
 import { getAvailableClientsCount, isMcpEnabled } from "../mcp/actions";
-import { InterviewOverlay } from "./interview-overlay";
+import { InterviewOverlay } from "./interview/interview-overlay";
 import { useActivation } from "./valid-wrapper/ActivationWrapper";
 import ActivationStatus from "./valid-wrapper/ActivationStatus";
-import { addtionalResumeText } from "./preparation-resumes-upload";
+import { addtionalResumeText } from "./interview/preparation-resumes-upload";
 
 const localStorage = safeLocalStorage();
 

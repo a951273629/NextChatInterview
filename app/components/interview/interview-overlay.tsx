@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import StopIcon from "../icons/pause.svg";
+import StopIcon from "@/app/icons/pause.svg";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
@@ -9,7 +9,7 @@ import {
   RealtimeVoiceprintRecognizer,
   VoiceRecognitionStatus,
   loadVoiceprintModelAndRecognizer,
-} from "../services/voiceprint-service";
+} from "@/app/services/voiceprint-service";
 import InterviewPreparation from "./InterviewPreparation";
 import { Toaster } from "react-hot-toast";
 import { MiniFloatWindow } from "./mini-float-window";
@@ -394,13 +394,13 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
   useEffect(() => {
     if (visible && !isPaused && isStarted) {
       // 从localStorage获取语言设置
-      const savedLanguage =
-        localStorage.getItem("interviewLanguage") || "zh-CN";
+      // const savedLanguage =
+      //   localStorage.getItem("interviewLanguage") || "zh-CN";
 
       // 配置语音识别
       SpeechRecognition.startListening({
         continuous: true,
-        language: savedLanguage,
+        language: recognitionLanguage,
       });
 
       // 开始音频采集和声纹识别

@@ -30,8 +30,6 @@ import { Selector, showConfirm } from "./ui-lib";
 import clsx from "clsx";
 import { isMcpEnabled } from "../mcp/actions";
 
-import { WechatAuthor } from "./WechatAuthor";
-
 const DISCOVERY = [
   { name: Locale.Plugin.Name, path: Path.Plugins },
   { name: "Stable Diffusion", path: Path.Sd },
@@ -249,7 +247,7 @@ export function SideBar(props: { className?: string }) {
       shouldNarrow={shouldNarrow}
       {...props}
     >
-      <WechatAuthor /> {/* 添加到最顶部 */}
+      {/* <WechatAuthor /> 添加到最顶部 */}
       <SideBarHeader
         title="InterView Sheep"
         subTitle="Start your own AI Interview assistant."

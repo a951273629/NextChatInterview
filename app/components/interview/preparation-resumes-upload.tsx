@@ -97,24 +97,55 @@ const PreparationResumesUpload: React.FC<
 
   // 处理文件选择
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    event.preventDefault();
     setErrorMessage("");
     const files = event.target.files;
     if (files && files.length > 0) {
       const file = files[0];
 
+      // 防止重复处理同一个文件
+      if (
+        uploadedFileRef.current &&
+        uploadedFileRef.current.name === file.name &&
+        uploadedFileRef.current.size === file.size
+      ) {
+        console.log("检测到重复文件选择，跳过处理");
+        return;
+      }
+
       // 检查文件类型
       if (file.type !== "application/pdf") {
         setErrorMessage("请上传PDF格式的文件");
         alert("请上传PDF格式的文件");
+        // 清空input值，允许重新选择
+        if (event.target) {
+          event.target.value = "";
+        }
+        return;
+      }
+
+      // 检查文件大小（移动端可能有限制）
+      const maxSize = 50 * 1024 * 1024; // 50MB
+      if (file.size > maxSize) {
+        setErrorMessage("文件大小不能超过50MB");
+        alert("文件大小不能超过50MB");
+        if (event.target) {
+          event.target.value = "";
+        }
         return;
       }
 
       handleFile(file);
+    } else {
+      // 处理文件选择被取消的情况
+      console.log("文件选择被取消");
     }
   };
 
   // 统一处理文件的函数
   const handleFile = (file: File) => {
+    console.log("开始处理文件:", file.name, "大小:", file.size);
+
     // 重置状态
     setUploadedFile(file);
     uploadedFileRef.current = file;
@@ -122,6 +153,18 @@ const PreparationResumesUpload: React.FC<
     localStorage.setItem(USER_RESUMES_NAME_STORAGE_KEY, file.name);
     setUploadProgress(0);
     setExtractProgress(0);
+
+    // 检测是否为移动端
+    const isMobile =
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent,
+      );
+
+    if (isMobile) {
+      console.log("检测到移动端设备，使用优化的处理流程");
+      // 移动端给用户更多反馈
+      setErrorMessage("正在处理文件，请稍候...");
+    }
 
     // 模拟上传进度
     simulateUploadProgress();
@@ -160,9 +203,23 @@ const PreparationResumesUpload: React.FC<
       setExtractProgress(30);
       console.log("准备提取PDF文本...");
 
-      // 使用react-pdftotext库处理PDF文件
-      // 支持中文编码，无需额外配置
-      let extractedText = await pdfToText(fileToProcess);
+      // 检测移动端并添加超时处理
+      const isMobile =
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent,
+        );
+      const timeout = isMobile ? 30000 : 15000; // 移动端给更长的超时时间
+
+      // 使用Promise.race添加超时控制
+      let extractedText = await Promise.race([
+        pdfToText(fileToProcess),
+        new Promise<string>((_, reject) =>
+          setTimeout(
+            () => reject(new Error("文件处理超时，请尝试较小的文件")),
+            timeout,
+          ),
+        ),
+      ]);
 
       // 设置进度为90%表示提取完成
       setExtractProgress(90);
@@ -211,12 +268,27 @@ const PreparationResumesUpload: React.FC<
         localStorage.setItem(USER_RESUMES_STORAGE_KEY, extractedText);
         setHasResume(true);
         setExtractProgress(100);
+
+        // 清除处理中的提示信息
+        if (errorMessage === "正在处理文件，请稍候...") {
+          setErrorMessage("");
+        }
       } else {
         throw new Error("提取的文本内容为空");
       }
     } catch (error: any) {
       console.error("PDF文本提取失败:", error);
-      setErrorMessage("PDF文本提取失败: " + (error.message || String(error)));
+      const errorMsg = error.message || String(error);
+      setErrorMessage("PDF文本提取失败: " + errorMsg);
+
+      // 移动端提供额外的建议
+      const isMobile =
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent,
+        );
+      if (isMobile) {
+        setErrorMessage(errorMsg + " (建议：尝试较小的PDF文件或在电脑端操作)");
+      }
     } finally {
       setIsExtracting(false);
     }
@@ -244,11 +316,11 @@ const PreparationResumesUpload: React.FC<
   };
 
   // 触发文件选择对话框
-  const openFileDialog = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
+  // const openFileDialog = () => {
+  //   if (fileInputRef.current) {
+  //     fileInputRef.current.click();
+  //   }
+  // };
 
   // 渲染上传状态
   const renderStatus = () => {
@@ -287,7 +359,7 @@ const PreparationResumesUpload: React.FC<
         className={`${styles["upload-area"]} ${
           uploadProgress > 0 && uploadProgress < 100 ? styles["uploading"] : ""
         }`}
-        onClick={openFileDialog}
+        // onClick={openFileDialog}
       >
         <input
           type="file"

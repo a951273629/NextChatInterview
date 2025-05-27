@@ -2,11 +2,12 @@ import React, { useEffect, useRef, useState } from "react";
 import styles from "./InterviewPreparation.module.scss";
 import { toast } from "react-hot-toast";
 import PreparationResumesUpload from "./preparation-resumes-upload";
-import { useActivation } from "./valid-wrapper/ActivationWrapper";
-import ActivationStatus from "./valid-wrapper/ActivationStatus";
-import { safeLocalStorage } from "../utils";
+import { useActivation } from "../valid-wrapper/ActivationWrapper";
+import ActivationStatus from "../valid-wrapper/ActivationStatus";
+import { safeLocalStorage } from "@/app/utils";
 import { useNavigate } from "react-router-dom";
-import { Path } from "../constant";
+import { Path } from "@/app/constant";
+import { ACTIVATION_KEY } from "../valid-wrapper/activation";
 
 const localStorage = safeLocalStorage();
 
@@ -58,16 +59,21 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
   useEffect(() => {
     // 检查本地存储中的激活状态
     const checkActivationStatus = () => {
-      const status = localStorage.getItem("user_activation_status");
-      setIsActivated(status === "active");
+      const status = localStorage.getItem(ACTIVATION_KEY);
+      if (status === "active") {
+        setIsActivated(true);
+        clearInterval(intervalActive);
+      }
     };
 
-    checkActivationStatus();
-    // 添加事件监听器，以便在其他地方更新激活状态时刷新
-    window.addEventListener("storage", checkActivationStatus);
+    const intervalActive = setInterval(() => {
+      console.log("check active status");
+      checkActivationStatus();
+    }, 1300);
 
+    checkActivationStatus();
     return () => {
-      window.removeEventListener("storage", checkActivationStatus);
+      clearInterval(intervalActive);
     };
   }, []);
 

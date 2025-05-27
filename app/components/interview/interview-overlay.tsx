@@ -9,7 +9,7 @@ import {
   RealtimeVoiceprintRecognizer,
   VoiceRecognitionStatus,
   loadVoiceprintModelAndRecognizer,
-} from "@/app/services/voiceprint-service";
+} from "@/app/components/tensor-flow/services/voiceprint-service";
 import InterviewPreparation from "./InterviewPreparation";
 import { Toaster } from "react-hot-toast";
 import { MiniFloatWindow } from "./mini-float-window";
@@ -598,14 +598,15 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
   const handleDragMove = (e: MouseEvent) => {
     if (isDraggingRef.current) {
       const deltaX = e.clientX - dragStartXRef.current;
-      const newWidth = Math.max(
-        15,
-        Math.min(
-          80,
-          initialWidthRef.current - (deltaX / window.innerWidth) * 100,
-        ),
+      const newWidth = parseInt(
+        Math.max(
+          15,
+          Math.min(
+            80,
+            initialWidthRef.current - (deltaX / window.innerWidth) * 100,
+          ),
+        ).toFixed(0),
       );
-      console.log(`mouse have moved  Width:${newWidth}vw`);
       setWidth(`${newWidth}vw`);
     }
   };
@@ -651,7 +652,8 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
             ? "interviewer-mode"
             : ""
         }`}
-        // style={{ width }}
+        // 不是手机模式宽度可调整
+        style={{ width: !isMobile ? width : "100%" }}
       >
         {/* 添加左侧拖动条 */}
         <div className="drag-handle" onMouseDown={handleDragStart} />

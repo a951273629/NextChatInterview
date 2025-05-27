@@ -20,7 +20,7 @@ import {
 } from "rt-client";
 import { AudioHandler } from "@/app/lib/audio";
 import { uploadImage } from "@/app/utils/chat";
-import { VoicePrint } from "@/app/components/voice-print";
+import { VoicePrint } from "@/app/components/tensor-flow/voice-print";
 
 interface RealtimeChatProps {
   onClose?: () => void;

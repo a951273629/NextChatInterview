@@ -18,11 +18,14 @@ interface PreparationResumesUploadProps {
 /**
  * 给在chat中 dosubmit()要提交的文本 添加prompt
  * @param text 面试官的问题
+ * @param isEnglish 是否使用英文
  */
-export function addtionalResumeText(text: string) {
+export function additionalResumeText(text: string, isEnglish: boolean = false) {
   const addtionTextHead =
     "\n\nYou are now a super interview assistant and need to respond to the interviewer's questions above .\n" +
-    "All answers should be in Chinese Language.\n" +
+    "All answers should be in " +
+    (isEnglish ? "English" : "Chinese") +
+    " Language.\n" +
     "Below is your resume, please answer the questions based on the contents of the resume:\n\n";
 
   const additionalText = localStorage.getItem(USER_RESUMES_STORAGE_KEY);

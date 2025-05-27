@@ -33,6 +33,7 @@ import { initializeMcpSystem, isMcpEnabled } from "../mcp/actions";
 import LoginPage from "../pages/login";
 import TensorFlow from "./TensorFlow";
 import { ActivationProvider } from "./valid-wrapper/ActivationWrapper";
+import { LanguageProvider } from "../contexts/LanguageContext";
 import { NoticeManager } from "./notice/notice-announcement";
 
 export function Loading(props: { noLogo?: boolean }) {
@@ -296,11 +297,13 @@ export function Home() {
   return (
     <ErrorBoundary>
       <ActivationProvider>
-        {/*  React Router在这里初始化 */}
-        <Router>
-          <Screen />
-          <NoticeManager />
-        </Router>
+        <LanguageProvider>
+          {/*  React Router在这里初始化 */}
+          <Router>
+            <Screen />
+            <NoticeManager />
+          </Router>
+        </LanguageProvider>
       </ActivationProvider>
     </ErrorBoundary>
   );

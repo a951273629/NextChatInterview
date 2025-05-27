@@ -125,7 +125,8 @@ import { getAvailableClientsCount, isMcpEnabled } from "../mcp/actions";
 import { InterviewOverlay } from "./interview/interview-overlay";
 import { useActivation } from "./valid-wrapper/ActivationWrapper";
 import ActivationStatus from "./valid-wrapper/ActivationStatus";
-import { addtionalResumeText } from "./interview/preparation-resumes-upload";
+import { additionalResumeText } from "./interview/preparation-resumes-upload";
+import { useLanguage } from "@/app/contexts/LanguageContext";
 
 const localStorage = safeLocalStorage();
 
@@ -1104,6 +1105,9 @@ function _Chat() {
   const fontSize = config.fontSize;
   const fontFamily = config.fontFamily;
 
+  // 使用语言Context
+  const { isEnglish } = useLanguage();
+
   const [showExport, setShowExport] = useState(false);
   // 使用状态来控制 InterviewOverlay 的显示和隐藏
   const [showOverlay, setShowOverlay] = useState(false);
@@ -1248,7 +1252,7 @@ function _Chat() {
     // console.log("发送消息 - 即将调用 chatStore.onUserInput");
     setIsLoading(true);
     chatStore
-      .onUserInput(addtionalResumeText(userInput), attachImages)
+      .onUserInput(additionalResumeText(userInput, isEnglish), attachImages)
       .then(() => setIsLoading(false));
     setAttachImages([]);
     chatStore.setLastInput(userInput);

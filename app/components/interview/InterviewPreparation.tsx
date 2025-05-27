@@ -8,6 +8,10 @@ import { safeLocalStorage } from "@/app/utils";
 import { useNavigate } from "react-router-dom";
 import { Path } from "@/app/constant";
 import { ACTIVATION_KEY } from "../valid-wrapper/activation";
+import {
+  useLanguage,
+  RecognitionLanguage,
+} from "@/app/contexts/LanguageContext";
 
 const localStorage = safeLocalStorage();
 
@@ -16,9 +20,6 @@ interface InterviewPreparationProps {
   setVoiceprintEnabled: (enabled: boolean) => void;
   onStart: () => void;
 }
-
-// 语言选择类型
-type RecognitionLanguage = "zh-CN" | "en-US";
 
 // 设备状态类型
 type DeviceStatus = "ready" | "error" | "unavailable" | "unauthorized";
@@ -31,9 +32,8 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
   setVoiceprintEnabled,
   onStart,
 }) => {
-  // 语言选择状态
-  const [recognitionLanguage, setRecognitionLanguage] =
-    useState<RecognitionLanguage>("zh-CN");
+  // 使用语言Context替代本地状态
+  const { recognitionLanguage, setRecognitionLanguage } = useLanguage();
 
   // 麦克风状态
   const [micStatus, setMicStatus] = useState<DeviceStatus>("unavailable");

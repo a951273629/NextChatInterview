@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as tf from "@tensorflow/tfjs";
-import { VoicePrint } from "./tensor-flow/voice-print/voice-print";
+import { VoicePrint } from "./voice-print/voice-print";
 import styles from "./TensorFlow.module.scss";
-import { trainingPrompts } from "./tensor-flow/voice-text";
+import { trainingPrompts } from "./voice-text";
 import {
   VoiceRecognitionStatus,
   extractFeatures,
@@ -13,7 +13,7 @@ import {
   saveModelToCache,
   saveTrainingSamplesToCache,
   clearModelCache,
-} from "./tensor-flow/services/voiceprint-service";
+} from "./services/voiceprint-service";
 
 // 添加录音模式枚举
 enum RecordingMode {

@@ -12,6 +12,8 @@ import {
   useLanguage,
   RecognitionLanguage,
 } from "@/app/contexts/LanguageContext";
+// 导入声纹存储服务
+import { voiceprintStorage } from "../tensor-flow/services/voiceprint-storage";
 
 const localStorage = safeLocalStorage();
 
@@ -56,6 +58,9 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
   // 导航hook
   const navigate = useNavigate();
 
+  // 声纹数据是否存在
+  const [hasVoiceprint, setHasVoiceprint] = useState<boolean>(false);
+
   useEffect(() => {
     // 检查本地存储中的激活状态
     const checkActivationStatus = () => {
@@ -75,6 +80,21 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
     return () => {
       clearInterval(intervalActive);
     };
+  }, []);
+
+  // 检查声纹数据是否存在
+  useEffect(() => {
+    const checkVoiceprintExists = async () => {
+      try {
+        const voiceprint = await voiceprintStorage.getVoiceprint();
+        setHasVoiceprint(voiceprint !== null);
+      } catch (error) {
+        console.error("检查声纹数据失败:", error);
+        setHasVoiceprint(false);
+      }
+    };
+
+    checkVoiceprintExists();
   }, []);
 
   // 初始化时检测设备状态
@@ -213,8 +233,6 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
 
   // 切换声纹识别功能
   const handleVoiceprintToggle = () => {
-    const hasVoiceprint = localStorage.getItem("userVoiceprint") !== null;
-
     if (!hasVoiceprint) {
       // 如果没有声纹数据，显示对话框
       setDialogOpen(true);
@@ -325,7 +343,6 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
 
   const micStatusInfo = getMicStatusInfo();
   const networkStatusInfo = getNetworkStatusInfo();
-  const hasVoiceprint = localStorage.getItem("userVoiceprint") !== null;
 
   return (
     <div className={styles["interview-prep-container"]}>

@@ -13,6 +13,7 @@ import {
   saveModelToCache,
   saveTrainingSamplesToCache,
   clearModelCache,
+  saveVoiceprintToStorage,
 } from "./services/voiceprint-service";
 
 // 添加录音模式枚举
@@ -52,8 +53,20 @@ const TensorFlow: React.FC<TensorFlowProps> = ({ onVoiceprintResult }) => {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<Float32Array[]>([]);
+
+  // TensorFlow神经网络模型引用
+  // 存储用于声纹特征提取和识别的深度学习模型
+  // 该模型是一个卷积神经网络(CNN)，包含卷积层、池化层、全连接层等
+  // 用于将音频特征转换为声纹特征向量，实现声纹识别功能
   const modelRef = useRef<tf.LayersModel | null>(null);
+
+  // 用户声纹特征向量引用
+  // 存储用户训练完成后的声纹特征数据，类型为Float32Array
+  // 这是一个64维的浮点数组，代表用户独特的声纹特征
+  // 在训练阶段通过模型提取生成，在识别阶段用作比较的基准
+  // 通过计算新音频特征与此声纹的余弦相似度来判断是否为同一人
   const voiceprintRef = useRef<Float32Array | null>(null);
+
   const animationFrameRef = useRef<number | null>(null);
   // 添加实时识别器引用
   const realtimeRecognizerRef = useRef<RealtimeVoiceprintRecognizer | null>(
@@ -66,19 +79,6 @@ const TensorFlow: React.FC<TensorFlowProps> = ({ onVoiceprintResult }) => {
 
   // 初始化
   useEffect(() => {
-    // 检查是否有保存的声纹模型
-    const savedVoiceprint = localStorage.getItem("userVoiceprint");
-    if (savedVoiceprint) {
-      try {
-        voiceprintRef.current = new Float32Array(JSON.parse(savedVoiceprint));
-        setIsTrained(true);
-        setStatus(VoiceRecognitionStatus.TRAINED);
-        setMessage("已加载保存的声纹模型");
-      } catch (error) {
-        console.error("加载保存的声纹模型失败:", error);
-      }
-    }
-
     // 加载TensorFlow模型
     loadModel();
 
@@ -245,8 +245,6 @@ const TensorFlow: React.FC<TensorFlowProps> = ({ onVoiceprintResult }) => {
 
   // 停止录音
   const stopRecording = () => {
-    console.log("have stoped");
-
     // 停止所有音频流
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -340,13 +338,10 @@ const TensorFlow: React.FC<TensorFlowProps> = ({ onVoiceprintResult }) => {
       const voiceprintData = await voiceprint.data();
       voiceprintRef.current = new Float32Array(voiceprintData);
 
-      // 保存到localStorage
-      localStorage.setItem(
-        "userVoiceprint",
-        JSON.stringify(Array.from(voiceprintData)),
-      );
+      // 保存到IndexedDB
+      await saveVoiceprintToStorage(voiceprintRef.current);
 
-      // 保存模型到缓存，以便页面刷新后重用
+      // 保存模型到IndexDB
       await saveModelToCache(modelRef.current);
 
       setIsTrained(true);
@@ -419,12 +414,10 @@ const TensorFlow: React.FC<TensorFlowProps> = ({ onVoiceprintResult }) => {
 
   // 清除训练数据
   const clearTrainedData = async () => {
-    // 清除localStorage中的声纹数据
-    localStorage.removeItem("userVoiceprint");
-    voiceprintRef.current = null;
-
     // 清除所有缓存的模型和训练样本
     await clearModelCache();
+
+    voiceprintRef.current = null;
 
     setIsTrained(false);
     setStatus(VoiceRecognitionStatus.IDLE);

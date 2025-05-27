@@ -1,4 +1,5 @@
 import * as tf from "@tensorflow/tfjs";
+import { voiceprintStorage } from "./voiceprint-storage";
 
 // 声纹特征提取参数
 export const SAMPLE_RATE = 16000; // 采样率
@@ -39,14 +40,6 @@ export const DEFAULT_VOICEPRINT_CONFIG: VoiceprintConfig = {
   slidingWindowSize: 3000,
   slidingWindowStep: 1000,
 };
-
-// 添加模型缓存版本号，用于未来兼容性管理
-export const MODEL_CACHE_VERSION = "1.0";
-
-// 模型缓存键名
-const MODEL_CACHE_KEY = "voiceprintModelCache";
-const TRAINING_SAMPLES_KEY = "voiceprintTrainingSamples";
-const MODEL_VERSION_KEY = "voiceprintModelVersion";
 
 /**
  * 提取音频特征
@@ -387,7 +380,7 @@ export interface VoiceprintModelLoadResult {
 /**
  * 加载声纹识别模型和识别器
  *
- * 从localStorage加载保存的声纹特征，创建并初始化TensorFlow模型，
+ * 从IndexedDB加载保存的声纹特征，创建并初始化TensorFlow模型，
  * 以及初始化实时声纹识别器。
  *
  * @param onStatusChange 状态变化回调函数
@@ -405,30 +398,20 @@ export const loadVoiceprintModelAndRecognizer = async (
   let recognizer: RealtimeVoiceprintRecognizer | null = null;
 
   try {
-    // 尝试从localStorage加载保存的声纹
-    const savedVoiceprint = localStorage.getItem("userVoiceprint");
-    if (savedVoiceprint) {
-      voiceprint = new Float32Array(JSON.parse(savedVoiceprint));
+    // 尝试从IndexedDB加载保存的声纹
+    voiceprint = await voiceprintStorage.getVoiceprint();
+    if (voiceprint) {
       console.log("已加载保存的声纹模型");
     } else {
       console.log("未找到保存的声纹模型，请先在TensorFlow页面训练声纹");
       onVoiceprintEnabled(false);
     }
 
-    // 尝试从缓存加载模型
-    let cachedModel = null;
-    try {
-      cachedModel = await loadModelFromCache();
-    } catch (cacheError) {
-      console.warn("加载缓存模型失败，将创建新模型:", cacheError);
-    }
+    // 尝试从IndexedDB加载模型
+    model = await voiceprintStorage.loadModel();
 
-    // 如果成功从缓存加载模型，则使用缓存的模型
-    if (cachedModel) {
-      model = cachedModel;
-      console.log("使用缓存的声纹识别模型");
-    } else {
-      // 如果没有缓存或加载失败，创建新模型
+    // 如果没有从IndexedDB加载到模型，创建新模型
+    if (!model) {
       console.log("创建新的声纹识别模型");
       const sequentialModel = tf.sequential();
       sequentialModel.add(
@@ -461,13 +444,11 @@ export const loadVoiceprintModelAndRecognizer = async (
       model = sequentialModel;
     }
 
-    // 如果有缓存的训练样本，尝试进行模型校准
+    // 如果有声纹和训练样本，尝试进行模型校准
     if (voiceprint) {
-      const trainingSamples = loadTrainingSamplesFromCache();
+      const trainingSamples = await voiceprintStorage.getTrainingSamples();
       if (trainingSamples && trainingSamples.length > 0) {
         console.log("使用缓存的训练样本校准模型");
-        // 使用存储的样本进行快速校准，这里只是简单前向传播，不是完整训练
-        // 实际应用中可以添加更复杂的校准逻辑
         try {
           const features = await extractFeatures(trainingSamples);
           if (features) {
@@ -495,6 +476,7 @@ export const loadVoiceprintModelAndRecognizer = async (
       // 设置声纹特征
       recognizer.setVoiceprint(voiceprint);
       onStatusChange(VoiceRecognitionStatus.TRAINED);
+      onVoiceprintEnabled(true);
     }
   } catch (error) {
     console.error("加载模型或声纹失败:", error);
@@ -517,115 +499,43 @@ export const loadVoiceprintModelAndRecognizer = async (
 export const saveModelToCache = async (
   model: tf.LayersModel,
 ): Promise<boolean> => {
-  try {
-    // 检查是否支持IndexedDB
-    if (!window.indexedDB) {
-      console.warn("浏览器不支持IndexedDB，无法缓存模型");
-      return false;
-    }
-
-    // 保存模型到IndexedDB
-    await model.save(`indexeddb://${MODEL_CACHE_KEY}`);
-
-    // 记录模型版本
-    localStorage.setItem(MODEL_VERSION_KEY, MODEL_CACHE_VERSION);
-
-    console.log("声纹识别模型已缓存到IndexedDB");
-    return true;
-  } catch (error) {
-    console.error("保存模型到缓存失败:", error);
-    return false;
-  }
+  return voiceprintStorage.saveModel(model);
 };
 
 /**
- * 从缓存中加载模型
- * @returns 加载的模型或null（如果加载失败）
- */
-export const loadModelFromCache = async (): Promise<tf.LayersModel | null> => {
-  try {
-    // 检查版本兼容性
-    const savedVersion = localStorage.getItem(MODEL_VERSION_KEY);
-    if (!savedVersion || savedVersion !== MODEL_CACHE_VERSION) {
-      console.log("未找到匹配版本的模型缓存或版本不兼容");
-      return null;
-    }
-
-    // 尝试从IndexedDB加载模型
-    const model = await tf.loadLayersModel(`indexeddb://${MODEL_CACHE_KEY}`);
-    if (!model) return null;
-
-    // 确保模型已编译
-    model.compile({
-      optimizer: "adam",
-      loss: "meanSquaredError",
-    });
-
-    console.log("从IndexedDB加载模型成功");
-    return model;
-  } catch (error) {
-    console.error("从缓存加载模型失败:", error);
-    return null;
-  }
-};
-
-/**
- * 保存训练样本到缓存
+ * 保存训练样本到IndexedDB
  * @param audioData 训练音频样本
  * @returns 是否保存成功
  */
 export const saveTrainingSamplesToCache = async (
   audioData: Float32Array[],
 ): Promise<boolean> => {
-  try {
-    // 限制样本数量和大小，防止存储过大
-    const maxSamples = 3; // 最多保存3个样本
-    const mergedData = [];
-
-    for (let i = 0; i < Math.min(audioData.length, maxSamples); i++) {
-      mergedData.push(Array.from(audioData[i]));
-    }
-
-    // 保存到localStorage
-    localStorage.setItem(TRAINING_SAMPLES_KEY, JSON.stringify(mergedData));
-    return true;
-  } catch (error) {
-    console.error("保存训练样本到缓存失败:", error);
-    return false;
-  }
+  return voiceprintStorage.saveTrainingSamples(audioData);
 };
 
 /**
- * 从缓存中加载训练样本
- * @returns 训练样本数组或null（如果加载失败）
+ * 保存声纹数据到IndexedDB
+ * @param voiceprint 声纹数据
+ * @returns 是否保存成功
  */
-export const loadTrainingSamplesFromCache = (): Float32Array[] | null => {
-  try {
-    const savedSamples = localStorage.getItem(TRAINING_SAMPLES_KEY);
-    if (!savedSamples) return null;
-
-    const parsedSamples = JSON.parse(savedSamples);
-    return parsedSamples.map((sample: number[]) => new Float32Array(sample));
-  } catch (error) {
-    console.error("从缓存加载训练样本失败:", error);
-    return null;
-  }
+export const saveVoiceprintToStorage = async (
+  voiceprint: Float32Array,
+): Promise<boolean> => {
+  return voiceprintStorage.saveVoiceprint(voiceprint);
 };
+
+/**
+ * 从IndexedDB加载声纹数据
+ * @returns 声纹数据或null
+ */
+export const loadVoiceprintFromStorage =
+  async (): Promise<Float32Array | null> => {
+    return voiceprintStorage.getVoiceprint();
+  };
 
 /**
  * 删除所有缓存的模型和训练数据
  */
 export const clearModelCache = async (): Promise<void> => {
-  try {
-    // 删除IndexedDB中的模型
-    await tf.io.removeModel(`indexeddb://${MODEL_CACHE_KEY}`);
-
-    // 删除localStorage中的数据
-    localStorage.removeItem(MODEL_VERSION_KEY);
-    localStorage.removeItem(TRAINING_SAMPLES_KEY);
-
-    console.log("已清除所有模型缓存和训练样本");
-  } catch (error) {
-    console.error("清除模型缓存失败:", error);
-  }
+  await voiceprintStorage.clearAll();
 };

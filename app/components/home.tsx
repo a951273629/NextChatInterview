@@ -31,7 +31,7 @@ import { useAccessStore } from "../store";
 import clsx from "clsx";
 import { initializeMcpSystem, isMcpEnabled } from "../mcp/actions";
 import LoginPage from "../pages/login";
-import TensorFlow from "./TensorFlow";
+import TensorFlow from "./tensor-flow/TensorFlow";
 import { ActivationProvider } from "./valid-wrapper/ActivationWrapper";
 import { LanguageProvider } from "../contexts/LanguageContext";
 import { NoticeManager } from "./notice/notice-announcement";

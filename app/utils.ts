@@ -20,8 +20,8 @@ export function trimTopic(topic: string) {
   return (
     topic
       // fix for gemini
-      .replace(/^["“”*]+|["“”*]+$/g, "")
-      .replace(/[，。！？”“"、,.!?*]*$/, "")
+      .replace(/^["""*]+|["""*]+$/g, "")
+      .replace(/[，。！？""""、,.!?*]*$/, "")
   );
 }
 
@@ -114,17 +114,25 @@ export function readFromFile() {
 }
 
 export function isIOS() {
+  // 确保在浏览器环境下才执行
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
   const userAgent = navigator.userAgent.toLowerCase();
   return /iphone|ipad|ipod/.test(userAgent);
 }
 
 export function useWindowSize() {
   const [size, setSize] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight,
+    width: typeof window !== "undefined" ? window.innerWidth : 1024,
+    height: typeof window !== "undefined" ? window.innerHeight : 768,
   });
 
   useEffect(() => {
+    // 确保只在客户端环境下执行
+    if (typeof window === "undefined") return;
+
     const onResize = () => {
       setSize({
         width: window.innerWidth,
@@ -156,6 +164,11 @@ export function isFirefox() {
 }
 
 export function selectOrCopy(el: HTMLElement, content: string) {
+  // 确保在浏览器环境下才执行
+  if (typeof window === "undefined") {
+    return false;
+  }
+
   const currentSelection = window.getSelection();
 
   if (currentSelection?.type === "Range") {
@@ -168,6 +181,11 @@ export function selectOrCopy(el: HTMLElement, content: string) {
 }
 
 function getDomContentWidth(dom: HTMLElement) {
+  // 确保在浏览器环境下才执行
+  if (typeof window === "undefined") {
+    return 0;
+  }
+
   const style = window.getComputedStyle(dom);
   const paddingWidth =
     parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
@@ -195,6 +213,11 @@ function getOrCreateMeasureDom(id: string, init?: (dom: HTMLElement) => void) {
 }
 
 export function autoGrowTextArea(dom: HTMLTextAreaElement) {
+  // 确保在浏览器环境下才执行
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return 1; // 返回默认行数
+  }
+
   const measureDom = getOrCreateMeasureDom("__measure");
   const singleLineDom = getOrCreateMeasureDom("__single_measure", (dom) => {
     dom.innerText = "TEXT_FOR_MEASURE";
@@ -218,6 +241,11 @@ export function autoGrowTextArea(dom: HTMLTextAreaElement) {
 }
 
 export function getCSSVar(varName: string) {
+  // 确保在浏览器环境下才执行
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return ""; // 返回空字符串作为默认值
+  }
+
   return getComputedStyle(document.body).getPropertyValue(varName).trim();
 }
 
@@ -354,6 +382,12 @@ export function fetch(
   url: string,
   options?: Record<string, unknown>,
 ): Promise<any> {
+  // 确保在浏览器环境下才执行
+  if (typeof window === "undefined") {
+    // 在服务端环境下，使用 Node.js 的 fetch 或抛出错误
+    throw new Error("fetch is not available in server environment");
+  }
+
   if (window.__TAURI__) {
     return tauriStreamFetch(url, options);
   }
@@ -447,6 +481,12 @@ export function getOperationId(operation: {
 }
 
 export function clientUpdate() {
+  // 确保在浏览器环境下才执行
+  if (typeof window === "undefined" || !window.__TAURI__) {
+    console.warn("clientUpdate is only available in Tauri environment");
+    return Promise.resolve();
+  }
+
   // this a wild for updating client app
   return window.__TAURI__?.updater
     .checkUpdate()

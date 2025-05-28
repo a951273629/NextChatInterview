@@ -340,8 +340,8 @@
     // 底部按钮区域在移动设备上的优化
     .prep-footer {
       margin-top: 1.5rem;
-      margin-bottom: 2rem; // 增加底部间距
-      padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0)); // 考虑安全区域
+      margin-bottom: calc(2.5rem + env(safe-area-inset-bottom, 0)); // 增加更多底部间距
+      padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0)); // 考虑安全区域，增加更多间距
       width: 100%;
       position: relative; // 相对定位
       bottom: 0; // 确保位于底部
@@ -371,7 +371,7 @@
     padding: 0.6rem;
     
     .prep-footer {
-      margin-bottom: 1.5rem;
+      margin-bottom: calc(2rem + env(safe-area-inset-bottom, 0)); // 增加底部间距
       .start-button {
         width: 90%; // 在更小屏幕上增加按钮宽度
         padding: 0.9rem 1.5rem;
@@ -402,7 +402,8 @@
       
       .prep-footer {
         // 确保按钮上方的空间足够，不被底部栏遮挡
-        padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0));
+        padding-bottom: calc(3rem + env(safe-area-inset-bottom, 0)); // 增加更多间距
+        margin-bottom: calc(3rem + env(safe-area-inset-bottom, 0)); // 确保底部有足够空间
       }
     }
   }

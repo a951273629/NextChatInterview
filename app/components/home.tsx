@@ -21,6 +21,7 @@ import {
   Route,
   Routes,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
 import { SideBar } from "./sidebar";
 import { useAppConfig } from "../store/config";
@@ -183,6 +184,7 @@ export function WindowContent(props: { children: React.ReactNode }) {
 function Screen() {
   const config = useAppConfig();
   const location = useLocation();
+  const navigate = useNavigate();
   const isArtifact = location.pathname.includes(Path.Artifacts);
   const isHome = location.pathname === Path.Home;
   const isAuth = location.pathname === Path.Auth;
@@ -196,6 +198,13 @@ function Screen() {
   useEffect(() => {
     loadAsyncGoogleFont();
   }, []);
+
+  // 移动端默认路由重定向
+  useEffect(() => {
+    if (isMobileScreen && isHome) {
+      navigate(Path.Chat, { replace: true });
+    }
+  }, [isMobileScreen, isHome, navigate]);
 
   if (isArtifact) {
     return (
@@ -271,6 +280,8 @@ export function Home() {
   useLoadData();
   useHtmlLang();
 
+  const isMobileScreen = useMobileScreen();
+
   useEffect(() => {
     console.log("[Config] got config from build time", getClientConfig());
     useAccessStore.getState().fetch();
@@ -288,7 +299,7 @@ export function Home() {
       }
     };
     initMcp();
-  }, []);
+  }, [isMobileScreen]);
 
   if (!useHasHydrated()) {
     return <Loading />;

@@ -88,6 +88,7 @@
     border-radius: 0;
     padding: 15px;
     border: none;
+    padding-bottom: calc(15px + 3rem + env(safe-area-inset-bottom, 0));
 
     .drag-handle {
       display: none;
@@ -292,13 +293,14 @@
     @media only screen and (max-width: 600px) {
       gap: 0.3rem;
       margin-top: 0.75rem;
+      margin-bottom: calc(5rem + env(safe-area-inset-bottom, 0));
       
       .button {
         padding: 0.5rem 0.5rem;
         font-size: 0.8rem;
         flex: 1;
         min-height: 40px;
-        margin-bottom: 2rem;
+        margin-bottom: 0;
       }
       
       .setting-item {

@@ -33,6 +33,7 @@ ENV OPENAI_API_KEY=""
 ENV GOOGLE_API_KEY=""
 ENV CODE=""
 ENV ENABLE_MCP=""
+ENV DB_PATH="/app/data/nextchat.db"
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
@@ -41,6 +42,10 @@ COPY --from=builder /app/.next/server ./.next/server
 
 RUN mkdir -p /app/app/mcp && chmod 777 /app/app/mcp
 COPY --from=builder /app/app/mcp/mcp_config.default.json /app/app/mcp/mcp_config.json
+
+RUN mkdir -p /app/data && chmod 755 /app/data
+
+COPY --from=builder /app/app/db/*.sql /app/app/db/
 
 EXPOSE 3000
 

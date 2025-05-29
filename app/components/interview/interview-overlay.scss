@@ -18,6 +18,26 @@
   overflow-y: auto;
   transition: all 0.3s ease;
 
+  // 关闭按钮样式
+  .close-button {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 1001;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 60%;
+    transition: all 0.2s ease;
+
+  }
+
   &.dragging {
     cursor: col-resize;
   }

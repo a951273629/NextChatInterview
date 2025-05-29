@@ -9,6 +9,10 @@ services:
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       CODE: ${CODE}
       BASE_URL: ${BASE_URL}
+      DB_PATH: /app/data/nextchat.db
+    volumes:
+      - ./nextchat-data:/app/data
+    restart: unless-stopped
 
   nginx:
     image: nginx:alpine
@@ -21,3 +25,7 @@ services:
       - ./nginx/certs:/etc/nginx/certs
     depends_on:
       - nextchat
+
+volumes:
+  nextchat-data:
+    driver: local

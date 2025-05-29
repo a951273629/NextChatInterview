@@ -9,8 +9,7 @@ import AddIcon from "../icons/add.svg";
 import DeleteIcon from "../icons/delete.svg";
 import McpIcon from "../icons/mcp.svg";
 import DragIcon from "../icons/drag.svg";
-import DiscoveryIcon from "../icons/discovery.svg";
-
+import PersonalIcon from "../icons/personal_set.svg";
 import Locale from "../locales";
 
 import { useAppConfig, useChatStore } from "../store";
@@ -29,7 +28,8 @@ import dynamic from "next/dynamic";
 import { Selector, showConfirm } from "./ui-lib";
 import clsx from "clsx";
 import { isMcpEnabled } from "../mcp/actions";
-
+// import PersonalSet from "./personal-set/personal-set";
+import PreparationResumesUpload from "./personal-set/preparation-resumes-upload";
 const DISCOVERY = [
   { name: Locale.Plugin.Name, path: Path.Plugins },
   { name: "Stable Diffusion", path: Path.Sd },
@@ -226,10 +226,12 @@ export function SideBar(props: { className?: string }) {
   useHotKey();
   const { onDragStart, shouldNarrow } = useDragSideBar();
   const [showDiscoverySelector, setshowDiscoverySelector] = useState(false);
+
   const navigate = useNavigate();
   const config = useAppConfig();
   const chatStore = useChatStore();
   const [mcpEnabled, setMcpEnabled] = useState(false);
+  const [showPersonalSet, setShowPersonalSet] = useState(false);
 
   useEffect(() => {
     // 检查 MCP 是否启用
@@ -255,19 +257,16 @@ export function SideBar(props: { className?: string }) {
         shouldNarrow={shouldNarrow}
       >
         <div className={styles["sidebar-header-bar"]}>
-          {/* <IconButton
-            icon={<MaskIcon />}
-            text={shouldNarrow ? undefined : Locale.Mask.Name}
-            className={styles["sidebar-bar-button"]}
+          {/* <PersonalSet /> */}
+          <IconButton
+            icon={<PersonalIcon />}
+            text={shouldNarrow ? undefined : "点击上传简历"}
+            className={styles["sidebar-bar-button-resume-set"]}
             onClick={() => {
-              if (config.dontShowMaskSplashScreen !== true) {
-                navigate(Path.NewChat, { state: { fromHome: true } });
-              } else {
-                navigate(Path.Masks, { state: { fromHome: true } });
-              }
+              setShowPersonalSet(true);
             }}
             shadow
-          /> */}
+          />
           {mcpEnabled && (
             <IconButton
               icon={<McpIcon />}
@@ -279,13 +278,13 @@ export function SideBar(props: { className?: string }) {
               shadow
             />
           )}
-          <IconButton
+          {/* <IconButton
             icon={<DiscoveryIcon />}
             text={shouldNarrow ? undefined : Locale.Discovery.Name}
             className={styles["sidebar-bar-button"]}
             onClick={() => setshowDiscoverySelector(true)}
             shadow
-          />
+          /> */}
         </div>
         {showDiscoverySelector && (
           <Selector
@@ -302,6 +301,9 @@ export function SideBar(props: { className?: string }) {
               navigate(s[0], { state: { fromHome: true } });
             }}
           />
+        )}
+        {showPersonalSet && (
+          <PreparationResumesUpload onClose={() => setShowPersonalSet(false)} />
         )}
       </SideBarHeader>
       <SideBarBody

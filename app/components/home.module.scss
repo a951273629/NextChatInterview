@@ -66,6 +66,14 @@
         margin-right: 10px;
       }
     }
+    .sidebar-bar-button-resume-set {
+      height: 5vh;
+      flex-grow: 3;
+
+      &:not(:last-child) {
+        margin-right: 10px;
+      }
+    }
   }
 
   &:hover,

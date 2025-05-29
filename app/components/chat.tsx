@@ -5,7 +5,6 @@ import React, {
   RefObject,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -28,14 +27,11 @@ import MaxIcon from "../icons/max.svg";
 import MinIcon from "../icons/min.svg";
 import ResetIcon from "../icons/reload.svg";
 import ReloadIcon from "../icons/reload.svg";
-import BreakIcon from "../icons/break.svg";
-import SettingsIcon from "../icons/chat-settings.svg";
 import DeleteIcon from "../icons/clear.svg";
 import PinIcon from "../icons/pin.svg";
 import ConfirmIcon from "../icons/confirm.svg";
 import CloseIcon from "../icons/close.svg";
 import CancelIcon from "../icons/cancel.svg";
-import ImageIcon from "../icons/image.svg";
 
 import BottomIcon from "../icons/bottom.svg";
 import StopIcon from "../icons/pause.svg";
@@ -45,7 +41,8 @@ import QualityIcon from "../icons/hd.svg";
 import StyleIcon from "../icons/palette.svg";
 import McpToolIcon from "../icons/tool.svg";
 import HeadphoneIcon from "../icons/headphone.svg";
-import InterViewIcon from "../icons/interview_start.svg";
+import InterViewIcon1 from "../icons/interview_01.svg";
+import InterViewIcon2 from "../icons/interview_02.svg";
 import {
   BOT_HELLO,
   ChatMessage,
@@ -125,7 +122,7 @@ import { getAvailableClientsCount, isMcpEnabled } from "../mcp/actions";
 import { InterviewOverlay } from "./interview/interview-overlay";
 import { useActivation } from "./valid-wrapper/ActivationWrapper";
 import ActivationStatus from "./valid-wrapper/ActivationStatus";
-import { additionalResumeText } from "./interview/preparation-resumes-upload";
+import { additionalResumeText } from "./personal-set/preparation-resumes-upload";
 import { useLanguage } from "@/app/contexts/LanguageContext";
 
 const localStorage = safeLocalStorage();
@@ -455,51 +452,13 @@ export function ChatActionVoice(props: {
   icon: JSX.Element;
   onClick: () => void;
 }) {
-  const iconRef = useRef<HTMLDivElement>(null);
-  const textRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState({
-    full: 32,
-    icon: 16,
-  });
-
-  function updateWidth() {
-    if (!iconRef.current || !textRef.current) return;
-    const getWidth = (dom: HTMLDivElement) => dom.getBoundingClientRect().width;
-    const textWidth = getWidth(textRef.current);
-    const iconWidth = getWidth(iconRef.current);
-    setWidth({
-      full: textWidth + iconWidth,
-      icon: iconWidth,
-    });
-  }
-
-  // 使用 useLayoutEffect 确保在 DOM 更新后同步执行
-  useLayoutEffect(() => {
-    updateWidth();
-  }, [props.text, props.icon]); // 添加依赖项，确保在 text 或 icon 变化时重新计算宽度
-
   return (
     <div
-      className={clsx(styles["chat-input-action"], "clickable")}
-      onClick={() => {
-        props.onClick();
-        setTimeout(updateWidth, 1);
-      }}
-      onMouseEnter={updateWidth}
-      onTouchStart={updateWidth}
-      style={
-        {
-          "--icon-width": `${width.icon}px`,
-          "--full-width": `${width.full}px`,
-        } as React.CSSProperties
-      }
+      className={clsx(styles["chat-input-action-custom"], "clickable")}
+      onClick={props.onClick}
     >
-      <div ref={iconRef} className={styles["icon"]}>
-        {props.icon}
-      </div>
-      <div className={styles["text"]} ref={textRef}>
-        {props.text}
-      </div>
+      <div className={styles["icon"]}>{props.icon}</div>
+      <div className={styles["text"]}>{props.text}</div>
     </div>
   );
 }
@@ -633,21 +592,21 @@ export function ChatActions(props: {
               icon={<BottomIcon />}
             />
           )}
-          {props.hitBottom && (
+          {/* {props.hitBottom && (
             <ChatAction
               onClick={props.showPromptModal}
               text={Locale.Chat.InputActions.Settings}
               icon={<SettingsIcon />}
             />
-          )}
+          )} */}
 
-          {showUploadImage && (
+          {/* {showUploadImage && (
             <ChatAction
               onClick={props.uploadImage}
               text={Locale.Chat.InputActions.UploadImage}
               icon={props.uploading ? <LoadingButtonIcon /> : <ImageIcon />}
             />
-          )}
+          )} */}
 
           {/* 
           them 主题 按钮
@@ -681,7 +640,7 @@ export function ChatActions(props: {
             icon={<MaskIcon />}
           /> */}
 
-          <ChatAction
+          {/* <ChatAction
             text={Locale.Chat.InputActions.Clear}
             icon={<BreakIcon />}
             onClick={() => {
@@ -694,9 +653,9 @@ export function ChatActions(props: {
                 }
               });
             }}
-          />
+          /> */}
 
-          <ChatAction
+          <ChatActionVoice
             onClick={() => setShowModelSelector(true)}
             text={currentModelName}
             icon={<RobotIcon />}
@@ -848,13 +807,24 @@ export function ChatActions(props: {
               icon={<PluginIcon />}
             />
           )} */}
+          {/* 从麦克风开始面试 */}
           <ChatActionVoice
             onClick={() => {
               props.setShowOverlay(!contronlShow);
               contronlShow = !contronlShow;
             }}
-            text="interView"
-            icon={<InterViewIcon />}
+            text="麦克风InterView"
+            icon={<InterViewIcon1 />}
+          />
+
+          {/* 从扬声器开始面试 */}
+          <ChatActionVoice
+            onClick={() => {
+              props.setShowOverlay(!contronlShow);
+              contronlShow = !contronlShow;
+            }}
+            text="扬声器InterView"
+            icon={<InterViewIcon2 />}
           />
 
           {/* 新增：TensorFlow 跳转按钮 */}

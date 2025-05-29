@@ -659,6 +659,11 @@ export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
         <div className="drag-handle" onMouseDown={handleDragStart} />
 
         <div className="content-container">
+          {/* 关闭按钮 */}
+          <button className="close-button" onClick={onClose}>
+            ×
+          </button>
+
           {!isStarted ? (
             // 面试准备组件
             <InterviewPreparation

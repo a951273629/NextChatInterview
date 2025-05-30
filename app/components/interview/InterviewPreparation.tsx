@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./InterviewPreparation.module.scss";
 import { toast } from "react-hot-toast";
-import PreparationResumesUpload from "./preparation-resumes-upload";
 import { useActivation } from "../valid-wrapper/ActivationWrapper";
 import ActivationStatus from "../valid-wrapper/ActivationStatus";
 import { safeLocalStorage } from "@/app/utils";
@@ -353,10 +352,10 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
       </div>
 
       <div className={styles["prep-main-content"]}>
-        {/* 简历上传组件 */}
+        {/* 简历上传组件
         <div className={styles["prep-section"]}>
           <PreparationResumesUpload />
-        </div>
+        </div> */}
 
         {/* 设备检查区域 */}
         <div

@@ -1,8 +1,7 @@
 "use client";
-
 import React, { useState, useRef, useEffect } from "react";
 import styles from "./preparation-resumes-upload.module.scss";
-import pdfToText from "react-pdftotext";
+// import pdfToText from "react-pdftotext";
 
 // 判断当前是否为开发环境
 const isDevelopment = process.env.NODE_ENV === "development";
@@ -12,7 +11,7 @@ import {
 } from "@/app/constant";
 
 interface PreparationResumesUploadProps {
-  // 可能的接口扩展，用于未来功能
+  onClose?: () => void; // 添加关闭回调函数
 }
 
 /**
@@ -35,9 +34,9 @@ export function additionalResumeText(text: string, isEnglish: boolean = false) {
   return text;
 }
 
-const PreparationResumesUpload: React.FC<
-  PreparationResumesUploadProps
-> = () => {
+const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
+  onClose,
+}) => {
   // 状态管理
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -214,16 +213,16 @@ const PreparationResumesUpload: React.FC<
       const timeout = isMobile ? 30000 : 15000; // 移动端给更长的超时时间
 
       // 使用Promise.race添加超时控制
-      let extractedText = await Promise.race([
-        pdfToText(fileToProcess),
-        new Promise<string>((_, reject) =>
-          setTimeout(
-            () => reject(new Error("文件处理超时，请尝试较小的文件")),
-            timeout,
-          ),
-        ),
-      ]);
-
+      // let extractedText = await Promise.race([
+      //   pdfToText(fileToProcess),
+      //   new Promise<string>((_, reject) =>
+      //     setTimeout(
+      //       () => reject(new Error("文件处理超时，请尝试较小的文件")),
+      //       timeout,
+      //     ),
+      //   ),
+      // ]);
+      let extractedText = "";
       // 设置进度为90%表示提取完成
       setExtractProgress(90);
 
@@ -353,143 +352,171 @@ const PreparationResumesUpload: React.FC<
     }
   };
 
+  // 处理点击背景关闭
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget && onClose) {
+      onClose();
+    }
+  };
+
+  // 处理关闭按钮点击
+  const handleCloseClick = () => {
+    if (onClose) {
+      onClose();
+    }
+  };
+
   return (
-    <div className={styles["resume-upload-container"]}>
-      <h4 className={styles["section-title"]}>简历上传</h4>
-
-      {/* 上传区域 */}
+    <div className={styles["modal-overlay"]} onClick={handleBackgroundClick}>
       <div
-        className={`${styles["upload-area"]} ${
-          uploadProgress > 0 && uploadProgress < 100 ? styles["uploading"] : ""
-        }`}
-        // onClick={openFileDialog}
+        className={styles["modal-content"]}
+        onClick={(e) => e.stopPropagation()}
       >
-        <input
-          type="file"
-          ref={fileInputRef}
-          className={styles["file-input"]}
-          accept="application/pdf"
-          onChange={handleFileSelect}
-        />
-        <div className={styles["upload-icon"]}>📄</div>
-        <div className={styles["upload-text"]}>
-          {resumeFileName
-            ? resumeFileName
-            : hasResume && uploadedFileRef.current
-            ? uploadedFileRef.current.name
-            : "点击此处，上传简历文件"}
+        {/* 关闭按钮 */}
+        <button className={styles["close-button"]} onClick={handleCloseClick}>
+          ×
+        </button>
+
+        <div className={styles["resume-upload-container"]}>
+          <h4 className={styles["section-title"]}>简历上传</h4>
+
+          {/* 上传区域 */}
+          <div
+            className={`${styles["upload-area"]} ${
+              uploadProgress > 0 && uploadProgress < 100
+                ? styles["uploading"]
+                : ""
+            }`}
+            // onClick={openFileDialog}
+          >
+            <input
+              type="file"
+              ref={fileInputRef}
+              className={styles["file-input"]}
+              accept="application/pdf"
+              onChange={handleFileSelect}
+            />
+            <div className={styles["upload-icon"]}>📄</div>
+            <div className={styles["upload-text"]}>
+              {resumeFileName
+                ? resumeFileName
+                : hasResume && uploadedFileRef.current
+                ? uploadedFileRef.current.name
+                : "点击此处，上传简历文件"}
+            </div>
+            <div className={styles["upload-subtext"]}>仅支持 .pdf 文件类型</div>
+          </div>
+
+          {/* 上传进度 */}
+          {uploadProgress > 0 && uploadProgress < 100 && (
+            <div className={styles["upload-progress"]}>
+              <div className={styles["progress-text"]}>
+                <span className={styles["progress-label"]}>上传中...</span>
+                <span className={styles["progress-percentage"]}>
+                  {uploadProgress}%
+                </span>
+              </div>
+              <div className={styles["progress-bar-container"]}>
+                <div
+                  className={styles["progress-bar"]}
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+
+          {/* 提取进度 */}
+          {isExtracting && (
+            <div className={styles["upload-progress"]}>
+              <div className={styles["progress-text"]}>
+                <span className={styles["progress-label"]}>提取文本中...</span>
+                <span className={styles["progress-percentage"]}>
+                  {extractProgress}%
+                </span>
+              </div>
+              <div className={styles["progress-bar-container"]}>
+                <div
+                  className={styles["progress-bar"]}
+                  style={{ width: `${extractProgress}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+
+          {/* 测试环境按钮 */}
+          {isDevelopment && (
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button
+                className={styles["test-button"]}
+                onClick={TestFileSelect}
+                style={{
+                  marginTop: "1rem",
+                  padding: "0.5rem 1rem",
+                  backgroundColor: "#2196F3",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "0.3rem",
+                  cursor: "pointer",
+                }}
+              >
+                加载测试简历
+              </button>
+              <button
+                className={styles["test-button"]}
+                onClick={() => {
+                  if (uploadedFileRef.current) {
+                    extractPdfText();
+                  } else {
+                    setErrorMessage("请先上传或选择文件");
+                  }
+                }}
+                style={{
+                  marginTop: "1rem",
+                  padding: "0.5rem 1rem",
+                  backgroundColor: "#4CAF50",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "0.3rem",
+                  cursor: "pointer",
+                }}
+              >
+                重新提取文本
+              </button>
+            </div>
+          )}
+
+          {/* 状态显示 */}
+          {renderStatus()}
+
+          {/* 调试信息（仅在开发环境显示） */}
+          {isDevelopment && errorMessage && (
+            <div
+              style={{
+                marginTop: "1rem",
+                padding: "0.5rem",
+                backgroundColor: "#ffebee",
+                border: "1px solid #ffcdd2",
+                borderRadius: "0.3rem",
+                fontSize: "0.8rem",
+                color: "#c62828",
+              }}
+            >
+              <div>
+                <strong>错误详情：</strong>
+              </div>
+              <pre
+                style={{
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  margin: "0.5rem 0",
+                }}
+              >
+                {errorMessage}
+              </pre>
+            </div>
+          )}
         </div>
-        <div className={styles["upload-subtext"]}>仅支持 .pdf 文件类型</div>
       </div>
-
-      {/* 上传进度 */}
-      {uploadProgress > 0 && uploadProgress < 100 && (
-        <div className={styles["upload-progress"]}>
-          <div className={styles["progress-text"]}>
-            <span className={styles["progress-label"]}>上传中...</span>
-            <span className={styles["progress-percentage"]}>
-              {uploadProgress}%
-            </span>
-          </div>
-          <div className={styles["progress-bar-container"]}>
-            <div
-              className={styles["progress-bar"]}
-              style={{ width: `${uploadProgress}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
-
-      {/* 提取进度 */}
-      {isExtracting && (
-        <div className={styles["upload-progress"]}>
-          <div className={styles["progress-text"]}>
-            <span className={styles["progress-label"]}>提取文本中...</span>
-            <span className={styles["progress-percentage"]}>
-              {extractProgress}%
-            </span>
-          </div>
-          <div className={styles["progress-bar-container"]}>
-            <div
-              className={styles["progress-bar"]}
-              style={{ width: `${extractProgress}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
-
-      {/* 测试环境按钮 */}
-      {isDevelopment && (
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button
-            className={styles["test-button"]}
-            onClick={TestFileSelect}
-            style={{
-              marginTop: "1rem",
-              padding: "0.5rem 1rem",
-              backgroundColor: "#2196F3",
-              color: "white",
-              border: "none",
-              borderRadius: "0.3rem",
-              cursor: "pointer",
-            }}
-          >
-            加载测试简历
-          </button>
-          <button
-            className={styles["test-button"]}
-            onClick={() => {
-              if (uploadedFileRef.current) {
-                extractPdfText();
-              } else {
-                setErrorMessage("请先上传或选择文件");
-              }
-            }}
-            style={{
-              marginTop: "1rem",
-              padding: "0.5rem 1rem",
-              backgroundColor: "#4CAF50",
-              color: "white",
-              border: "none",
-              borderRadius: "0.3rem",
-              cursor: "pointer",
-            }}
-          >
-            重新提取文本
-          </button>
-        </div>
-      )}
-
-      {/* 状态显示 */}
-      {renderStatus()}
-
-      {/* 调试信息（仅在开发环境显示） */}
-      {isDevelopment && errorMessage && (
-        <div
-          style={{
-            marginTop: "1rem",
-            padding: "0.5rem",
-            backgroundColor: "#ffebee",
-            border: "1px solid #ffcdd2",
-            borderRadius: "0.3rem",
-            fontSize: "0.8rem",
-            color: "#c62828",
-          }}
-        >
-          <div>
-            <strong>错误详情：</strong>
-          </div>
-          <pre
-            style={{
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-              margin: "0.5rem 0",
-            }}
-          >
-            {errorMessage}
-          </pre>
-        </div>
-      )}
     </div>
   );
 };

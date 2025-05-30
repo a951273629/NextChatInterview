@@ -3,13 +3,18 @@ import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 
-const DB_PATH = path.join(process.cwd(), "database", "nextchat.db");
+// 支持环境变量指定数据库路径，适配容器环境
+const DB_PATH =
+  process.env.DB_PATH || path.join(process.cwd(), "database", "nextchat.db");
 
 // 确保数据库目录存在
 const dbDir = path.dirname(DB_PATH);
 if (!fs.existsSync(dbDir)) {
+  console.log(`Creating database directory: ${dbDir}`);
   fs.mkdirSync(dbDir, { recursive: true });
 }
+
+console.log(`Database path: ${DB_PATH}`);
 
 // 创建数据库连接
 const db = new Database(DB_PATH, {
@@ -24,23 +29,26 @@ db.pragma("foreign_keys = ON");
 db.pragma("journal_mode = WAL");
 
 // 执行schema.sql中的表创建语句
-const schema = fs.readFileSync(
-  path.join(process.cwd(), "app/db/schema.sql"),
-  "utf8",
-);
+const schemaPath = path.join(process.cwd(), "app/db/schema.sql");
+const noticeSchemaPath = path.join(process.cwd(), "app/db/update_notice.sql");
+
+// 检查schema文件是否存在
+if (fs.existsSync(schemaPath)) {
+  const schema = fs.readFileSync(schemaPath, "utf8");
+  db.exec(schema);
+  console.log("Schema loaded successfully");
+} else {
+  console.warn(`Schema file not found at: ${schemaPath}`);
+}
 
 // 加载通知系统表结构
-const noticeSchema = fs.readFileSync(
-  path.join(process.cwd(), "app/db/update_notice.sql"),
-  "utf8",
-);
+if (fs.existsSync(noticeSchemaPath)) {
+  const noticeSchema = fs.readFileSync(noticeSchemaPath, "utf8");
+  db.exec(noticeSchema);
+  console.log("Notice schema loaded successfully");
+} else {
+  console.warn(`Notice schema file not found at: ${noticeSchemaPath}`);
+}
 
-// const schema_update = fs.readFileSync(
-//   path.join(process.cwd(), "app/db/update_field.sql"),
-//   "utf8",
-// );
-db.exec(schema);
-db.exec(noticeSchema); // 执行通知系统表创建
-// db.exec(schema_update);
 // 导出数据库实例供其他模块使用
 export default db;

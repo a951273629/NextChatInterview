@@ -1,0 +1,435 @@
+// 消息容器样式
+.messagesContainer {
+  width: 100%;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding-right: 5px;
+  max-height: calc(100% - 150px);
+
+  // 滚动条样式
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  // 响应式布局 - 手机尺寸
+  @media only screen and (max-width: 600px) {
+    max-height: calc(100% - 180px);
+    padding-right: 2px;
+  }
+}
+
+// 消息样式
+.message {
+  padding: 12px 15px;
+  border-radius: 8px;
+  max-width: 85%;
+  word-break: break-word;
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  
+  // 点击效果
+  &:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+  }
+  
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  // 面试官消息样式 (红色)
+  &.interviewerMessage {
+    background-color: rgba(255, 99, 71, 0.15);
+    border: 1px solid rgba(255, 99, 71, 0.3);
+    color: #ff6347;
+    align-self: flex-start;
+  }
+  
+  // 面试者消息样式 (绿色)
+  &.intervieweeMessage {
+    background-color: rgba(76, 175, 80, 0.15);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+    color: #4caf50;
+    align-self: flex-end;
+  }
+
+  @media only screen and (max-width: 600px) {
+    &.intervieweeMessage {
+      margin-right: 2rem;
+    }
+  }
+}
+
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 1rem;
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  width: fit-content;
+
+  .indicatorDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 10px;
+    
+    &.listening {
+      background-color: #4caf50;
+      box-shadow: 0 0 10px #4caf50;
+      animation: pulse 1.5s infinite;
+    }
+    
+    &.notListening {
+      background-color: #ff6b6b;
+    }
+  }
+
+  .statusText {
+    font-size: 0.9rem;
+  }
+
+  @media only screen and (max-width: 600px) {
+    margin-bottom: 0.75rem;
+    padding: 0.4rem 0.75rem;
+    
+    .statusText {
+      font-size: 0.8rem;
+    }
+  }
+}
+
+.errorMessage {
+  background: linear-gradient(135deg, #ff6b6b, #ff5252);
+  color: white;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+  margin: 10px 0;
+  font-weight: 500;
+  box-shadow: 0 4px 8px rgba(255, 107, 107, 0.3);
+
+  .permissionRequest {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+
+    .requestButton {
+      padding: 8px 16px;
+      background: white;
+      color: #ff5252;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+
+      &:hover {
+        background: #f5f5f5;
+        transform: translateY(-1px);
+      }
+    }
+  }
+}
+
+.transcriptDisplay {
+  width: 100%;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 0.5rem;
+  max-height: 80px;
+  overflow-y: auto;
+  text-align: left;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  position: relative;
+
+  .transcriptLabel {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+  }
+
+  &.interviewerText {
+    border-left: 3px solid #ff6347;
+    background-color: rgba(255, 99, 71, 0.05);
+  }
+
+  &.intervieweeText {
+    border-left: 3px solid #4caf50;
+    background-color: rgba(76, 175, 80, 0.05);
+  }
+
+  @media only screen and (max-width: 600px) {
+    max-height: 70px;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+  }
+}
+
+.buttonContainer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  width: 100%;
+  flex-wrap: wrap;
+
+  .settingItem {
+    width: 100%;
+    margin-bottom: 0.75rem;
+  }
+
+  .button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex: 1;
+    color: white;
+    border: none;
+
+    &.pauseButton {
+      background-color: #ff9800;
+      
+      &:hover {
+        background-color: #f57c00;
+      }
+      
+      &.paused {
+        background-color: #4caf50;
+        
+        &:hover {
+          background-color: #45a049;
+        }
+      }
+    }
+
+    &.stopButton {
+      background-color: rgba(0, 0, 0, 0.5);
+      
+      &:hover {
+        background-color: #000000;
+      }
+    }
+
+    &.clearButton {
+      background-color: transparent;
+      border: 1px solid rgba(0, 0, 0, 0.5);
+      
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.5);
+      }
+    }
+  }
+
+  @media only screen and (max-width: 600px) {
+    gap: 0.3rem;
+    margin-top: 0.75rem;
+    margin-bottom: calc(5rem + env(safe-area-inset-bottom, 0));
+    
+    .button {
+      padding: 0.5rem 0.5rem;
+      font-size: 0.8rem;
+      flex: 1;
+      min-height: 40px;
+      margin-bottom: 0;
+    }
+    
+    .settingItem {
+      margin-bottom: 0.5rem;
+      order: -1;
+    }
+  }
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+}
+
+.voiceprintStatus {
+  display: flex;
+  align-items: center;
+  margin-left: 15px;
+  font-size: 0.85rem;
+  
+  .identityIndicator {
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-right: 8px;
+    font-weight: 500;
+    
+    &.interviewer {
+      background-color: rgba(255, 99, 71, 0.2);
+      color: #e74c3c;
+    }
+    
+    &.interviewee {
+      background-color: rgba(76, 175, 80, 0.2);
+      color: #4caf50;
+    }
+  }
+  
+  .matchScore {
+    font-size: 0.8rem;
+    color: #666;
+  }
+}
+
+.settingItem {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.4rem;
+  background-color: rgba(0, 0, 0, 0.3);
+  
+  .settingLabel {
+    width: 6rem;
+    font-size: 0.9rem;
+  }
+  
+  .settingControl {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    
+    .settingStatus {
+      margin-left: 0.75rem;
+      font-size: 0.85rem;
+    }
+  }
+
+  @media only screen and (max-width: 600px) {
+    padding: 0.5rem;
+    
+    .settingLabel {
+      width: 5rem;
+      font-size: 0.85rem;
+    }
+  }
+}
+
+.switch {
+  position: relative;
+  width: 50px;
+  height: 24px;
+  
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    
+    &:checked + .slider {
+      background-color: #2196F3;
+      
+      &:before {
+        transform: translateX(26px);
+      }
+    }
+  }
+  
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+    
+    &:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+  }
+}
+
+.clickableTooltip {
+  display: flex;
+  align-items: center;
+  background-color: rgba(76, 175, 80, 0.2);
+  border-radius: 1rem;
+  padding: 0.5rem 1rem;
+  margin-left: 0.75rem;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  max-width: 200px;
+  
+  .tooltipContent {
+    font-size: 0.85rem;
+    color: #4caf50;
+    margin-right: 0.5rem;
+  }
+  
+  .tooltipCloseBtn {
+    background: none;
+    border: none;
+    color: #4caf50;
+    font-size: 0.8rem;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    
+    &:hover {
+      color: darken(#4caf50, 10%);
+    }
+  }
+
+  @media only screen and (max-width: 600px) {
+    max-width: 180px;
+    padding: 0.4rem 0.75rem;
+  }
+} 

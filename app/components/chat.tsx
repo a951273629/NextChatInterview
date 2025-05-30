@@ -119,7 +119,8 @@ import { getModelProvider } from "../utils/model";
 import { RealtimeChat } from "@/app/components/realtime-chat";
 import clsx from "clsx";
 import { getAvailableClientsCount, isMcpEnabled } from "../mcp/actions";
-import { InterviewOverlay } from "./interview/interview-overlay";
+import { InterviewOverlay } from "./interview/interview-overlay-microphone";
+import { InterviewLoudspeaker } from "./interview/interview-loudspeaker";
 import { useActivation } from "./valid-wrapper/ActivationWrapper";
 import ActivationStatus from "./valid-wrapper/ActivationStatus";
 import { additionalResumeText } from "./personal-set/preparation-resumes-upload";
@@ -472,12 +473,14 @@ export function ChatActions(props: {
   showPromptModal: () => void;
   scrollToBottom: () => void;
   showPromptHints: () => void;
+  // showInterviewLoudspeaker: boolean;
   hitBottom: boolean;
   uploading: boolean;
   setShowShortcutKeyModal: React.Dispatch<React.SetStateAction<boolean>>;
   setUserInput: (input: string) => void;
   setShowChatSidePanel: React.Dispatch<React.SetStateAction<boolean>>;
   setShowOverlay: React.Dispatch<React.SetStateAction<boolean>>;
+  setShowInterviewLoudspeaker: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   const config = useAppConfig();
   const navigate = useNavigate();
@@ -536,6 +539,7 @@ export function ChatActions(props: {
   const [showSizeSelector, setShowSizeSelector] = useState(false);
   const [showQualitySelector, setShowQualitySelector] = useState(false);
   const [showStyleSelector, setShowStyleSelector] = useState(false);
+
   const modelSizes = getModelSizes(currentModel);
   const dalle3Qualitys: DalleQuality[] = ["standard", "hd"];
   const dalle3Styles: DalleStyle[] = ["vivid", "natural"];
@@ -813,17 +817,17 @@ export function ChatActions(props: {
               props.setShowOverlay(!contronlShow);
               contronlShow = !contronlShow;
             }}
-            text="麦克风InterView"
+            text="麦克风开始"
             icon={<InterViewIcon1 />}
           />
 
           {/* 从扬声器开始面试 */}
           <ChatActionVoice
             onClick={() => {
-              props.setShowOverlay(!contronlShow);
-              contronlShow = !contronlShow;
+              props.setShowInterviewLoudspeaker(true);
+              // contronlShow = !contronlShow;
             }}
-            text="扬声器InterView"
+            text="扬声器开始"
             icon={<InterViewIcon2 />}
           />
 
@@ -1081,7 +1085,10 @@ function _Chat() {
   const [showExport, setShowExport] = useState(false);
   // 使用状态来控制 InterviewOverlay 的显示和隐藏
   const [showOverlay, setShowOverlay] = useState(false);
-  const showOverlayRef = useRef(showOverlay);
+  // 添加扬声器面试组件的状态控制
+  const [showInterviewLoudspeaker, setShowInterviewLoudspeaker] =
+    useState(false);
+
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [userInput, setUserInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -2243,6 +2250,8 @@ function _Chat() {
                 setUserInput={setUserInput}
                 setShowChatSidePanel={setShowChatSidePanel}
                 setShowOverlay={setShowOverlay}
+                setShowInterviewLoudspeaker={setShowInterviewLoudspeaker}
+                // showInterviewLoudspeaker={showInterviewLoudspeaker}
               />
               <label
                 className={clsx(styles["chat-input-panel-inner"], {
@@ -2346,6 +2355,16 @@ function _Chat() {
         <InterviewOverlay
           onClose={() => {
             setShowOverlay(false);
+          }}
+          onTextUpdate={handleTextUpdate}
+          submitMessage={toastShowDebounce}
+        />
+      )}
+      {/* 扬声器开始面试 */}
+      {showInterviewLoudspeaker && (
+        <InterviewLoudspeaker
+          onClose={() => {
+            setShowInterviewLoudspeaker(false);
           }}
           onTextUpdate={handleTextUpdate}
           submitMessage={toastShowDebounce}

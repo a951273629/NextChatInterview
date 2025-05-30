@@ -1,8 +1,7 @@
 "use client";
-
 import React, { useState, useRef, useEffect } from "react";
 import styles from "./preparation-resumes-upload.module.scss";
-import pdfToText from "react-pdftotext";
+// import pdfToText from "react-pdftotext";
 
 // 判断当前是否为开发环境
 const isDevelopment = process.env.NODE_ENV === "development";
@@ -214,16 +213,16 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
       const timeout = isMobile ? 30000 : 15000; // 移动端给更长的超时时间
 
       // 使用Promise.race添加超时控制
-      let extractedText = await Promise.race([
-        pdfToText(fileToProcess),
-        new Promise<string>((_, reject) =>
-          setTimeout(
-            () => reject(new Error("文件处理超时，请尝试较小的文件")),
-            timeout,
-          ),
-        ),
-      ]);
-
+      // let extractedText = await Promise.race([
+      //   pdfToText(fileToProcess),
+      //   new Promise<string>((_, reject) =>
+      //     setTimeout(
+      //       () => reject(new Error("文件处理超时，请尝试较小的文件")),
+      //       timeout,
+      //     ),
+      //   ),
+      // ]);
+      let extractedText = "";
       // 设置进度为90%表示提取完成
       setExtractProgress(90);
 

@@ -3,6 +3,7 @@ import styles from "./interview-loudspeaker.module.scss";
 import { InterviewUnderwayLoudspeaker } from "./interview-underway-loudspeaker";
 import { Toaster } from "react-hot-toast";
 import { MiniFloatWindow } from "./mini-float-window";
+import { SyncMode, ACTIVATION_KEY_STRING } from "@/app/types/websocket-sync";
 
 // 消息类型接口
 interface Message {
@@ -104,6 +105,10 @@ export const InterviewLoudspeaker: React.FC<InterviewLoudspeakerProps> = ({
   // 录屏相关引用
   const mediaStreamRef = useRef<MediaStream | null>(null);
   // const audioContextRef = useRef<AudioContext | null>(null);
+
+  // 添加同步功能相关状态
+  const [syncEnabled, setSyncEnabled] = useState(false);
+  const [syncMode, setSyncMode] = useState<SyncMode>(SyncMode.SENDER);
 
   // 显示悬浮窗的处理函数
   const handleShowFromFloat = () => {
@@ -646,6 +651,68 @@ export const InterviewLoudspeaker: React.FC<InterviewLoudspeakerProps> = ({
               </select>
             </div>
           </div>
+
+          {/* 同步功能设置 */}
+          <div className={styles.settingItem}>
+            <div className={styles.settingLabel}>启用同步功能：</div>
+            <div className={styles.settingControl}>
+              <label className={styles.switch}>
+                <input
+                  type="checkbox"
+                  checked={syncEnabled}
+                  onChange={(e) => setSyncEnabled(e.target.checked)}
+                />
+                <span className={styles.slider}></span>
+              </label>
+              <span className={styles.settingStatus}>
+                {syncEnabled ? "已启用" : "已禁用"}
+              </span>
+            </div>
+          </div>
+
+          {/* 同步模式设置 */}
+          {syncEnabled && (
+            <div className={styles.settingItem}>
+              <div className={styles.settingLabel}>同步模式：</div>
+              <div className={styles.settingControl}>
+                <label className={styles.switch}>
+                  <input
+                    type="checkbox"
+                    checked={syncMode === SyncMode.RECEIVER}
+                    onChange={(e) =>
+                      setSyncMode(
+                        e.target.checked ? SyncMode.RECEIVER : SyncMode.SENDER,
+                      )
+                    }
+                  />
+                  <span className={styles.slider}></span>
+                </label>
+                <span className={styles.settingStatus}>
+                  {syncMode === SyncMode.SENDER ? "发送端" : "接收端"}
+                </span>
+                <div className={styles.modeDescription}>
+                  {syncMode === SyncMode.SENDER
+                    ? "将语音识别结果发送给其他客户端"
+                    : "接收其他客户端的语音识别结果"}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 激活密钥显示 */}
+          {syncEnabled && (
+            <div className={styles.settingItem}>
+              <div className={styles.settingLabel}>连接密钥：</div>
+              <div className={styles.settingControl}>
+                <div className={styles.activationKey}>
+                  <code>{ACTIVATION_KEY_STRING}</code>
+                  <span className={styles.keyDescription}>
+                    所有客户端需使用相同密钥
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 开始按钮 */}
@@ -720,6 +787,10 @@ export const InterviewLoudspeaker: React.FC<InterviewLoudspeakerProps> = ({
                 mediaStream={mediaStreamRef.current}
                 // audioContext={audioContextRef.current}
                 onRequestPermission={requestScreenCapture}
+                // 同步功能配置
+                syncEnabled={syncEnabled}
+                syncMode={syncMode}
+                activationKey={ACTIVATION_KEY_STRING}
               />
             )}
           </div>

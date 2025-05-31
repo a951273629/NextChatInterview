@@ -6,6 +6,9 @@ import {
   getAzureSpeechConfig,
   isAzureSpeechAvailable,
 } from "@/app/components/interview/azureSpeech";
+import { SyncMode } from "@/app/types/websocket-sync";
+import { useWebSocketSync } from "@/app/hooks/useWebSocketSync";
+import { nanoid } from "nanoid";
 
 // 消息类型接口
 interface Message {
@@ -31,6 +34,11 @@ interface InterviewUnderwayLoudspeakerProps {
   mediaStream: MediaStream | null;
   //   audioContext: AudioContext | null;
   onRequestPermission: () => Promise<void>;
+
+  // 同步功能相关props
+  syncEnabled?: boolean;
+  syncMode?: SyncMode;
+  activationKey?: string;
 }
 
 export const InterviewUnderwayLoudspeaker: React.FC<
@@ -45,6 +53,9 @@ export const InterviewUnderwayLoudspeaker: React.FC<
   mediaStream,
   //   audioContext,
   onRequestPermission,
+  syncEnabled = false,
+  syncMode = SyncMode.SENDER,
+  activationKey,
 }) => {
   // 语音识别相关状态
   const [transcript, setTranscript] = useState("");
@@ -66,6 +77,23 @@ export const InterviewUnderwayLoudspeaker: React.FC<
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSubmittedTextRef = useRef("");
   const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // WebSocket 同步功能
+  const webSocketSync = useWebSocketSync({
+    activationKey: activationKey || "default_key",
+    mode: syncMode,
+    enabled: syncEnabled && visible,
+    onSpeechRecognition: (data) => {
+      // 接收端处理逻辑：自动提交接收到的语音识别结果
+      if (syncMode === SyncMode.RECEIVER) {
+        console.log("🎯 接收到同步的语音识别结果:", data);
+        // 直接提交消息，不经过本地识别流程
+        submitMessage(data.text);
+        // 可选：也添加到消息历史
+        addMessage(data.text);
+      }
+    },
+  });
 
   // 检查浏览器支持
   useEffect(() => {
@@ -140,6 +168,22 @@ export const InterviewUnderwayLoudspeaker: React.FC<
           setTranscript(text);
           transcriptRef.current = text;
           onTextUpdate(text);
+
+          // 如果启用同步功能且为发送端，则发送识别结果
+          if (
+            syncEnabled &&
+            syncMode === SyncMode.SENDER &&
+            isFinal &&
+            text.trim()
+          ) {
+            console.log("📤 发送端模式：通过WebSocket发送语音识别结果");
+            webSocketSync.sendSpeechRecognition({
+              text: text.trim(),
+              isFinal,
+              language: recognitionLanguage,
+              sessionId: nanoid(),
+            });
+          }
         },
         // 错误回调
         (error: string) => {
@@ -268,8 +312,13 @@ export const InterviewUnderwayLoudspeaker: React.FC<
             lastSubmittedTextRef.current = transcript;
             resetTranscript();
 
-            // 如果自动提交开启
-            if (isAutoSubmit) {
+            // 如果启用同步功能且为发送端，不进行本地提交，只通过WebSocket发送
+            if (syncEnabled && syncMode === SyncMode.SENDER) {
+              console.log(
+                "📤 发送端模式：语音已通过WebSocket发送，跳过本地提交",
+              );
+            } else if (isAutoSubmit) {
+              // 普通模式或接收端模式下的本地自动提交
               console.log("自动提交扬声器语音:", transcript);
               submitMessage(transcript);
             }
@@ -283,7 +332,7 @@ export const InterviewUnderwayLoudspeaker: React.FC<
         clearTimeout(autoSubmitTimerRef.current);
       }
     };
-  }, [transcript, submitMessage, isAutoSubmit]);
+  }, [transcript, submitMessage, isAutoSubmit, syncEnabled, syncMode]);
 
   // 暂停/恢复功能
   const togglePauseCommit = () => {
@@ -349,6 +398,40 @@ export const InterviewUnderwayLoudspeaker: React.FC<
             扬声器模式
           </span>
           <span className={styles.audioSource}>音频源: 系统扬声器</span>
+
+          {/* WebSocket 同步状态 */}
+          {syncEnabled && (
+            <div className={styles.syncStatus}>
+              <span
+                className={`${styles.syncIndicator} ${
+                  webSocketSync.connectionStatus === "connected"
+                    ? styles.connected
+                    : webSocketSync.connectionStatus === "connecting"
+                    ? styles.connecting
+                    : styles.disconnected
+                }`}
+              >
+                {webSocketSync.connectionStatus === "connected"
+                  ? "🟢"
+                  : webSocketSync.connectionStatus === "connecting"
+                  ? "🟡"
+                  : "🔴"}
+              </span>
+              <span className={styles.syncText}>
+                {syncMode === SyncMode.SENDER ? "发送端" : "接收端"} -
+                {webSocketSync.connectionStatus === "connected"
+                  ? "已连接"
+                  : webSocketSync.connectionStatus === "connecting"
+                  ? "连接中"
+                  : "未连接"}
+              </span>
+              {webSocketSync.lastError && (
+                <span className={styles.syncError}>
+                  错误: {webSocketSync.lastError}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

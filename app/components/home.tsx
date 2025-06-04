@@ -22,6 +22,7 @@ import {
   Routes,
   useLocation,
   useNavigate,
+  Navigate,
 } from "react-router-dom";
 import { SideBar } from "./sidebar";
 import { useAppConfig } from "../store/config";
@@ -45,6 +46,21 @@ export function Loading(props: { noLogo?: boolean }) {
     </div>
   );
 }
+const InterviewMicrophone = dynamic(
+  async () =>
+    (await import("./interview/microphone/interview-microphone"))
+      .InterviewMicrophone,
+  {
+    loading: () => <Loading noLogo />,
+  },
+);
+const InterviewLoudspeaker = dynamic(
+  async () =>
+    (await import("./interview/interview-loudspeaker")).InterviewLoudspeaker,
+  {
+    loading: () => <Loading noLogo />,
+  },
+);
 
 const Artifacts = dynamic(async () => (await import("./artifacts")).Artifacts, {
   loading: () => <Loading noLogo />,
@@ -66,9 +82,10 @@ const MaskPage = dynamic(async () => (await import("./mask")).MaskPage, {
   loading: () => <Loading noLogo />,
 });
 
-const PluginPage = dynamic(async () => (await import("./plugin")).PluginPage, {
-  loading: () => <Loading noLogo />,
-});
+// 注释掉Plugin相关功能 - 用户不需要此功能
+// const PluginPage = dynamic(async () => (await import("./plugin")).PluginPage, {
+//   loading: () => <Loading noLogo />,
+// });
 
 const SearchChat = dynamic(
   async () => (await import("./search-chat")).SearchChatPage,
@@ -180,6 +197,13 @@ export function WindowContent(props: { children: React.ReactNode }) {
     </div>
   );
 }
+export function InterViewContent(props: { children: React.ReactNode }) {
+  return (
+    <div className={styles["interview-content"]} id={SlotID.AppBody}>
+      {props?.children}
+    </div>
+  );
+}
 
 function Screen() {
   const config = useAppConfig();
@@ -228,20 +252,29 @@ function Screen() {
           {/* 只有登录时才可以路由到其他页面，相当于拦截器 */}
           {/* <AuthWrapper> */}
           <Routes>
-            <Route path={Path.Home} element={<Chat />} />
+            <Route
+              path={Path.Home}
+              element={<Navigate to={Path.Chat} replace />}
+            />
             <Route path={Path.NewChat} element={<NewChat />} />
             <Route path={Path.Masks} element={<MaskPage />} />
-            <Route path={Path.Plugins} element={<PluginPage />} />
+            {/* 注释掉Plugin路由 - 用户不需要此功能 */}
+            {/* <Route path={Path.Plugins} element={<PluginPage />} /> */}
             <Route path={Path.SearchChat} element={<SearchChat />} />
-            <Route path={Path.Chat} element={<Chat />} />
+            <Route path={Path.Chat} element={<Chat />}>
+              <Route
+                path={Path.InterviewMicrophone}
+                element={<InterviewMicrophone />}
+              />
+              <Route
+                path={Path.InterviewLoudspeaker}
+                element={<InterviewLoudspeaker />}
+              />
+            </Route>
             <Route path={Path.Settings} element={<Settings />} />
             <Route path={Path.McpMarket} element={<McpMarketPage />} />
             <Route path={Path.Login} element={<LoginPage />} />
             <Route path={Path.TensorFlow} element={<TensorFlow />} />
-
-            {/* <Route path={Path.KeyGenerate} element={<KeyGenerate />} />
-            <Route path={Path.SetNotice} element={<NoticeSet />} /> */}
-            {/* <Route path={Path.Interview} element={<InterviewPage/>}/> */}
           </Routes>
           {/* </AuthWrapper> */}
         </WindowContent>

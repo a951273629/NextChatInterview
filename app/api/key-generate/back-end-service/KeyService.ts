@@ -119,9 +119,9 @@ export function activateKey(
       throw new Error("密钥已过期");
     }
 
-    if (key.status === KeyStatus.ACTIVE) {
-      throw new Error("密钥已激活");
-    }
+    // if (key.status === KeyStatus.ACTIVE) {
+    //   throw new Error("密钥已激活");
+    // }
 
     if (key.status === KeyStatus.REVOKED) {
       throw new Error("密钥已被撤销");

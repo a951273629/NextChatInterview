@@ -3,7 +3,7 @@ import StopIcon from "@/app/icons/pause.svg";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
-import styles from "./interview-underway.module.scss";
+import styles from "./interview-underway-microphone.module.scss";
 
 // 消息类型接口
 interface Message {

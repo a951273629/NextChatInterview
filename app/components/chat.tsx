@@ -54,7 +54,7 @@ import {
   useAccessStore,
   useAppConfig,
   useChatStore,
-  usePluginStore,
+  // usePluginStore,
 } from "../store";
 
 import {
@@ -92,7 +92,7 @@ import {
   showPrompt,
   showToast,
 } from "./ui-lib";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Outlet } from "react-router-dom";
 import {
   CHAT_PAGE_SIZE,
   DEFAULT_TTS_ENGINE,
@@ -119,8 +119,8 @@ import { getModelProvider } from "../utils/model";
 import { RealtimeChat } from "@/app/components/realtime-chat";
 import clsx from "clsx";
 import { getAvailableClientsCount, isMcpEnabled } from "../mcp/actions";
-import { InterviewOverlay } from "./interview/interview-overlay-microphone";
-import { InterviewLoudspeaker } from "./interview/interview-loudspeaker";
+// import { InterviewOverlay } from "./interview/microphone/interview-overlay-microphone";
+// import { InterviewLoudspeaker } from "./interview/interview-loudspeaker";
 import { useActivation } from "./valid-wrapper/ActivationWrapper";
 import ActivationStatus from "./valid-wrapper/ActivationStatus";
 import { additionalResumeText } from "./personal-set/preparation-resumes-upload";
@@ -485,7 +485,7 @@ export function ChatActions(props: {
   const config = useAppConfig();
   const navigate = useNavigate();
   const chatStore = useChatStore();
-  const pluginStore = usePluginStore();
+  // const pluginStore = usePluginStore();
   const session = chatStore.currentSession();
   // const showOverlayRef = useRef(showOverlay);
   // switch themes
@@ -533,7 +533,8 @@ export function ChatActions(props: {
     return model?.displayName ?? "";
   }, [models, currentModel, currentProviderName]);
   const [showModelSelector, setShowModelSelector] = useState(false);
-  const [showPluginSelector, setShowPluginSelector] = useState(false);
+  // 注释掉Plugin相关功能 - 用户不需要此功能
+  // const [showPluginSelector, setShowPluginSelector] = useState(false);
   const [showUploadImage, setShowUploadImage] = useState(false);
 
   const [showSizeSelector, setShowSizeSelector] = useState(false);
@@ -549,6 +550,7 @@ export function ChatActions(props: {
   const currentStyle = session.mask.modelConfig?.style ?? "vivid";
 
   const isMobileScreen = useMobileScreen();
+  const { checkActivation } = useActivation();
 
   let contronlShow = false;
   useEffect(() => {
@@ -814,8 +816,9 @@ export function ChatActions(props: {
           {/* 从麦克风开始面试 */}
           <ChatActionVoice
             onClick={() => {
-              props.setShowOverlay(!contronlShow);
-              contronlShow = !contronlShow;
+              navigate(Path.InterviewMicrophone);
+              // props.setShowOverlay(!contronlShow);
+              // contronlShow = !contronlShow;
             }}
             text="麦克风开始"
             icon={<InterViewIcon1 />}
@@ -824,13 +827,18 @@ export function ChatActions(props: {
           {/* 从扬声器开始面试 */}
           <ChatActionVoice
             onClick={() => {
-              props.setShowInterviewLoudspeaker(true);
+              checkActivation(() => {
+                navigate(Path.InterviewLoudspeaker);
+                // props.setShowInterviewLoudspeaker(true);
+              });
               // contronlShow = !contronlShow;
             }}
             text="扬声器开始"
             icon={<InterViewIcon2 />}
           />
-
+          {/*           onClick={() => {
+            checkActivation(() => handleStartInterview());
+          }} */}
           {/* 新增：TensorFlow 跳转按钮 */}
           <ChatActionVoice
             onClick={() => {
@@ -839,7 +847,7 @@ export function ChatActions(props: {
             text="TensorFlow"
             icon={<BrainIcon />}
           />
-          {showPluginSelector && (
+          {/* {showPluginSelector && (
             <Selector
               multiple
               defaultSelectedValue={chatStore.currentSession().mask?.plugin}
@@ -854,7 +862,7 @@ export function ChatActions(props: {
                 });
               }}
             />
-          )}
+          )} */}
 
           {/* {!isMobileScreen && (
             <ChatAction
@@ -2251,7 +2259,6 @@ function _Chat() {
                 setShowChatSidePanel={setShowChatSidePanel}
                 setShowOverlay={setShowOverlay}
                 setShowInterviewLoudspeaker={setShowInterviewLoudspeaker}
-                // showInterviewLoudspeaker={showInterviewLoudspeaker}
               />
               <label
                 className={clsx(styles["chat-input-panel-inner"], {
@@ -2334,6 +2341,15 @@ function _Chat() {
             )}
           </div>
         </div>
+
+        {/* 子路由渲染区域 */}
+        <Outlet
+          context={{
+            onClose: () => navigate(Path.Chat),
+            onTextUpdate: handleTextUpdate,
+            submitMessage: toastShowDebounce,
+          }}
+        />
       </div>
       {showExport && (
         <ExportMessageModal onClose={() => setShowExport(false)} />
@@ -2350,8 +2366,8 @@ function _Chat() {
       {showShortcutKeyModal && (
         <ShortcutKeyModal onClose={() => setShowShortcutKeyModal(false)} />
       )}
-      {/* 当状态为 true 时，加载 InterviewOverlay 组件 */}
-      {showOverlay && (
+
+      {/* {showOverlay && (
         <InterviewOverlay
           onClose={() => {
             setShowOverlay(false);
@@ -2360,7 +2376,7 @@ function _Chat() {
           submitMessage={toastShowDebounce}
         />
       )}
-      {/* 扬声器开始面试 */}
+
       {showInterviewLoudspeaker && (
         <InterviewLoudspeaker
           onClose={() => {
@@ -2369,7 +2385,7 @@ function _Chat() {
           onTextUpdate={handleTextUpdate}
           submitMessage={toastShowDebounce}
         />
-      )}
+      )} */}
 
       {/* 全局的 Toaster 组件，可以设置默认位置和样式 */}
       <Toaster

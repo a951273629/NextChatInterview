@@ -57,6 +57,10 @@ export interface UseWebSocketSyncReturn {
   connectedClients: number;
   lastError?: string;
 
+  // 实时状态获取方法
+  getConnectionStatus: () => ConnectionStatus;
+  isConnected: () => boolean;
+
   // 方法
   connect: () => void;
   disconnect: () => void;

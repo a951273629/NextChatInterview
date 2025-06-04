@@ -31,7 +31,8 @@ import { isMcpEnabled } from "../mcp/actions";
 // import PersonalSet from "./personal-set/personal-set";
 import PreparationResumesUpload from "./personal-set/preparation-resumes-upload";
 const DISCOVERY = [
-  { name: Locale.Plugin.Name, path: Path.Plugins },
+  // 注释掉Plugin相关功能 - 用户不需要此功能
+  // { name: Locale.Plugin.Name, path: Path.Plugins },
   { name: "Stable Diffusion", path: Path.Sd },
   { name: Locale.SearchChat.Page.Title, path: Path.SearchChat },
 ];

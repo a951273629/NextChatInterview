@@ -4,6 +4,11 @@ import { InterviewUnderwayLoudspeaker } from "./interview-underway-loudspeaker";
 import { Toaster } from "react-hot-toast";
 import { MiniFloatWindow } from "./mini-float-window";
 import { SyncMode, ACTIVATION_KEY_STRING } from "@/app/types/websocket-sync";
+import RecorderIcon from "@/app/icons/record_light.svg";
+import { useOutletContext } from "react-router-dom";
+
+import WIFI from "@/app/icons/wifi.svg";
+import SpeakerIcon from "@/app/icons/speaker.svg";
 
 // 消息类型接口
 interface Message {
@@ -17,6 +22,13 @@ interface Message {
 interface SpeakerDevice {
   deviceId: string;
   label: string;
+}
+
+// 定义Context类型
+interface ChatOutletContext {
+  onClose: () => void;
+  onTextUpdate: (text: string) => void;
+  submitMessage: (text: string) => void;
 }
 
 interface InterviewLoudspeakerProps {
@@ -53,11 +65,11 @@ type NetworkStatus = "good" | "average" | "poor";
 // 录屏权限状态类型
 type ScreenCaptureStatus = "pending" | "granted" | "denied" | "unavailable";
 
-export const InterviewLoudspeaker: React.FC<InterviewLoudspeakerProps> = ({
-  onClose,
-  onTextUpdate,
-  submitMessage,
-}) => {
+export const InterviewLoudspeaker: React.FC = () => {
+  // 从父路由获取context
+  const { onClose, onTextUpdate, submitMessage } =
+    useOutletContext<ChatOutletContext>();
+
   const [visible, setVisible] = useState(true);
   const [width, setWidth] = useState("33vw");
   const [isDragging, setIsDragging] = useState(false);
@@ -95,6 +107,10 @@ export const InterviewLoudspeaker: React.FC<InterviewLoudspeakerProps> = ({
   // 添加语言选择状态 - 从localStorage初始化
   const [recognitionLanguage, setRecognitionLanguage] = useState<string>(
     localStorage.getItem("interviewLanguage") || "zh-CN",
+  );
+
+  const [activationKey, setActivationKey] = useState<string>(
+    localStorage.getItem(ACTIVATION_KEY_STRING) || "",
   );
 
   // 音频相关引用
@@ -461,6 +477,11 @@ export const InterviewLoudspeaker: React.FC<InterviewLoudspeakerProps> = ({
 
   // 获取录屏权限状态信息
   const getScreenCaptureStatusInfo = () => {
+    // 如果是接收端模式，不需要录屏权限
+    if (syncMode === SyncMode.RECEIVER) {
+      return { text: "接收端无需录屏权限", color: "#4caf50", progress: 100 };
+    }
+
     switch (screenCaptureStatus) {
       case "granted":
         return { text: "录屏权限已获取", color: "#4caf50", progress: 100 };
@@ -487,13 +508,83 @@ export const InterviewLoudspeaker: React.FC<InterviewLoudspeakerProps> = ({
           <div className={styles.subtitle}>请确认以下设置后开始面试</div>
         </div>
 
+        {/* 同步功能设置 */}
+        <div className={styles["setting-item"]}>
+          <div className={styles["setting-label"]}>启用同步功能：</div>
+          <div className={styles["setting-control"]}>
+            <label className={styles["switch"]}>
+              <input
+                type="checkbox"
+                checked={syncEnabled}
+                onChange={(e) => {
+                  setSyncEnabled(e.target.checked);
+
+                  if (!e.target.checked) {
+                    setSyncMode(SyncMode.SENDER);
+                  }
+                }}
+              />
+              <span className={styles["slider"]}></span>
+            </label>
+            <span className={styles["setting-status"]}>
+              {syncEnabled ? "已启用" : "已禁用"}
+            </span>
+          </div>
+        </div>
+
+        {/* 同步模式设置 */}
+        {syncEnabled && (
+          <div className={styles["setting-item"]}>
+            <div className={styles["setting-label"]}>同步模式：</div>
+            <div className={styles["setting-control"]}>
+              <label className={styles["switch"]}>
+                <input
+                  type="checkbox"
+                  checked={syncMode === SyncMode.RECEIVER}
+                  onChange={(e) =>
+                    setSyncMode(
+                      e.target.checked ? SyncMode.RECEIVER : SyncMode.SENDER,
+                    )
+                  }
+                />
+                <span className={styles["slider"]}></span>
+              </label>
+              <span className={styles["setting-status"]}>
+                {syncMode === SyncMode.SENDER ? "发送端" : "接收端"}
+              </span>
+              <div className={styles["mode-description"]}>
+                {syncMode === SyncMode.SENDER
+                  ? "将语音识别结果发送给其他客户端进行回答"
+                  : "接收发送端的语音识别结果"}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 激活密钥显示 */}
+        {syncEnabled && (
+          <div className={styles["setting-item"]}>
+            <div className={styles["setting-label"]}>连接密钥：</div>
+            <div className={styles["setting-control"]}>
+              <div className={styles.activationKey}>
+                <code style={{ color: "red" }}>{activationKey}</code>
+                <span className={styles.keyDescription}>
+                  &nbsp;&nbsp;&nbsp;&nbsp;所有客户端需使用相同密钥
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 设备检查部分 */}
         <div className={styles.deviceCheck}>
           <h3 className={styles.sectionTitle}>设备检查</h3>
 
           {/* 录屏权限检查 */}
           <div className={styles.deviceItem}>
-            <div className={styles.deviceIcon}>🎥</div>
+            <div className={styles.deviceIcon}>
+              <RecorderIcon />
+            </div>
             <div className={styles.deviceInfo}>
               <div className={styles.deviceName}>{screenCaptureInfo.text}</div>
               <div className={styles.progressContainer}>
@@ -508,7 +599,11 @@ export const InterviewLoudspeaker: React.FC<InterviewLoudspeakerProps> = ({
 
               {/* 录屏权限获取按钮 */}
               <div className={styles.screenCaptureControl}>
-                {!hasScreenPermission ? (
+                {syncMode === SyncMode.RECEIVER ? (
+                  <div className={styles.permissionGranted}>
+                    <span>✅ 接收端模式，无需录屏权限</span>
+                  </div>
+                ) : !hasScreenPermission ? (
                   <button
                     className={styles.permissionButton}
                     onClick={requestScreenCapture}
@@ -535,7 +630,9 @@ export const InterviewLoudspeaker: React.FC<InterviewLoudspeakerProps> = ({
 
           {/* 扬声器检查 */}
           <div className={styles.deviceItem}>
-            <div className={styles.deviceIcon}>🔊</div>
+            <div className={styles.deviceIcon}>
+              <SpeakerIcon />
+            </div>
             <div className={styles.deviceInfo}>
               <div className={styles.deviceName}>扬声器已连接</div>
               <div className={styles.progressContainer}>
@@ -617,7 +714,9 @@ export const InterviewLoudspeaker: React.FC<InterviewLoudspeakerProps> = ({
 
           {/* 网络检查 */}
           <div className={styles.deviceItem}>
-            <div className={styles.deviceIcon}>📶</div>
+            <div className={styles.deviceIcon}>
+              <WIFI />
+            </div>
             <div className={styles.deviceInfo}>
               <div className={styles.deviceName}>{networkInfo.text}</div>
               <div className={styles.progressContainer}>
@@ -651,68 +750,6 @@ export const InterviewLoudspeaker: React.FC<InterviewLoudspeakerProps> = ({
               </select>
             </div>
           </div>
-
-          {/* 同步功能设置 */}
-          <div className={styles.settingItem}>
-            <div className={styles.settingLabel}>启用同步功能：</div>
-            <div className={styles.settingControl}>
-              <label className={styles.switch}>
-                <input
-                  type="checkbox"
-                  checked={syncEnabled}
-                  onChange={(e) => setSyncEnabled(e.target.checked)}
-                />
-                <span className={styles.slider}></span>
-              </label>
-              <span className={styles.settingStatus}>
-                {syncEnabled ? "已启用" : "已禁用"}
-              </span>
-            </div>
-          </div>
-
-          {/* 同步模式设置 */}
-          {syncEnabled && (
-            <div className={styles.settingItem}>
-              <div className={styles.settingLabel}>同步模式：</div>
-              <div className={styles.settingControl}>
-                <label className={styles.switch}>
-                  <input
-                    type="checkbox"
-                    checked={syncMode === SyncMode.RECEIVER}
-                    onChange={(e) =>
-                      setSyncMode(
-                        e.target.checked ? SyncMode.RECEIVER : SyncMode.SENDER,
-                      )
-                    }
-                  />
-                  <span className={styles.slider}></span>
-                </label>
-                <span className={styles.settingStatus}>
-                  {syncMode === SyncMode.SENDER ? "发送端" : "接收端"}
-                </span>
-                <div className={styles.modeDescription}>
-                  {syncMode === SyncMode.SENDER
-                    ? "将语音识别结果发送给其他客户端"
-                    : "接收其他客户端的语音识别结果"}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 激活密钥显示 */}
-          {syncEnabled && (
-            <div className={styles.settingItem}>
-              <div className={styles.settingLabel}>连接密钥：</div>
-              <div className={styles.settingControl}>
-                <div className={styles.activationKey}>
-                  <code>{ACTIVATION_KEY_STRING}</code>
-                  <span className={styles.keyDescription}>
-                    所有客户端需使用相同密钥
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* 开始按钮 */}
@@ -720,11 +757,14 @@ export const InterviewLoudspeaker: React.FC<InterviewLoudspeakerProps> = ({
           <button
             onClick={startInterview}
             className={styles.startButton}
-            disabled={speakerStatus !== "ready" || !hasScreenPermission}
+            disabled={
+              speakerStatus !== "ready" ||
+              (syncMode === SyncMode.SENDER && !hasScreenPermission)
+            }
           >
             {speakerStatus !== "ready"
               ? "等待扬声器检测..."
-              : !hasScreenPermission
+              : syncMode === SyncMode.SENDER && !hasScreenPermission
               ? "请先获取录屏权限"
               : "开始面试"}
           </button>
@@ -790,7 +830,7 @@ export const InterviewLoudspeaker: React.FC<InterviewLoudspeakerProps> = ({
                 // 同步功能配置
                 syncEnabled={syncEnabled}
                 syncMode={syncMode}
-                activationKey={ACTIVATION_KEY_STRING}
+                activationKey={activationKey}
               />
             )}
           </div>

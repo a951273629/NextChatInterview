@@ -81,9 +81,8 @@ export enum Path {
   Artifacts = "/artifacts",
   SearchChat = "/search-chat",
   McpMarket = "/mcp-market",
-  Interview = "/interview",
-  // KeyGenerate = "/key-generate",
-  // SetNotice = "/set-notice", // 添加通知设置路径
+  InterviewMicrophone = "/chat/interview-microphone",
+  InterviewLoudspeaker = "/chat/interview-loudspeaker",
 }
 
 export enum ApiPath {

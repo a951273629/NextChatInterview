@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import "./interview-overlay-microphone.scss";
+import "./interview-microphone.scss";
 import * as tf from "@tensorflow/tfjs";
 import {
   RealtimeVoiceprintRecognizer,
@@ -7,9 +7,10 @@ import {
   loadVoiceprintModelAndRecognizer,
 } from "@/app/components/tensor-flow/services/voiceprint-service";
 import InterviewPreparation from "./InterviewPreparation";
-import { InterviewUnderway } from "./interview-underway";
+import { InterviewUnderway } from "./interview-underway-microphone";
 import { Toaster } from "react-hot-toast";
-import { MiniFloatWindow } from "./mini-float-window";
+import { MiniFloatWindow } from "../mini-float-window";
+import { useOutletContext } from "react-router-dom";
 
 // 消息类型接口
 interface Message {
@@ -17,6 +18,13 @@ interface Message {
   text: string;
   isInterviewer: boolean;
   timestamp: number;
+}
+
+// 定义Context类型
+interface ChatOutletContext {
+  onClose: () => void;
+  onTextUpdate: (text: string) => void;
+  submitMessage: (text: string) => void;
 }
 
 interface InterviewOverlayProps {
@@ -44,11 +52,11 @@ const useIsMobile = () => {
   return isMobile;
 };
 
-export const InterviewOverlay: React.FC<InterviewOverlayProps> = ({
-  onClose,
-  onTextUpdate,
-  submitMessage,
-}) => {
+export const InterviewMicrophone: React.FC = () => {
+  // 从父路由获取context
+  const { onClose, onTextUpdate, submitMessage } =
+    useOutletContext<ChatOutletContext>();
+
   const [visible, setVisible] = useState(true);
   const [width, setWidth] = useState("33vw");
   const [isDragging, setIsDragging] = useState(false);

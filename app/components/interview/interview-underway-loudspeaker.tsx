@@ -436,7 +436,8 @@ export const InterviewUnderwayLoudspeaker: React.FC<
       </div>
 
       {/* 错误提示 */}
-      {(!browserSupportsApi || (!mediaStream && !audioAvailable)) && (
+      {(!browserSupportsApi ||
+        (!mediaStream && !audioAvailable && syncMode === SyncMode.SENDER)) && (
         <div className={styles.errorMessage}>
           {!browserSupportsApi ? (
             "您的浏览器不支持系统音频捕获功能或 Azure Speech SDK 配置缺失，请使用Chrome浏览器并配置 Azure 密钥"

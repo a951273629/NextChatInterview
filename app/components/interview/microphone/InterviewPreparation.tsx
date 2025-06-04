@@ -1,18 +1,25 @@
 import React, { useEffect, useRef, useState } from "react";
 import styles from "./InterviewPreparation.module.scss";
 import { toast } from "react-hot-toast";
-import { useActivation } from "../valid-wrapper/ActivationWrapper";
-import ActivationStatus from "../valid-wrapper/ActivationStatus";
+import { useActivation } from "../../valid-wrapper/ActivationWrapper";
+import ActivationStatus from "../../valid-wrapper/ActivationStatus";
 import { safeLocalStorage } from "@/app/utils";
 import { useNavigate } from "react-router-dom";
 import { Path } from "@/app/constant";
-import { ACTIVATION_KEY } from "../valid-wrapper/activation";
+import { ACTIVATION_KEY } from "../../valid-wrapper/activation";
 import {
   useLanguage,
   RecognitionLanguage,
 } from "@/app/contexts/LanguageContext";
 // 导入声纹存储服务
-import { voiceprintStorage } from "../tensor-flow/services/voiceprint-storage";
+import { voiceprintStorage } from "../../tensor-flow/services/voiceprint-storage";
+// 导入SVG图标
+import VoiceIcon from "@/app/icons/voice.svg";
+import VoiceOffIcon from "@/app/icons/voice-off.svg";
+import WIFI from "@/app/icons/wifi.svg";
+import WIFIOff from "@/app/icons/wifi-off.svg";
+
+// import PowerIcon from "@/app/icons/power.svg";
 
 const localStorage = safeLocalStorage();
 
@@ -287,30 +294,34 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
     switch (micStatus) {
       case "ready":
         return {
-          icon: "🎙️",
+          icon: <VoiceIcon />,
           text: "麦克风已连接",
           colorClass: "status-success",
         };
       case "unauthorized":
         return {
-          icon: "🚫",
+          icon: <VoiceOffIcon />,
           text: "麦克风访问被拒绝，请授予权限",
           colorClass: "status-error",
         };
       case "unavailable":
         return {
-          icon: "❓",
+          icon: <VoiceOffIcon />,
           text: "未检测到麦克风设备",
           colorClass: "status-error",
         };
       case "error":
         return {
-          icon: "⚠️",
+          icon: <VoiceOffIcon />,
           text: "麦克风出现未知错误",
           colorClass: "status-error",
         };
       default:
-        return { icon: "⏳", text: "正在检测麦克风...", colorClass: "" };
+        return {
+          icon: <VoiceOffIcon />,
+          text: "正在检测麦克风...",
+          colorClass: "",
+        };
     }
   };
 
@@ -319,24 +330,24 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
     switch (networkStatus) {
       case "good":
         return {
-          icon: "📶",
+          icon: <WIFI />,
           text: "网络连接良好",
           colorClass: "status-success",
         };
       case "average":
         return {
-          icon: "📶",
+          icon: <WIFI />,
           text: "网络连接一般",
           colorClass: "status-warning",
         };
       case "poor":
         return {
-          icon: "📶",
+          icon: <WIFI />,
           text: "网络连接较差，可能影响面试",
           colorClass: "status-error",
         };
       default:
-        return { icon: "📶", text: "正在检测网络...", colorClass: "" };
+        return { icon: <WIFIOff />, text: "正在检测网络...", colorClass: "" };
     }
   };
 

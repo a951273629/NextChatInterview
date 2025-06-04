@@ -260,8 +260,9 @@ export const usePluginStore = createPersistStore(
                 state.updatePlugin(plugin.id, (plugin) => {
                   const tool = FunctionToolService.add(plugin, true);
                   plugin.title =
-                    tool.api.definition.info.title || "interview sheep";
-                  plugin.version = tool.api.definition.info.version || "unKnow";
+                    tool?.api?.definition?.info?.title || "interview sheep";
+                  plugin.version =
+                    tool?.api?.definition?.info?.version || "unKnow";
                   plugin.builtin = true;
                 });
               });

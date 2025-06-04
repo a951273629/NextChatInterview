@@ -5,7 +5,7 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    height: 100%;
+    // height: 100%;
     padding: 1rem;
     
     .prep-header {
@@ -344,7 +344,7 @@
       padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0)); // 考虑安全区域，增加更多间距
       width: 100%;
       position: relative; // 相对定位
-      bottom: 0; // 确保位于底部
+      // bottom: 0; // 确保位于底部
       display: flex;
       justify-content: center;
       align-items: center;

@@ -257,7 +257,10 @@ export const InterviewLoudspeaker: React.FC = () => {
       setShowSpeakerDropdown(false);
 
       // 如果有音频元素，尝试设置输出设备
-      if (audioElementRef.current && (audioElementRef.current as any).setSinkId) {
+      if (
+        audioElementRef.current &&
+        (audioElementRef.current as any).setSinkId
+      ) {
         await (audioElementRef.current as any).setSinkId(
           deviceId === "system-default" ? "" : deviceId,
         );

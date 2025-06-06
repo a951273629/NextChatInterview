@@ -100,6 +100,10 @@ export const InterviewLoudspeaker: React.FC = () => {
     useState<ScreenCaptureStatus>("pending");
   const [hasScreenPermission, setHasScreenPermission] = useState(false);
 
+  // 简化重试机制状态
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
+
   // 扬声器设备相关状态
   const [speakerDevices, setSpeakerDevices] = useState<SpeakerDevice[]>([]);
   const [selectedSpeakerId, setSelectedSpeakerId] =
@@ -315,7 +319,6 @@ export const InterviewLoudspeaker: React.FC = () => {
       setScreenCaptureStatus("pending");
       console.log("开始请求录屏权限...");
 
-      // 请求屏幕共享，但只要音频
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: true,
@@ -323,35 +326,39 @@ export const InterviewLoudspeaker: React.FC = () => {
 
       mediaStreamRef.current = stream;
 
-      // const [audioTrack] = stream.getAudioTracks();
-      // if (audioTrack) {
-      //   mediaStreamRef.current = new MediaStream([audioTrack]); // ← 纯音频流
-      //   // 后续处理看下一节
-      // }
-
-      // 创建音频上下文
-      // const AudioContext = window.AudioContext || window.webkitAudioContext;
-      // const audioContext = new AudioContext();
-      // audioContextRef.current = audioContext;
-
-      // // 创建媒体流源
-      // const source = audioContext.createMediaStreamSource(stream);
-
-      // // 连接到目标（这会使音频可以被语音识别API识别）
-      // const destination = audioContext.createMediaStreamDestination();
-      // source.connect(destination);
-
       setScreenCaptureStatus("granted");
       setHasScreenPermission(true);
       console.log("录屏权限获取成功");
 
-      // 监听流结束事件
-      stream.getAudioTracks().forEach((track) => {
+      // 重置重试计数（成功获取权限时）
+      setRetryCount(0);
+
+      // 简化的音频轨道事件监听
+      stream.getAudioTracks().forEach((track, index) => {
+        console.log(`🎵 监听音频轨道 ${index}: ${track.label}`);
+        
         track.onended = () => {
-          console.log("录屏音频流已结束");
-          stopScreenCapture();
+          console.log(`🔇 音频轨道已结束: ${track.label}`);
+          
+          // 自动重试逻辑
+          if (retryCount < maxRetries) {
+            const currentRetry = retryCount + 1;
+            setRetryCount(currentRetry);
+            console.log(`🔄 自动重试获取屏幕共享权限 (${currentRetry}/${maxRetries})...`);
+            
+            // 延迟1秒后重试
+            setTimeout(() => {
+              requestScreenCapture().catch((error) => {
+                console.error(`❌ 重试 ${currentRetry} 失败:`, error);
+              });
+            }, 1000);
+          } else {
+            console.log("❌ 已达到最大重试次数，停止屏幕共享");
+            stopScreenCapture();
+          }
         };
       });
+
     } catch (error: any) {
       console.error("获取录屏权限失败:", error);
       setScreenCaptureStatus("denied");
@@ -365,6 +372,8 @@ export const InterviewLoudspeaker: React.FC = () => {
       } else {
         alert("无法访问系统音频，请检查权限设置。");
       }
+      
+      throw error;
     }
   };
 
@@ -377,14 +386,9 @@ export const InterviewLoudspeaker: React.FC = () => {
         mediaStreamRef.current = null;
       }
 
-      // // 关闭音频上下文
-      // if (audioContextRef.current) {
-      //   audioContextRef.current.close();
-      //   audioContextRef.current = null;
-      // }
-
       setHasScreenPermission(false);
       setScreenCaptureStatus("pending");
+      setRetryCount(0); // 重置重试计数
       console.log("录屏捕获已停止");
     } catch (error) {
       console.error("停止录屏捕获失败:", error);
@@ -508,7 +512,13 @@ export const InterviewLoudspeaker: React.FC = () => {
 
     switch (screenCaptureStatus) {
       case "granted":
-        return { text: "录屏权限已获取", color: "#4caf50", progress: 100 };
+        return { 
+          text: retryCount > 0 
+            ? `录屏权限已获取 (重试${retryCount}次后成功)` 
+            : "录屏权限已获取", 
+          color: "#4caf50", 
+          progress: 100 
+        };
       case "denied":
         return { text: "录屏权限被拒绝", color: "#ff6b6b", progress: 0 };
       case "unavailable":
@@ -631,11 +641,9 @@ export const InterviewLoudspeaker: React.FC = () => {
                   <button
                     className={styles.permissionButton}
                     onClick={requestScreenCapture}
-                    // disabled={screenCaptureStatus === "pending" || screenCaptureStatus === "unavailable"}
+                    // disabled={screenCaptureStatus === "pending"}
                   >
-                    {screenCaptureStatus === "pending"
-                      ? "点击选择录屏权限"
-                      : "获取录屏权限"}
+                    {screenCaptureStatus === "pending" ? "点击选择录屏权限" : "获取录屏权限"}
                   </button>
                 ) : (
                   <div className={styles.permissionGranted}>

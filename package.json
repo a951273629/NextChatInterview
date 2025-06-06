@@ -20,7 +20,6 @@
     "app:build": "yarn mask && yarn tauri build",
     "app:clear": "yarn tauri dev",
     "prompts": "node ./scripts/fetch-prompts.mjs",
-    "prepare": "husky install",
     "proxy-dev": "sh ./scripts/init-proxy.sh && proxychains -f ./scripts/proxychains.conf yarn dev",
     "test": "node --no-warnings --experimental-vm-modules $(yarn bin jest) --watch",
     "test:ci": "node --no-warnings --experimental-vm-modules $(yarn bin jest) --ci"

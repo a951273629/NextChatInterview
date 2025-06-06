@@ -6,6 +6,8 @@ WORKDIR /app
 
 COPY package.json yarn.lock ./
 
+# 设置环境变量跳过Husky安装
+ENV HUSKY=0
 RUN yarn config set registry 'https://registry.npmmirror.com/'
 RUN yarn install
 
@@ -42,6 +44,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/.next/server ./.next/server
+# 添加缺失的server.cjs文件复制
+COPY --from=builder /app/server.cjs ./server.cjs
 COPY --from=builder /app/websocket-server ./websocket-server
 COPY --from=builder /app/scripts/start-services.js ./scripts/start-services.js
 

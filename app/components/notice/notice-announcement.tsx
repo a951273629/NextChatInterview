@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import styles from "./notice.module.scss";
 import { Notice } from "../../api/notice/notice-service";
 
@@ -54,6 +54,65 @@ const recordNoticeShown = (noticeId: number): void => {
   } catch (error) {
     console.error("记录通知显示时间出错:", error);
   }
+};
+
+// URL 安全验证函数
+const isValidUrl = (url: string): boolean => {
+  try {
+    const urlObj = new URL(url);
+    // 只允许 http 和 https 协议
+    return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+// 内容解析函数，将 (文本)[链接] 格式转换为可点击链接
+const parseContent = (content: string): React.ReactNode => {
+  const regex = /\(([^)]+)\)\[([^\]]+)\]/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+  let keyIndex = 0;
+
+  while ((match = regex.exec(content)) !== null) {
+    // 添加匹配前的文本
+    if (match.index > lastIndex) {
+      const textContent = content.slice(lastIndex, match.index);
+      parts.push(
+        <span key={`text-${keyIndex++}`}>{textContent}</span>
+      );
+    }
+    
+    // 提取文本和链接
+    const [, text, url] = match;
+    
+
+      parts.push(
+        <a 
+          key={`link-${keyIndex++}`}
+          href={url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ color: '#1976d2', textDecoration: 'underline' }}
+        >
+          {text}
+        </a>
+      );
+
+    
+    lastIndex = regex.lastIndex;
+  }
+  
+  // 添加剩余文本
+  if (lastIndex < content.length) {
+    const remainingText = content.slice(lastIndex);
+    parts.push(
+      <span key={`text-${keyIndex++}`}>{remainingText}</span>
+    );
+  }
+  
+  return parts.length > 0 ? parts : content;
 };
 
 interface NoticeAnnouncementProps {
@@ -138,7 +197,7 @@ export function NoticeAnnouncement(props: NoticeAnnouncementProps) {
     <div className={styles["notice-overlay"]}>
       <div className={styles["notice-container"]}>
         <div className={styles["notice-title"]}>{notice.title}</div>
-        <div className={styles["notice-content"]}>{notice.content}</div>
+        <div className={styles["notice-content"]}>{parseContent(notice.content)}</div>
         <div className={styles["notice-footer"]}>
           <button className={styles["confirm-button"]} onClick={handleConfirm}>
             确认

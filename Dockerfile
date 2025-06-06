@@ -6,6 +6,8 @@ WORKDIR /app
 
 COPY package.json yarn.lock ./
 
+# 设置环境变量跳过Husky安装
+ENV HUSKY=0
 RUN yarn config set registry 'https://registry.npmmirror.com/'
 RUN yarn install
 
@@ -20,6 +22,7 @@ ENV CODE=""
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+COPY websocket-server ./websocket-server
 
 RUN yarn build
 
@@ -34,11 +37,17 @@ ENV GOOGLE_API_KEY=""
 ENV CODE=""
 ENV ENABLE_MCP=""
 ENV DB_PATH="/app/data/nextchat.db"
+ENV WS_PORT="8080"
+ENV WS_HOST="0.0.0.0"
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/.next/server ./.next/server
+# 添加缺失的server.cjs文件复制
+COPY --from=builder /app/server.cjs ./server.cjs
+COPY --from=builder /app/websocket-server ./websocket-server
+COPY --from=builder /app/scripts/start-services.js ./scripts/start-services.js
 
 RUN mkdir -p /app/app/mcp && chmod 777 /app/app/mcp
 COPY --from=builder /app/app/mcp/mcp_config.default.json /app/app/mcp/mcp_config.json
@@ -48,6 +57,7 @@ RUN mkdir -p /app/data && chmod 755 /app/data
 COPY --from=builder /app/app/db/*.sql /app/app/db/
 
 EXPOSE 3000
+EXPOSE 8080
 
 CMD if [ -n "$PROXY_URL" ]; then \
     export HOSTNAME="0.0.0.0"; \
@@ -65,7 +75,7 @@ CMD if [ -n "$PROXY_URL" ]; then \
     echo "[ProxyList]" >> $conf; \
     echo "$protocol $host $port" >> $conf; \
     cat /etc/proxychains.conf; \
-    proxychains -f $conf node server.js; \
+    proxychains -f $conf node scripts/start-services.js; \
     else \
-    node server.js; \
+    node scripts/start-services.js; \
     fi

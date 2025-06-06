@@ -1,7 +1,33 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import styles from "./preparation-resumes-upload.module.scss";
-// import pdfToText from "react-pdftotext";
+
+// Promise.withResolvers 类型声明
+declare global {
+  interface PromiseConstructor {
+    withResolvers<T>(): {
+      promise: Promise<T>;
+      resolve: (value: T | PromiseLike<T>) => void;
+      reject: (reason?: any) => void;
+    };
+  }
+}
+
+// Promise.withResolvers polyfill for Node.js 20.x compatibility
+if (typeof (Promise as any).withResolvers === 'undefined') {
+  (Promise as any).withResolvers = function <T>() {
+    let resolve: (value: T | PromiseLike<T>) => void;
+    let reject: (reason?: any) => void;
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve: resolve!, reject: reject! };
+  };
+}
+
+// 动态导入 PDF 处理模块，仅在客户端环境执行
+let pdfToText: any = null;
 
 // 判断当前是否为开发环境
 const isDevelopment = process.env.NODE_ENV === "development";
@@ -46,13 +72,37 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
   const [resumeText, setResumeText] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [resumeFileName, setResumeFileName] = useState<string>("");
+  const [isClientReady, setIsClientReady] = useState<boolean>(false);
 
   // 引用
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadedFileRef = useRef<File | null>(null);
 
+  // 客户端初始化
+  useEffect(() => {
+    // 确保在客户端环境中初始化
+    if (typeof window !== 'undefined') {
+      setIsClientReady(true);
+      
+      // 动态加载 PDF 处理模块
+      const loadPdfModule = async () => {
+        try {
+          const pdfModule = await import("react-pdftotext");
+          pdfToText = pdfModule.default;
+          console.log("[PDF] react-pdftotext 模块已在客户端加载");
+        } catch (error) {
+          console.error("[PDF] 加载 react-pdftotext 失败:", error);
+        }
+      };
+      
+      loadPdfModule();
+    }
+  }, []);
+
   // 检查本地存储是否有简历数据
   useEffect(() => {
+    if (!isClientReady) return;
+    
     const storedResume = localStorage.getItem(USER_RESUMES_STORAGE_KEY);
     const storedName = localStorage.getItem(USER_RESUMES_NAME_STORAGE_KEY);
     if (storedResume) {
@@ -62,7 +112,7 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
     if (storedName) {
       setResumeFileName(storedName);
     }
-  }, []);
+  }, [isClientReady]);
 
   /**
    * 测试环境读取指定PDF文件
@@ -126,11 +176,11 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
         return;
       }
 
-      // 检查文件大小（移动端可能有限制）
-      const maxSize = 50 * 1024 * 1024; // 50MB
+      // 检查文件大小（限制为3MB）
+      const maxSize = 3 * 1024 * 1024; // 3MB
       if (file.size > maxSize) {
-        setErrorMessage("文件大小不能超过50MB");
-        alert("文件大小不能超过50MB");
+        setErrorMessage("文件大小不能超过3MB");
+        alert("文件大小不能超过3MB");
         if (event.target) {
           event.target.value = "";
         }
@@ -194,6 +244,18 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
 
     if (!uploadedFileRef.current) return;
 
+    // 检查是否在客户端环境
+    if (!isClientReady || typeof window === 'undefined') {
+      setErrorMessage("PDF 处理仅在客户端环境中可用");
+      return;
+    }
+
+    // 检查 PDF 模块是否已加载
+    if (!pdfToText) {
+      setErrorMessage("PDF 处理模块尚未加载完成，请稍后重试");
+      return;
+    }
+
     setIsExtracting(true);
     setErrorMessage("");
     setExtractProgress(10); // 初始进度
@@ -205,29 +267,16 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
       setExtractProgress(30);
       console.log("准备提取PDF文本...");
 
-      // 检测移动端并添加超时处理
-      const isMobile =
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-          navigator.userAgent,
-        );
-      const timeout = isMobile ? 30000 : 15000; // 移动端给更长的超时时间
-
-      // 使用Promise.race添加超时控制
-      // let extractedText = await Promise.race([
-      //   pdfToText(fileToProcess),
-      //   new Promise<string>((_, reject) =>
-      //     setTimeout(
-      //       () => reject(new Error("文件处理超时，请尝试较小的文件")),
-      //       timeout,
-      //     ),
-      //   ),
-      // ]);
-      let extractedText = "";
+      // 直接使用pdfToText提取文本
+      const extractedText = await pdfToText(fileToProcess);
+      
       // 设置进度为90%表示提取完成
       setExtractProgress(90);
 
       // 处理可能的编码问题，特别是中文
       const replacementChar = "\uFFFD"; // Unicode 替换字符，表示无法识别的字符
+      let finalText = extractedText;
+      
       if (extractedText && extractedText.includes(replacementChar)) {
         console.log("检测到编码问题，尝试修复...");
         try {
@@ -250,7 +299,7 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
                     extractedText.split(replacementChar).length)
               ) {
                 console.log(`使用 ${encoding} 编码解码成功`);
-                extractedText = decodedText;
+                finalText = decodedText;
                 break;
               }
             } catch (e) {
@@ -262,12 +311,12 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
         }
       }
 
-      if (extractedText && extractedText.trim().length > 0) {
-        console.log("成功提取文本，长度:", extractedText.length);
-        console.log(extractedText); // 按要求输出提取内容
+      if (finalText && finalText.trim().length > 0) {
+        console.log("成功提取文本，长度:", finalText.length);
+        console.log(finalText); // 按要求输出提取内容
 
-        setResumeText(extractedText);
-        localStorage.setItem(USER_RESUMES_STORAGE_KEY, extractedText);
+        setResumeText(finalText);
+        localStorage.setItem(USER_RESUMES_STORAGE_KEY, finalText);
         setHasResume(true);
         setExtractProgress(100);
 

@@ -1,7 +1,8 @@
 // 消息容器样式
 .messagesContainer {
   width: 100%;
-  flex: 1;
+  // height: 50px;
+  flex: 0.85;
   overflow-y: auto;
   display: flex;
   flex-direction: column;

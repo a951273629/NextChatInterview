@@ -40,11 +40,12 @@ const ActivateKeyDialog: React.FC<ActivateKeyDialogProps> = ({
 
   // 激活密钥
   const handleActivateKey = async () => {
+    
     if (!keyString.trim()) {
       setError("请输入激活密钥");
       return;
     }
-
+    // keyString = keyString.trim();
     try {
       setIsLoading(true);
       setError(null);
@@ -58,7 +59,7 @@ const ActivateKeyDialog: React.FC<ActivateKeyDialogProps> = ({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ keyString, ipAddress, hardwareName }),
+        body: JSON.stringify({ keyString: keyString.trim(), ipAddress, hardwareName }),
       });
 
       if (!response.ok) {
@@ -129,7 +130,7 @@ const ActivateKeyDialog: React.FC<ActivateKeyDialogProps> = ({
             <input
               id="activationKey"
               type="text"
-              value={keyString}
+              value={keyString.trim()}
               onChange={(e) => setKeyString(e.target.value)}
               className={`${styles["input-field"]} ${
                 error ? styles.error : ""

@@ -50,16 +50,16 @@ const InterviewMicrophone = dynamic(
   async () =>
     (await import("./interview/microphone/interview-microphone"))
       .InterviewMicrophone,
-  {
-    loading: () => <Loading noLogo />,
-  },
+  // {
+  //   loading: () => <Loading noLogo />,
+  // },
 );
 const InterviewLoudspeaker = dynamic(
   async () =>
     (await import("./interview/interview-loudspeaker")).InterviewLoudspeaker,
-  {
-    loading: () => <Loading noLogo />,
-  },
+  // {
+  //   loading: () => <Loading noLogo />,
+  // },
 );
 
 const Artifacts = dynamic(async () => (await import("./artifacts")).Artifacts, {

@@ -73,6 +73,9 @@ export const InterviewMicrophone: React.FC = () => {
   // 添加手机模式下的隐藏状态控制
   const [isMinimized, setIsMinimized] = useState(false);
 
+  // 添加消息状态管理
+  const [messages, setMessages] = useState<Message[]>([]);
+
   // 声纹识别相关状态
   const [voiceprintEnabled, setVoiceprintEnabled] = useState(true);
   const [isInterviewer, setIsInterviewer] = useState(false);
@@ -102,6 +105,27 @@ export const InterviewMicrophone: React.FC = () => {
   // 显示悬浮窗的处理函数
   const handleShowFromFloat = () => {
     setIsMinimized(false);
+  };
+
+  // 添加最小化处理函数
+  const handleMinimize = () => {
+    if (isMobile) {
+      setIsMinimized(true);
+    }
+  };
+
+  // 添加消息处理函数
+  const handleAddMessage = (text: string, isInterviewer: boolean) => {
+    if (!text || text.trim() === "") return;
+
+    const newMessage: Message = {
+      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      text: text.trim(),
+      isInterviewer,
+      timestamp: Date.now(),
+    };
+
+    setMessages((prev) => [...prev, newMessage]);
   };
 
   // 加载TensorFlow模型和声纹特征
@@ -411,7 +435,9 @@ export const InterviewMicrophone: React.FC = () => {
             ? "interviewer-mode"
             : ""
         }`}
-        style={{ width: !isMobile ? width : "100%" }}
+        style={{ 
+          width: !isMobile ? width : "100vw"
+        }}
       >
         <div className="drag-handle" onMouseDown={handleDragStart} />
 
@@ -436,6 +462,10 @@ export const InterviewMicrophone: React.FC = () => {
               onTextUpdate={onTextUpdate}
               submitMessage={submitMessage}
               onStop={handleStopInterview}
+              onMinimize={handleMinimize}
+              isMobile={isMobile}
+              messages={messages}
+              onAddMessage={handleAddMessage}
             />
           )}
         </div>

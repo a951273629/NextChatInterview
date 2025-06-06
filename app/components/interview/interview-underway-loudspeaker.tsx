@@ -39,6 +39,14 @@ interface InterviewUnderwayLoudspeakerProps {
   syncEnabled?: boolean;
   syncMode?: SyncMode;
   activationKey?: string;
+
+  // 移动端相关
+  onMinimize?: () => void;
+  isMobile?: boolean;
+
+  // 消息管理
+  messages?: Message[];
+  onAddMessage?: (text: string) => void;
 }
 
 export const InterviewUnderwayLoudspeaker: React.FC<
@@ -56,6 +64,10 @@ export const InterviewUnderwayLoudspeaker: React.FC<
   syncEnabled = false,
   syncMode = SyncMode.SENDER,
   activationKey,
+  onMinimize,
+  isMobile = false,
+  messages = [],
+  onAddMessage,
 }) => {
   // 语音识别相关状态
   const [transcript, setTranscript] = useState("");
@@ -72,8 +84,8 @@ export const InterviewUnderwayLoudspeaker: React.FC<
   const [isAutoSubmit, setIsAutoSubmit] = useState(defaultAutoSubmit);
   const [showTooltip, setShowTooltip] = useState(true);
 
-  // 消息相关
-  const [messages, setMessages] = useState<Message[]>([]);
+  // 消息相关 - 移除内部状态，使用外部传入的
+  // const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSubmittedTextRef = useRef("");
   const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -90,7 +102,7 @@ export const InterviewUnderwayLoudspeaker: React.FC<
         // 直接提交消息，不经过本地识别流程
         submitMessage(data.text);
         // 可选：也添加到消息历史
-        addMessage(data.text);
+        onAddMessage?.(data.text);
       }
     },
   });
@@ -255,24 +267,17 @@ export const InterviewUnderwayLoudspeaker: React.FC<
     scrollToBottom();
   }, [messages]);
 
-  // 消息添加函数
-  const addMessage = (text: string) => {
-    if (!text || text.trim() === "") return;
 
-    const newMessage: Message = {
-      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      text: text.trim(),
-      timestamp: Date.now(),
-    };
-
-    setMessages((prev) => [...prev, newMessage]);
-    setTimeout(scrollToBottom, 100);
-  };
 
   // 消息点击处理函数
   const handleMessageClick = (messageText: string) => {
     console.log("消息被点击:", messageText);
     submitMessage(messageText);
+    
+    // 在移动端模式下，点击消息后最小化页面
+    if (isMobile && onMinimize) {
+      onMinimize();
+    }
   };
 
   // 当组件可见且未暂停时开始音频捕获
@@ -308,7 +313,7 @@ export const InterviewUnderwayLoudspeaker: React.FC<
           // 扬声器模式下，所有语音都来自系统音频
           if (transcript !== lastSubmittedTextRef.current) {
             console.log("检测到扬声器音频，添加到消息历史:", transcript);
-            addMessage(transcript); // 简化调用，不需要传递说话者标识
+            onAddMessage?.(transcript); // 简化调用，不需要传递说话者标识
             lastSubmittedTextRef.current = transcript;
             resetTranscript();
 

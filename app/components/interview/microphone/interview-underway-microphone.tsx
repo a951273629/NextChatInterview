@@ -1,8 +1,10 @@
 import React, { useRef, useState, useEffect } from "react";
 import StopIcon from "@/app/icons/pause.svg";
-import SpeechRecognition, {
-  useSpeechRecognition,
-} from "react-speech-recognition";
+import { 
+  AzureSpeechRecognizer, 
+  getAzureSpeechConfig, 
+  isAzureSpeechAvailable 
+} from "../azureSpeech";
 import styles from "./interview-underway-microphone.module.scss";
 
 // 消息类型接口
@@ -30,6 +32,14 @@ interface InterviewUnderwayProps {
 
   // 可选：默认自动提交状态（扬声器模式下默认开启）
   defaultAutoSubmit?: boolean;
+
+  // 移动端相关
+  onMinimize?: () => void;
+  isMobile?: boolean;
+
+  // 消息管理
+  messages?: Message[];
+  onAddMessage?: (text: string, isInterviewer: boolean) => void;
 }
 
 export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
@@ -42,27 +52,33 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
   submitMessage,
   onStop,
   defaultAutoSubmit = false,
+  onMinimize,
+  isMobile = false,
+  messages = [],
+  onAddMessage,
 }) => {
-  // 语音识别相关
-  const {
-    transcript,
-    listening,
-    resetTranscript,
-    browserSupportsSpeechRecognition,
-    isMicrophoneAvailable,
-  } = useSpeechRecognition();
+  // Azure Speech 相关状态
+  const [transcript, setTranscript] = useState("");
+  const [listening, setListening] = useState(false);
+  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+  const [recognizer, setRecognizer] = useState<AzureSpeechRecognizer | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [microphoneAvailable, setMicrophoneAvailable] = useState(false);
+  const [azureSpeechAvailable, setAzureSpeechAvailable] = useState(false);
+
+  // 引用变量
   const transcriptRef = useRef(transcript);
+  const recognizerRef = useRef<AzureSpeechRecognizer | null>(null);
 
   // 控制状态
   const [isPaused, setIsPaused] = useState(false);
   const [isAutoSubmit, setIsAutoSubmit] = useState(defaultAutoSubmit);
   const [showTooltip, setShowTooltip] = useState(true);
 
-  // 消息相关
-  const [messages, setMessages] = useState<Message[]>([]);
+  // 消息相关 - 移除内部状态，使用外部传入的
+  // const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSubmittedTextRef = useRef("");
-  const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 将transcript更新到父组件
   useEffect(() => {
@@ -80,110 +96,273 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
     scrollToBottom();
   }, [messages]);
 
-  // 消息添加函数
-  const addMessage = (text: string, isInterviewer: boolean) => {
-    if (!text || text.trim() === "") return;
-
-    const newMessage: Message = {
-      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      text: text.trim(),
-      isInterviewer,
-      timestamp: Date.now(),
-    };
-
-    setMessages((prev) => [...prev, newMessage]);
-    setTimeout(scrollToBottom, 100);
-  };
+  // 消息添加函数 - 使用外部传入的回调
+  // const addMessage = (text: string, isInterviewer: boolean) => {
+  //   if (onAddMessage) {
+  //     onAddMessage(text, isInterviewer);
+  //   }
+  // };
 
   // 消息点击处理函数
   const handleMessageClick = (messageText: string) => {
     console.log("消息被点击:", messageText);
     submitMessage(messageText);
+    
+    // 在移动端模式下，点击消息后最小化页面
+    if (isMobile && onMinimize) {
+      onMinimize();
+    }
+  };
+
+  // 检查 Azure Speech 可用性
+  useEffect(() => {
+    const checkAvailability = async () => {
+      try {
+        const available = isAzureSpeechAvailable();
+        setAzureSpeechAvailable(available);
+        console.log("🔍 Azure Speech 可用性检查:", available);
+      } catch (error) {
+        console.error("❌ Azure Speech 可用性检查失败:", error);
+        setError("Azure Speech 服务不可用，请检查配置");
+        setAzureSpeechAvailable(false);
+      }
+    };
+
+    checkAvailability();
+  }, []);
+
+  // 请求麦克风权限
+  const requestMicrophonePermission = async (): Promise<MediaStream | null> => {
+    try {
+      console.log("🎤 请求麦克风权限...");
+      
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("浏览器不支持麦克风访问");
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 16000,
+        }
+      });
+
+      console.log("✅ 麦克风权限获取成功");
+      setMicrophoneAvailable(true);
+      setError(null);
+      return stream;
+    } catch (error) {
+      console.error("❌ 麦克风权限获取失败:", error);
+      setMicrophoneAvailable(false);
+      
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          setError("麦克风权限被拒绝，请允许麦克风访问");
+        } else if (error.name === 'NotFoundError') {
+          setError("未找到麦克风设备");
+        } else {
+          setError(`麦克风访问失败: ${error.message}`);
+        }
+      } else {
+        setError("麦克风访问失败");
+      }
+      return null;
+    }
+  };
+
+  // 初始化 Azure Speech 识别器
+  const initializeRecognizer = async (): Promise<AzureSpeechRecognizer | null> => {
+    try {
+      console.log("🚀 初始化 Azure Speech 识别器...");
+      
+      if (!azureSpeechAvailable) {
+        throw new Error("Azure Speech 服务不可用");
+      }
+
+      // 获取配置
+      const config = getAzureSpeechConfig();
+      config.language = recognitionLanguage || "zh-CN";
+
+      // 创建识别器
+      const newRecognizer = new AzureSpeechRecognizer(config);
+
+      // 获取麦克风流
+      const stream = await requestMicrophonePermission();
+      if (!stream) {
+        throw new Error("无法获取麦克风音频流");
+      }
+
+      // 设置音频配置
+      newRecognizer.createAudioConfigFromStream(stream);
+
+      setMediaStream(stream);
+      setRecognizer(newRecognizer);
+      recognizerRef.current = newRecognizer;
+
+      console.log("✅ Azure Speech 识别器初始化成功");
+      return newRecognizer;
+    } catch (error) {
+      console.error("❌ 初始化 Azure Speech 识别器失败:", error);
+      setError(typeof error === "string" ? error : (error as Error).message);
+      return null;
+    }
+  };
+
+  // 处理识别结果
+  const handleRecognitionResult = (text: string, isFinal: boolean) => {
+    console.log(`🔄 识别结果 (${isFinal ? '最终' : '临时'}):`, text);
+    
+    // 总是更新当前显示的文本
+    setTranscript(text);
+    transcriptRef.current = text;
+    onTextUpdate(text);
+    
+    // 只有最终结果才触发自动提交相关逻辑，不需要延迟
+    if (isFinal && text && text.trim() !== "") {
+      console.log("🎯 最终识别结果，立即处理自动提交逻辑:", text);
+      
+      // 直接处理自动提交逻辑，不需要延迟
+      // 如果声纹识别启用，并且被识别为面试官
+      if (voiceprintEnabled && isInterviewer) {
+        console.log("检测到面试官语音，添加到消息历史:", text);
+        onAddMessage?.(text, true);
+        lastSubmittedTextRef.current = text;
+        // 重置文本
+        setTranscript("");
+        transcriptRef.current = "";
+        onTextUpdate("");
+      }
+      // 如果是面试者或声纹未启用
+      else if (text !== lastSubmittedTextRef.current) {
+        console.log("检测到面试者语音，添加到消息历史:", text);
+        onAddMessage?.(text, false);
+        lastSubmittedTextRef.current = text;
+        // 重置文本
+        setTranscript("");
+        transcriptRef.current = "";
+        onTextUpdate("");
+      }
+
+      // 如果自动提交开启
+      if (isAutoSubmit && (isInterviewer || !voiceprintEnabled)) {
+        console.log("自动提交面试者语音:", text);
+        submitMessage(text);
+      }
+    }
+  };
+
+  // 处理识别错误
+  const handleRecognitionError = (errorMessage: string) => {
+    console.error("❌ 语音识别错误:", errorMessage);
+    setError(errorMessage);
+    setListening(false);
+  };
+
+  // 处理识别结束
+  const handleRecognitionEnd = () => {
+    console.log("🏁 语音识别结束");
+    setListening(false);
+  };
+
+  // 开始语音识别
+  const startListening = async () => {
+    try {
+      console.log("▶️ 开始语音识别...");
+      
+      let currentRecognizer = recognizerRef.current;
+      
+      if (!currentRecognizer) {
+        currentRecognizer = await initializeRecognizer();
+        if (!currentRecognizer) {
+          throw new Error("识别器初始化失败");
+        }
+      }
+
+      // 开始连续识别
+      currentRecognizer.startContinuousRecognition(
+        handleRecognitionResult,
+        handleRecognitionError,
+        handleRecognitionEnd
+      );
+
+      setListening(true);
+      setError(null);
+      
+      console.log("✅ 语音识别已启动");
+    } catch (error) {
+      console.error("❌ 启动语音识别失败:", error);
+      setError(typeof error === "string" ? error : (error as Error).message);
+      setListening(false);
+    }
+  };
+
+  // 停止语音识别
+  const stopListening = () => {
+    console.log("⏹️ 停止语音识别...");
+    
+    if (recognizerRef.current) {
+      recognizerRef.current.stopRecognition();
+    }
+    
+    setListening(false);
+  };
+
+  // 重置识别文本
+  const resetTranscript = () => {
+    console.log("🗑️ 重置识别文本");
+    setTranscript("");
+    transcriptRef.current = "";
+    onTextUpdate("");
+  };
+
+  // 清理资源
+  const cleanup = () => {
+    console.log("🧹 清理 Azure Speech 资源...");
+    
+    // 停止识别
+    if (recognizerRef.current) {
+      recognizerRef.current.dispose();
+      recognizerRef.current = null;
+    }
+
+    // 关闭媒体流
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => {
+        track.stop();
+        console.log("🔇 音频轨道已停止:", track.label);
+      });
+      setMediaStream(null);
+    }
+
+    setRecognizer(null);
+    setListening(false);
+    setError(null);
   };
 
   // 当组件可见且未暂停时开始语音识别
   useEffect(() => {
-    if (visible && !isPaused) {
-      SpeechRecognition.startListening({
-        continuous: true,
-        language: recognitionLanguage,
-      });
+    if (visible && !isPaused && azureSpeechAvailable) {
+      startListening();
+    } else if (!visible || isPaused) {
+      stopListening();
     }
 
     return () => {
-      SpeechRecognition.stopListening();
-    };
-  }, [visible, isPaused, recognitionLanguage]);
-
-  // 自动提交面试官语音
-  useEffect(() => {
-    // 清除之前的计时器
-    if (autoSubmitTimerRef.current) {
-      clearTimeout(autoSubmitTimerRef.current);
-      autoSubmitTimerRef.current = null;
-    }
-
-    // 如果有文本内容
-    if (transcript && transcript.trim() !== "") {
-      // 设置一个短暂的延迟，确保收集到完整的句子
-      autoSubmitTimerRef.current = setTimeout(() => {
-        // 只有当transcript没有变化时才处理，避免句子还在形成过程中就处理
-        if (transcript === transcriptRef.current) {
-          // 如果声纹识别启用，并且被识别为面试官
-          if (voiceprintEnabled && isInterviewer) {
-            console.log("检测到面试官语音，添加到消息历史:", transcript);
-            addMessage(transcript, true);
-            lastSubmittedTextRef.current = transcript;
-            resetTranscript();
-          }
-          // 如果是面试者或声纹未启用
-          else if (transcript !== lastSubmittedTextRef.current) {
-            console.log("检测到面试者语音，添加到消息历史:", transcript);
-            addMessage(transcript, false);
-            lastSubmittedTextRef.current = transcript;
-            resetTranscript();
-          }
-
-          // 如果自动提交开启
-          if (isAutoSubmit && (isInterviewer || !voiceprintEnabled)) {
-            console.log("自动提交面试者语音:", transcript);
-            submitMessage(transcript);
-          }
-        }
-      }, 1800); // 1.8秒延迟
-    }
-
-    return () => {
-      if (autoSubmitTimerRef.current) {
-        clearTimeout(autoSubmitTimerRef.current);
+      if (!visible) {
+        cleanup();
       }
     };
-  }, [
-    transcript,
-    voiceprintEnabled,
-    isInterviewer,
-    submitMessage,
-    resetTranscript,
-    isAutoSubmit,
-  ]);
+  }, [visible, isPaused, azureSpeechAvailable, recognitionLanguage]);
 
   // 暂停/恢复功能
   const togglePauseCommit = () => {
     if (!isPaused) {
-      SpeechRecognition.abortListening();
-      setTimeout(() => {
-        SpeechRecognition.stopListening();
-      }, 0);
+      stopListening();
       resetTranscript();
-    } else {
-      SpeechRecognition.abortListening();
-      setTimeout(() => {
-        SpeechRecognition.startListening({
-          continuous: true,
-          language: recognitionLanguage,
-        });
-        resetTranscript();
-      }, 0);
+    } else if (azureSpeechAvailable) {
+      startListening();
     }
     setIsPaused(!isPaused);
   };
@@ -191,11 +370,7 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
   // 停止识别
   const stopRecognition = () => {
     try {
-      SpeechRecognition.abortListening();
-      setTimeout(() => {
-        SpeechRecognition.stopListening();
-      }, 0);
-
+      cleanup();
       onStop();
     } catch (error) {
       console.error("停止语音识别失败:", error);
@@ -205,15 +380,8 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
   // 组件卸载时清理
   useEffect(() => {
     return () => {
-      if (autoSubmitTimerRef.current) {
-        clearTimeout(autoSubmitTimerRef.current);
-      }
-      try {
-        SpeechRecognition.abortListening();
-        SpeechRecognition.stopListening();
-      } catch (e) {
-        console.error("停止语音识别失败:", e);
-      }
+      // 清理 Azure Speech 资源
+      cleanup();
     };
   }, []);
 
@@ -263,11 +431,13 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
       </div>
 
       {/* 错误提示 */}
-      {(!browserSupportsSpeechRecognition || !isMicrophoneAvailable) && (
+      {(!azureSpeechAvailable || !microphoneAvailable || error) && (
         <div className={styles.errorMessage}>
-          {!browserSupportsSpeechRecognition
-            ? "您的浏览器不支持语音识别功能,请使用Chrome浏览器"
-            : "无法访问麦克风，请检查麦克风权限"}
+          {!azureSpeechAvailable
+            ? "Azure Speech 服务不可用，请检查配置"
+            : !microphoneAvailable
+            ? "无法访问麦克风，请检查麦克风权限"
+            : error}
         </div>
       )}
 

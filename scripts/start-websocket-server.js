@@ -177,10 +177,8 @@ class WebSocketServerStarter {
   }
 }
 
-// 如果直接运行此脚本
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const starter = new WebSocketServerStarter();
-  starter.run();
-}
+// 直接运行启动器
+const starter = new WebSocketServerStarter();
+starter.run().catch(console.error);
 
 export default WebSocketServerStarter; 

@@ -1,7 +1,33 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import styles from "./preparation-resumes-upload.module.scss";
-import pdfToText from "react-pdftotext";
+
+// Promise.withResolvers 类型声明
+declare global {
+  interface PromiseConstructor {
+    withResolvers<T>(): {
+      promise: Promise<T>;
+      resolve: (value: T | PromiseLike<T>) => void;
+      reject: (reason?: any) => void;
+    };
+  }
+}
+
+// Promise.withResolvers polyfill for Node.js 20.x compatibility
+if (typeof (Promise as any).withResolvers === 'undefined') {
+  (Promise as any).withResolvers = function <T>() {
+    let resolve: (value: T | PromiseLike<T>) => void;
+    let reject: (reason?: any) => void;
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve: resolve!, reject: reject! };
+  };
+}
+
+// 动态导入 PDF 处理模块，仅在客户端环境执行
+let pdfToText: any = null;
 
 // 判断当前是否为开发环境
 const isDevelopment = process.env.NODE_ENV === "development";
@@ -46,13 +72,37 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
   const [resumeText, setResumeText] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [resumeFileName, setResumeFileName] = useState<string>("");
+  const [isClientReady, setIsClientReady] = useState<boolean>(false);
 
   // 引用
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadedFileRef = useRef<File | null>(null);
 
+  // 客户端初始化
+  useEffect(() => {
+    // 确保在客户端环境中初始化
+    if (typeof window !== 'undefined') {
+      setIsClientReady(true);
+      
+      // 动态加载 PDF 处理模块
+      const loadPdfModule = async () => {
+        try {
+          const pdfModule = await import("react-pdftotext");
+          pdfToText = pdfModule.default;
+          console.log("[PDF] react-pdftotext 模块已在客户端加载");
+        } catch (error) {
+          console.error("[PDF] 加载 react-pdftotext 失败:", error);
+        }
+      };
+      
+      loadPdfModule();
+    }
+  }, []);
+
   // 检查本地存储是否有简历数据
   useEffect(() => {
+    if (!isClientReady) return;
+    
     const storedResume = localStorage.getItem(USER_RESUMES_STORAGE_KEY);
     const storedName = localStorage.getItem(USER_RESUMES_NAME_STORAGE_KEY);
     if (storedResume) {
@@ -62,7 +112,7 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
     if (storedName) {
       setResumeFileName(storedName);
     }
-  }, []);
+  }, [isClientReady]);
 
   /**
    * 测试环境读取指定PDF文件
@@ -193,6 +243,18 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
     console.log("开始提取PDF文本");
 
     if (!uploadedFileRef.current) return;
+
+    // 检查是否在客户端环境
+    if (!isClientReady || typeof window === 'undefined') {
+      setErrorMessage("PDF 处理仅在客户端环境中可用");
+      return;
+    }
+
+    // 检查 PDF 模块是否已加载
+    if (!pdfToText) {
+      setErrorMessage("PDF 处理模块尚未加载完成，请稍后重试");
+      return;
+    }
 
     setIsExtracting(true);
     setErrorMessage("");

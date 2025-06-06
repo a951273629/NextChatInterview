@@ -470,10 +470,24 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
         </div>
       </div>
 
-      {/* 操作按钮区域 */}
+      {/* 操作按钮区域
       <div className={styles["prep-footer"]}>
         <button
-          className={`${styles["button"]} ${styles["start-button"]} ${
+          className={`${styles["start-button"]} ${
+            micStatus !== "ready" || !isActivated ? styles["disabled"] : ""
+          }`}
+          onClick={() => {
+            checkActivation(() => handleStartInterview());
+          }}
+          disabled={micStatus !== "ready"}
+        >
+          {isActivated ? "开始面试" : "请先激活"}
+        </button>
+      </div> */}
+
+<div className={styles["prep-footer"]}>
+        <button
+          className={`${styles["start-button"]} ${
             micStatus !== "ready" || !isActivated ? styles["disabled"] : ""
           }`}
           onClick={() => {
@@ -484,6 +498,7 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
           {isActivated ? "开始面试" : "请先激活"}
         </button>
       </div>
+
     </div>
   );
 };

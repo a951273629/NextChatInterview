@@ -17,8 +17,13 @@
   &.mobileOverlay {
     width: 100vw !important;
     height: 100vh;
+    height: calc(100vh - env(safe-area-inset-top));
     left: 0;
     border-left: none;
+    // 移动端触摸滚动优化
+    -webkit-overflow-scrolling: touch;
+    touch-action: manipulation;
+    overscroll-behavior: contain;
   }
 }
 
@@ -59,6 +64,14 @@
     background: rgba(255, 255, 255, 0.2);
     transform: rotate(90deg);
   }
+  
+  @media only screen and (max-width: 600px) {
+    top: 10px;
+    right: 10px;
+    width: 36px; // 稍微增大以便触摸
+    height: 36px;
+    font-size: 16px;
+  }
 }
 
 .minimizeButton {
@@ -82,6 +95,14 @@
   &:hover {
     background: rgba(255, 255, 255, 0.2);
   }
+  
+  @media only screen and (max-width: 600px) {
+    top: 10px;
+    right: 55px;
+    width: 36px; // 稍微增大以便触摸
+    height: 36px;
+    font-size: 14px;
+  }
 }
 
 .content {
@@ -92,7 +113,19 @@
   flex-direction: column;
 
   @media only screen and (max-width: 600px) {
-    padding: 80px 15px 15px;
+    padding: 50px 10px 20px;
+    min-height: 0;
+    // 移动端滚动优化
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overscroll-behavior: auto;
+    scroll-behavior: smooth;
+    // 确保滚动容器高度正确
+    height: calc(100vh - 70px); // 减去顶部padding和按钮高度
+    max-height: calc(100vh - 70px);
+    // 改善滚动性能
+    will-change: scroll-position;
+    transform: translateZ(0); // 启用硬件加速
   }
 }
 
@@ -102,6 +135,13 @@
   flex-direction: column;
   gap: 2rem;
   max-width: 100%;
+  
+  @media only screen and (max-width: 600px) {
+    gap: 1rem;
+    // 移动端触摸优化
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
 }
 
 .header {
@@ -420,19 +460,49 @@
 // 响应式设计
 @media only screen and (max-width: 600px) {
   .preparationContainer {
-    gap: 1.5rem;
+    gap: 1rem;
+    // 移动端触摸优化
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
   }
   
-  .header .title {
-    font-size: 1.3rem;
+  .header {
+    .title {
+      font-size: 1.2rem;
+      margin-bottom: 0.25rem;
+    }
+    
+    .subtitle {
+      font-size: 0.8rem;
+    }
+  }
+  
+  .sectionTitle {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
   }
   
   .deviceCheck .deviceItem {
-    padding: 0.75rem;
+    padding: 0.5rem;
+    margin-bottom: 0.75rem;
+    // 移动端触摸优化
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
     
     .deviceIcon {
-      font-size: 1.2rem;
-      width: 35px;
+      font-size: 1rem;
+      width: 30px;
+    }
+    
+    .deviceInfo {
+      .deviceName {
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
+      }
+      
+      .progressContainer {
+        margin-bottom: 0.25rem;
+      }
     }
   }
   
@@ -440,16 +510,65 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    // 移动端触摸优化
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    
+    .settingLabel {
+      font-size: 0.9rem;
+    }
     
     .settingControl .languageSelect {
       width: 100%;
       min-width: unset;
+      padding: 0.4rem 0.6rem;
+      font-size: 0.85rem;
     }
   }
   
-  .startButtonContainer .startButton {
-    width: 100%;
-    max-width: 300px;
+  .startButtonContainer {
+    margin-top: 0.75rem;
+    
+    .startButton {
+      width: 100%;
+      max-width: 280px;
+      padding: 0.8rem 1.5rem;
+      font-size: 1rem;
+      // 移动端触摸优化
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+    }
+  }
+  
+  // 设置项目样式优化
+  .setting-item {
+    padding: 0.5rem;
+    margin-bottom: 0.75rem;
+    
+    .setting-label {
+      width: 4rem;
+      font-size: 0.8rem;
+    }
+    
+    .setting-control {
+      .setting-status {
+        margin-left: 0.5rem;
+        font-size: 0.8rem;
+      }
+      
+      .setting-warning {
+        margin-top: 0.25rem;
+        font-size: 0.75rem;
+      }
+    }
+  }
+  
+  // 模式描述样式
+  .mode-description {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
   }
 }
 

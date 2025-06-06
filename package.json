@@ -3,11 +3,13 @@
   "private": true,
   "version": "2.15.8",
   "license": "mit",
+  "type": "module",
   "scripts": {
     "mask": "npx tsx app/masks/build.ts",
     "mask:watch": "npx watch \"yarn mask\" app/masks",
     "dev": "concurrently -r \"yarn run mask:watch\" \"next dev\"",
     "dev:with-ws": "concurrently -r \"yarn run mask:watch\" \"next dev\" \"cd websocket-server && npm run start\"",
+    "dev:full": "concurrently -r \"yarn run mask:watch\" \"next dev\" \"node scripts/start-websocket-server.js\"",
     "build": "rimraf .next && rimraf  next-env.d.ts && yarn mask && cross-env BUILD_MODE=standalone next build",
     "start": "next start",
     "lint": "next lint",
@@ -20,10 +22,7 @@
     "prepare": "husky install",
     "proxy-dev": "sh ./scripts/init-proxy.sh && proxychains -f ./scripts/proxychains.conf yarn dev",
     "test": "node --no-warnings --experimental-vm-modules $(yarn bin jest) --watch",
-    "test:ci": "node --no-warnings --experimental-vm-modules $(yarn bin jest) --ci",
-    "ws:start": "node scripts/start-websocket-server.js",
-    "ws:dev": "cd websocket-server && npm run dev",
-    "ws:install": "cd websocket-server && npm install"
+    "test:ci": "node --no-warnings --experimental-vm-modules $(yarn bin jest) --ci"
   },
   "dependencies": {
     "@fortaine/fetch-event-source": "^3.0.6",

@@ -86,6 +86,9 @@ export const InterviewLoudspeaker: React.FC = () => {
   // 添加手机模式下的隐藏状态控制
   const [isMinimized, setIsMinimized] = useState(false);
 
+  // 添加消息状态管理
+  const [messages, setMessages] = useState<Message[]>([]);
+
   // 扬声器和网络检查状态
   const [speakerStatus, setSpeakerStatus] =
     useState<DeviceStatus>("unavailable");
@@ -129,6 +132,27 @@ export const InterviewLoudspeaker: React.FC = () => {
   // 显示悬浮窗的处理函数
   const handleShowFromFloat = () => {
     setIsMinimized(false);
+  };
+
+  // 添加最小化处理函数
+  const handleMinimize = () => {
+    if (isMobile) {
+      setIsMinimized(true);
+    }
+  };
+
+  // 添加消息处理函数
+  const handleAddMessage = (text: string) => {
+    if (!text || text.trim() === "") return;
+
+    const newMessage: Message = {
+      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      text: text.trim(),
+      isInterviewer: true, // 扬声器模式默认为面试官
+      timestamp: Date.now(),
+    };
+
+    setMessages((prev) => [...prev, newMessage]);
   };
 
   // 处理点击外部关闭下拉框
@@ -257,8 +281,8 @@ export const InterviewLoudspeaker: React.FC = () => {
       setShowSpeakerDropdown(false);
 
       // 如果有音频元素，尝试设置输出设备
-      if (audioElementRef.current && audioElementRef.current.setSinkId) {
-        await audioElementRef.current.setSinkId(
+      if (audioElementRef.current && 'setSinkId' in audioElementRef.current) {
+        await (audioElementRef.current as any).setSinkId(
           deviceId === "system-default" ? "" : deviceId,
         );
         console.log("已切换到扬声器:", deviceId);
@@ -491,7 +515,7 @@ export const InterviewLoudspeaker: React.FC = () => {
         return { text: "不支持录屏功能", color: "#ff6b6b", progress: 0 };
       case "pending":
       default:
-        return { text: "未获取录屏权限", color: "#ffa726", progress: 0 };
+        return { text: "未获取录屏权限(监听端需要录屏权限)", color: "#ffa726", progress: 0 };
     }
   };
 
@@ -510,7 +534,7 @@ export const InterviewLoudspeaker: React.FC = () => {
 
         {/* 同步功能设置 */}
         <div className={styles["setting-item"]}>
-          <div className={styles["setting-label"]}>启用同步功能：</div>
+          <div className={styles["setting-label"]}>双端互通</div>
           <div className={styles["setting-control"]}>
             <label className={styles["switch"]}>
               <input
@@ -532,10 +556,10 @@ export const InterviewLoudspeaker: React.FC = () => {
           </div>
         </div>
 
-        {/* 同步模式设置 */}
+        {/* 双端互通模式设置 */}
         {syncEnabled && (
           <div className={styles["setting-item"]}>
-            <div className={styles["setting-label"]}>同步模式：</div>
+            <div className={styles["setting-label"]}>双端选择</div>
             <div className={styles["setting-control"]}>
               <label className={styles["switch"]}>
                 <input
@@ -550,12 +574,12 @@ export const InterviewLoudspeaker: React.FC = () => {
                 <span className={styles["slider"]}></span>
               </label>
               <span className={styles["setting-status"]}>
-                {syncMode === SyncMode.SENDER ? "发送端" : "接收端"}
+                {syncMode === SyncMode.SENDER ? "目前是:监听端" : "目前是:接收端"}
               </span>
               <div className={styles["mode-description"]}>
                 {syncMode === SyncMode.SENDER
                   ? "将语音识别结果发送给其他客户端进行回答"
-                  : "接收发送端的语音识别结果"}
+                  : "接收监听端的语音识别结果 再发送给AI"}
               </div>
             </div>
           </div>
@@ -569,7 +593,7 @@ export const InterviewLoudspeaker: React.FC = () => {
               <div className={styles.activationKey}>
                 <code style={{ color: "red" }}>{activationKey}</code>
                 <span className={styles.keyDescription}>
-                  &nbsp;&nbsp;&nbsp;&nbsp;所有客户端需使用相同密钥
+                  &nbsp;&nbsp;&nbsp;&nbsp;【监听端】和【接收端】需使用相同密钥
                 </span>
               </div>
             </div>
@@ -778,17 +802,25 @@ export const InterviewLoudspeaker: React.FC = () => {
       <Toaster position="top-center" />
 
       {/* 手机模式悬浮窗 */}
-      {isMobile && isMinimized && (
-        <MiniFloatWindow onShow={handleShowFromFloat} isVisible={true} />
+      {isMobile && (isMinimized || (syncMode === SyncMode.RECEIVER && isStarted)) && (
+        <MiniFloatWindow 
+          onShow={handleShowFromFloat} 
+          isVisible={true}
+          text={syncMode === SyncMode.RECEIVER ? "正在接收" : "点击返回"}
+          // icon={syncMode === SyncMode.RECEIVER ? "📡" : "🔊"}
+        />
       )}
 
       {/* 主界面 */}
-      {visible && (!isMobile || !isMinimized) && (
+      {visible && (
         <div
           className={`${styles.overlay} ${
             isMobile ? styles.mobileOverlay : ""
           }`}
-          style={isMobile ? {} : { width }}
+          style={{
+            ...(isMobile ? {} : { width }),
+            display: isMobile && (isMinimized || (syncMode === SyncMode.RECEIVER && isStarted)) ? "none" : "block"
+          }}
         >
           {/* 拖拽边缘 */}
           {!isMobile && (
@@ -804,9 +836,9 @@ export const InterviewLoudspeaker: React.FC = () => {
           {isMobile && (
             <button
               className={styles.minimizeButton}
-              onClick={() => setIsMinimized(true)}
+              onClick={handleMinimize}
             >
-              ❌
+             -
             </button>
           )}
 
@@ -831,6 +863,10 @@ export const InterviewLoudspeaker: React.FC = () => {
                 syncEnabled={syncEnabled}
                 syncMode={syncMode}
                 activationKey={activationKey}
+                onMinimize={handleMinimize}
+                isMobile={isMobile}
+                messages={messages}
+                onAddMessage={handleAddMessage}
               />
             )}
           </div>

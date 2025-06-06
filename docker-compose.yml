@@ -1,17 +1,29 @@
 services:
   nextchat:
     container_name: interviewSheep
-    image: coderunxiaoming/nextchat_interview
+    image: coderunxiaoming/nextchat_interview:latest
     ports:
       - 3000:3000
+      - 8080:8080
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       CODE: ${CODE}
       BASE_URL: ${BASE_URL}
+      NEXT_PUBLIC_AZURE_SPEECH_KEY: ${NEXT_PUBLIC_AZURE_SPEECH_KEY}
+      NEXT_PUBLIC_AZURE_SPEECH_REGION: ${NEXT_PUBLIC_AZURE_SPEECH_REGION}
       DB_PATH: /app/data/nextchat.db
+      WS_PORT: 8080
+      WS_HOST: 0.0.0.0
+      NODE_ENV: production
     volumes:
-      - ./nextchat-data:/app/data
+      - /root/nextchat-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
 
   nginx:
@@ -21,8 +33,8 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/certs:/etc/nginx/certs
+      - /root/nginx/conf.d:/etc/nginx/conf.d
+      - /root/nginx/certs:/etc/nginx/certs
     depends_on:
       - nextchat
 

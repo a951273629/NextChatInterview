@@ -12,7 +12,7 @@ const BUILTIN_MASKS: Record<string, BuiltinMask[]> = {
   en: EN_MASKS,
 };
 
-const dirname = path.dirname(__filename);
+const dirname = path.dirname(import.meta.filename);
 
 fs.writeFile(
   dirname + "/../../public/masks.json",

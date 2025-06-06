@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import styles from "./preparation-resumes-upload.module.scss";
-// import pdfToText from "react-pdftotext";
+import pdfToText from "react-pdftotext";
 
 // 判断当前是否为开发环境
 const isDevelopment = process.env.NODE_ENV === "development";
@@ -126,11 +126,11 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
         return;
       }
 
-      // 检查文件大小（移动端可能有限制）
-      const maxSize = 50 * 1024 * 1024; // 50MB
+      // 检查文件大小（限制为3MB）
+      const maxSize = 3 * 1024 * 1024; // 3MB
       if (file.size > maxSize) {
-        setErrorMessage("文件大小不能超过50MB");
-        alert("文件大小不能超过50MB");
+        setErrorMessage("文件大小不能超过3MB");
+        alert("文件大小不能超过3MB");
         if (event.target) {
           event.target.value = "";
         }
@@ -205,29 +205,16 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
       setExtractProgress(30);
       console.log("准备提取PDF文本...");
 
-      // 检测移动端并添加超时处理
-      const isMobile =
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-          navigator.userAgent,
-        );
-      const timeout = isMobile ? 30000 : 15000; // 移动端给更长的超时时间
-
-      // 使用Promise.race添加超时控制
-      // let extractedText = await Promise.race([
-      //   pdfToText(fileToProcess),
-      //   new Promise<string>((_, reject) =>
-      //     setTimeout(
-      //       () => reject(new Error("文件处理超时，请尝试较小的文件")),
-      //       timeout,
-      //     ),
-      //   ),
-      // ]);
-      let extractedText = "";
+      // 直接使用pdfToText提取文本
+      const extractedText = await pdfToText(fileToProcess);
+      
       // 设置进度为90%表示提取完成
       setExtractProgress(90);
 
       // 处理可能的编码问题，特别是中文
       const replacementChar = "\uFFFD"; // Unicode 替换字符，表示无法识别的字符
+      let finalText = extractedText;
+      
       if (extractedText && extractedText.includes(replacementChar)) {
         console.log("检测到编码问题，尝试修复...");
         try {
@@ -250,7 +237,7 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
                     extractedText.split(replacementChar).length)
               ) {
                 console.log(`使用 ${encoding} 编码解码成功`);
-                extractedText = decodedText;
+                finalText = decodedText;
                 break;
               }
             } catch (e) {
@@ -262,12 +249,12 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
         }
       }
 
-      if (extractedText && extractedText.trim().length > 0) {
-        console.log("成功提取文本，长度:", extractedText.length);
-        console.log(extractedText); // 按要求输出提取内容
+      if (finalText && finalText.trim().length > 0) {
+        console.log("成功提取文本，长度:", finalText.length);
+        console.log(finalText); // 按要求输出提取内容
 
-        setResumeText(extractedText);
-        localStorage.setItem(USER_RESUMES_STORAGE_KEY, extractedText);
+        setResumeText(finalText);
+        localStorage.setItem(USER_RESUMES_STORAGE_KEY, finalText);
         setHasResume(true);
         setExtractProgress(100);
 

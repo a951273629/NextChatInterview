@@ -479,8 +479,8 @@ export function ChatActions(props: {
   setShowShortcutKeyModal: React.Dispatch<React.SetStateAction<boolean>>;
   setUserInput: (input: string) => void;
   setShowChatSidePanel: React.Dispatch<React.SetStateAction<boolean>>;
-  setShowOverlay: React.Dispatch<React.SetStateAction<boolean>>;
-  setShowInterviewLoudspeaker: React.Dispatch<React.SetStateAction<boolean>>;
+  // setShowOverlay: React.Dispatch<React.SetStateAction<boolean>>;
+  // setShowInterviewLoudspeaker: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   const config = useAppConfig();
   const navigate = useNavigate();
@@ -820,7 +820,7 @@ export function ChatActions(props: {
               // props.setShowOverlay(!contronlShow);
               // contronlShow = !contronlShow;
             }}
-            text="麦克风开始"
+            text="从麦克风"
             icon={<InterViewIcon1 />}
           />
 
@@ -833,7 +833,7 @@ export function ChatActions(props: {
               });
               // contronlShow = !contronlShow;
             }}
-            text="扬声器开始"
+            text="从扬声器"
             icon={<InterViewIcon2 />}
           />
           {/*           onClick={() => {
@@ -844,7 +844,7 @@ export function ChatActions(props: {
             onClick={() => {
               navigate(Path.TensorFlow);
             }}
-            text="TensorFlow"
+            text="声纹"
             icon={<BrainIcon />}
           />
           {/* {showPluginSelector && (
@@ -1091,11 +1091,7 @@ function _Chat() {
   const { isEnglish } = useLanguage();
 
   const [showExport, setShowExport] = useState(false);
-  // 使用状态来控制 InterviewOverlay 的显示和隐藏
-  const [showOverlay, setShowOverlay] = useState(false);
-  // 添加扬声器面试组件的状态控制
-  const [showInterviewLoudspeaker, setShowInterviewLoudspeaker] =
-    useState(false);
+
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [userInput, setUserInput] = useState("");
@@ -2257,8 +2253,8 @@ function _Chat() {
                 setShowShortcutKeyModal={setShowShortcutKeyModal}
                 setUserInput={setUserInput}
                 setShowChatSidePanel={setShowChatSidePanel}
-                setShowOverlay={setShowOverlay}
-                setShowInterviewLoudspeaker={setShowInterviewLoudspeaker}
+                // setShowOverlay={setShowOverlay}
+                // setShowInterviewLoudspeaker={setShowInterviewLoudspeaker}
               />
               <label
                 className={clsx(styles["chat-input-panel-inner"], {

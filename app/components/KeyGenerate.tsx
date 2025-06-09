@@ -284,6 +284,102 @@ export function KeyGeneratePage() {
     }
   };
 
+  // 暂停密钥
+  const handlePauseKey = async (keyString: string) => {
+    if (window.confirm("确定要暂停此密钥吗？暂停后密钥将无法使用，但不会减少有效时长。")) {
+      try {
+        setLoading(true);
+
+        // 使用API暂停密钥
+        const response = await fetch("/api/key-generate", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            keyString,
+            action: "pause",
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "暂停密钥失败");
+        }
+
+        const updatedKey = await response.json();
+
+        if (updatedKey) {
+          setKeys((prevKeys) =>
+            prevKeys.map((key) =>
+              key.key_string === keyString ? updatedKey : key,
+            ),
+          );
+
+          showNotification("密钥暂停成功！", "success");
+
+          // 如果详情弹窗打开，更新信息
+          if (modalVisible && selectedKey?.key_string === keyString) {
+            setSelectedKey(updatedKey);
+          }
+        }
+      } catch (err) {
+        setError(`暂停密钥失败: ${(err as Error).message}`);
+        showNotification(`暂停密钥失败: ${(err as Error).message}`, "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // 恢复密钥
+  const handleResumeKey = async (keyString: string) => {
+    if (window.confirm("确定要恢复此密钥吗？恢复后密钥将继续计时。")) {
+      try {
+        setLoading(true);
+
+        // 使用API恢复密钥
+        const response = await fetch("/api/key-generate", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            keyString,
+            action: "resume",
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "恢复密钥失败");
+        }
+
+        const updatedKey = await response.json();
+
+        if (updatedKey) {
+          setKeys((prevKeys) =>
+            prevKeys.map((key) =>
+              key.key_string === keyString ? updatedKey : key,
+            ),
+          );
+
+          showNotification("密钥恢复成功！", "success");
+
+          // 如果详情弹窗打开，更新信息
+          if (modalVisible && selectedKey?.key_string === keyString) {
+            setSelectedKey(updatedKey);
+          }
+        }
+      } catch (err) {
+        setError(`恢复密钥失败: ${(err as Error).message}`);
+        showNotification(`恢复密钥失败: ${(err as Error).message}`, "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   //  获取当前IP和设备信息
   const AcquireIpHardware = async () => {
     try {
@@ -561,6 +657,8 @@ export function KeyGeneratePage() {
         return "已过期";
       case KeyStatus.REVOKED:
         return "已撤销";
+      case KeyStatus.PAUSED:
+        return "已暂停";
       default:
         return "未知";
     }
@@ -577,6 +675,8 @@ export function KeyGeneratePage() {
         return styles.statusExpired;
       case KeyStatus.REVOKED:
         return styles.statusRevoked;
+      case KeyStatus.PAUSED:
+        return styles.statusPaused;
       default:
         return "";
     }
@@ -739,12 +839,30 @@ export function KeyGeneratePage() {
                               查看
                             </button>
                             {key.status === KeyStatus.ACTIVE && (
+                              <>
+                                <button
+                                  className={styles.revokeButton}
+                                  onClick={() => handleRevokeKey(key.key_string)}
+                                  disabled={loading}
+                                >
+                                  撤销
+                                </button>
+                                <button
+                                  className={styles.pauseButton}
+                                  onClick={() => handlePauseKey(key.key_string)}
+                                  disabled={loading}
+                                >
+                                  暂停
+                                </button>
+                              </>
+                            )}
+                            {key.status === KeyStatus.PAUSED && (
                               <button
-                                className={styles.revokeButton}
-                                onClick={() => handleRevokeKey(key.key_string)}
+                                className={styles.resumeButton}
+                                onClick={() => handleResumeKey(key.key_string)}
                                 disabled={loading}
                               >
-                                撤销
+                                恢复
                               </button>
                             )}
                             <button

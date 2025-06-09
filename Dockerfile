@@ -1,6 +1,8 @@
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -13,7 +15,9 @@ RUN yarn install
 
 FROM base AS builder
 
-RUN apk update && apk add --no-cache git
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV OPENAI_API_KEY=""
 ENV GOOGLE_API_KEY=""
@@ -29,13 +33,18 @@ RUN yarn build
 FROM base AS runner
 WORKDIR /app
 
-RUN apk add proxychains-ng
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    proxychains4 \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV PROXY_URL=""
 ENV OPENAI_API_KEY=""
 ENV GOOGLE_API_KEY=""
 ENV CODE=""
 ENV ENABLE_MCP=""
+ENV NEXT_PUBLIC_AZURE_SPEECH_KEY=""
+ENV NEXT_PUBLIC_AZURE_SPEECH_REGION=""
+
 ENV DB_PATH="/app/data/nextchat.db"
 ENV WS_PORT="8080"
 ENV WS_HOST="0.0.0.0"
@@ -44,8 +53,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/.next/server ./.next/server
-# 添加缺失的server.cjs文件复制
-COPY --from=builder /app/server.cjs ./server.cjs
+
 COPY --from=builder /app/websocket-server ./websocket-server
 COPY --from=builder /app/scripts/start-services.js ./scripts/start-services.js
 

@@ -112,8 +112,7 @@
     "watch": "^1.0.2",
     "webpack": "^5.88.1"
   },
-  "resolutions": {
-  },
+  "resolutions": {},
   "packageManager": "yarn@1.22.19",
   "repository": {
     "type": "git",

@@ -220,7 +220,7 @@ export class AzureSpeechRecognizer {
 
 // 工具函数：从环境变量获取 Azure 配置
 export function getAzureSpeechConfig(): AzureSpeechConfig {
-  const subscriptionKey = process.env.NEXT_PUBLIC_AZURE_SPEECH_KEY || "c2a76147cd7c45c3a884ee1d91f1e36b"
+  const subscriptionKey = process.env.NEXT_PUBLIC_AZURE_SPEECH_KEY || ""
   const region = process.env.NEXT_PUBLIC_AZURE_SPEECH_REGION || "southeastasia";
   const language = localStorage.getItem("interviewLanguage") || "zh-CN"; // 默认中文
 

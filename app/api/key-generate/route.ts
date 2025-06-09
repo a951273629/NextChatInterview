@@ -8,6 +8,8 @@ import {
   getKeyByString,
   updateExpiredKeys,
   revokeKey,
+  pauseKey,
+  resumeKey,
 } from "@/app/api/key-generate/back-end-service/KeyService";
 import { KeyStatus } from "../../constant";
 
@@ -40,6 +42,9 @@ export async function GET(request: NextRequest) {
           break;
         case "revoked":
           keys = getKeysByStatus(KeyStatus.REVOKED);
+          break;
+        case "paused":
+          keys = getKeysByStatus(KeyStatus.PAUSED);
           break;
         default:
           keys = getAllKeys();
@@ -76,7 +81,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// 更新密钥（激活或撤销密钥）
+// 更新密钥（激活、撤销、暂停或恢复密钥）
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
@@ -90,6 +95,26 @@ export async function PUT(request: NextRequest) {
 
       const revokedKey = revokeKey(keyString);
       return NextResponse.json(revokedKey);
+    }
+
+    // 如果是暂停操作
+    if (action === "pause") {
+      if (!keyString) {
+        return NextResponse.json({ error: "缺少密钥参数" }, { status: 400 });
+      }
+
+      const pausedKey = pauseKey(keyString);
+      return NextResponse.json(pausedKey);
+    }
+
+    // 如果是恢复操作
+    if (action === "resume") {
+      if (!keyString) {
+        return NextResponse.json({ error: "缺少密钥参数" }, { status: 400 });
+      }
+
+      const resumedKey = resumeKey(keyString);
+      return NextResponse.json(resumedKey);
     }
 
     // 默认为激活操作

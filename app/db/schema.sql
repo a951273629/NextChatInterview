@@ -6,14 +6,16 @@
 CREATE TABLE IF NOT EXISTS keys (
   id INTEGER PRIMARY KEY AUTOINCREMENT, -- 唯一标识符
   key_string TEXT NOT NULL UNIQUE,      -- 密钥字符串，全局唯一
-  status TEXT NOT NULL CHECK(status IN ('active', 'inactive', 'expired', 'revoked')), -- 密钥状态
+  status TEXT NOT NULL CHECK(status IN ('active', 'inactive', 'expired', 'revoked', 'paused')), -- 密钥状态，增加paused状态
   created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')), -- 创建时间戳(Unix时间)
   activated_at INTEGER,                 -- 激活时间戳(Unix时间)
   expires_at INTEGER,                   -- 过期时间戳(Unix时间)，激活时才设置
   activated_ip TEXT,                    -- 激活设备的IP地址
   hardware_name TEXT,                   -- 激活设备的硬件名称
   duration_hours INTEGER DEFAULT 24 NOT NULL, -- 密钥有效时长(小时)
-  notes TEXT                            -- 附加备注信息
+  notes TEXT,                           -- 附加备注信息
+  paused_at INTEGER,                    -- 暂停开始时间戳(Unix时间)
+  remaining_time_on_pause INTEGER       -- 暂停时剩余的有效秒数
 );
 
 -- 索引：提高查询性能

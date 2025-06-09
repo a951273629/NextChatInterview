@@ -90,6 +90,9 @@ export function getKeyByString(keyString: string): Key | undefined {
       if (key.activated_at) {
         key.activated_at = toJsTimestamp(key.activated_at);
       }
+      if (key.paused_at) {
+        key.paused_at = toJsTimestamp(key.paused_at);
+      }
     }
 
     return key;
@@ -125,6 +128,10 @@ export function activateKey(
 
     if (key.status === KeyStatus.REVOKED) {
       throw new Error("密钥已被撤销");
+    }
+
+    if (key.status === KeyStatus.PAUSED) {
+      throw new Error("密钥已暂停，请先恢复");
     }
 
     // 激活密钥并计算过期时间
@@ -197,6 +204,9 @@ export function getAllKeys(): Key[] {
       if (key.activated_at) {
         key.activated_at = toJsTimestamp(key.activated_at);
       }
+      if (key.paused_at) {
+        key.paused_at = toJsTimestamp(key.paused_at);
+      }
       return key;
     });
   } catch (error) {
@@ -223,6 +233,9 @@ export function getKeysByStatus(status: KeyStatus): Key[] {
       }
       if (key.activated_at) {
         key.activated_at = toJsTimestamp(key.activated_at);
+      }
+      if (key.paused_at) {
+        key.paused_at = toJsTimestamp(key.paused_at);
       }
       return key;
     });
@@ -277,5 +290,100 @@ export function revokeKey(keyString: string): Key | undefined {
   } catch (error) {
     console.error("撤销密钥失败:", error);
     throw new Error(`撤销密钥失败: ${(error as Error).message}`);
+  }
+}
+
+/**
+ * 暂停密钥
+ * @param keyString 密钥字符串
+ * @returns 更新后的密钥对象
+ */
+export function pauseKey(keyString: string): Key | undefined {
+  try {
+    // 首先查询密钥是否存在
+    const key = getKeyByString(keyString);
+
+    if (!key) {
+      throw new Error("密钥不存在");
+    }
+
+    if (key.status !== KeyStatus.ACTIVE) {
+      throw new Error("只能暂停激活状态的密钥");
+    }
+
+    if (!key.expires_at) {
+      throw new Error("密钥过期时间为空，无法暂停");
+    }
+
+    // 计算剩余时间（秒）
+    const nowJs = Date.now();
+    const nowSqlite = toSqliteTimestamp(nowJs);
+    const remainingSeconds = Math.max(0, key.expires_at / 1000 - nowJs / 1000);
+
+    // 更新密钥状态为暂停
+    const stmt = db.prepare(`
+      UPDATE keys 
+      SET status = ?, paused_at = ?, remaining_time_on_pause = ?, expires_at = NULL
+      WHERE key_string = ?
+    `);
+
+    stmt.run(
+      KeyStatus.PAUSED,
+      nowSqlite,
+      remainingSeconds,
+      keyString,
+    );
+
+    return getKeyByString(keyString);
+  } catch (error) {
+    console.error("暂停密钥失败:", error);
+    throw new Error(`暂停密钥失败: ${(error as Error).message}`);
+  }
+}
+
+/**
+ * 恢复密钥
+ * @param keyString 密钥字符串
+ * @returns 更新后的密钥对象
+ */
+export function resumeKey(keyString: string): Key | undefined {
+  try {
+    // 首先查询密钥是否存在
+    const key = getKeyByString(keyString);
+
+    if (!key) {
+      throw new Error("密钥不存在");
+    }
+
+    if (key.status !== KeyStatus.PAUSED) {
+      throw new Error("只能恢复暂停状态的密钥");
+    }
+
+    if (!key.remaining_time_on_pause) {
+      throw new Error("剩余时间为空，无法恢复");
+    }
+
+    // 计算新的过期时间
+    const nowJs = Date.now();
+    const newExpiresJs = nowJs + key.remaining_time_on_pause * 1000;
+    const newExpiresAt = toSqliteTimestamp(newExpiresJs);
+
+    // 更新密钥状态为激活
+    const stmt = db.prepare(`
+      UPDATE keys 
+      SET status = ?, expires_at = ?, paused_at = NULL, remaining_time_on_pause = NULL
+      WHERE key_string = ?
+    `);
+
+    stmt.run(
+      KeyStatus.ACTIVE,
+      newExpiresAt,
+      keyString,
+    );
+
+    return getKeyByString(keyString);
+  } catch (error) {
+    console.error("恢复密钥失败:", error);
+    throw new Error(`恢复密钥失败: ${(error as Error).message}`);
   }
 }

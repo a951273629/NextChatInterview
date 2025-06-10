@@ -88,7 +88,6 @@ export const InterviewUnderwayLoudspeaker: React.FC<
   // const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSubmittedTextRef = useRef("");
-  const autoSubmitTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // WebSocket 同步功能
   const webSocketSync = useWebSocketSync({
@@ -177,24 +176,38 @@ export const InterviewUnderwayLoudspeaker: React.FC<
             `🎯 Azure 识别结果 (${isFinal ? "✅最终" : "🔄中间"}):`,
             text,
           );
-          setTranscript(text);
-          transcriptRef.current = text;
-          onTextUpdate(text);
 
-          // 如果启用同步功能且为发送端，则发送识别结果
-          if (
-            syncEnabled &&
-            syncMode === SyncMode.SENDER &&
-            isFinal &&
-            text.trim()
-          ) {
-            console.log("📤 发送端模式：通过WebSocket发送语音识别结果");
-            webSocketSync.sendSpeechRecognition({
-              text: text.trim(),
-              isFinal,
-              language: recognitionLanguage,
-              sessionId: nanoid(),
-            });
+          // 当识别结果为最终结果且有内容时，立即处理
+          if (isFinal && text.trim() !== "") {
+            const trimmedText = text.trim();
+            
+            // 避免重复提交相同的文本
+            if (trimmedText !== lastSubmittedTextRef.current) {
+              console.log("检测到最终扬声器音频，立即添加到消息历史:", trimmedText);
+              onAddMessage?.(trimmedText);
+              lastSubmittedTextRef.current = trimmedText;
+              resetTranscript();
+
+              // 如果启用同步功能且为发送端，发送WebSocket消息但不进行本地提交
+              if (syncEnabled && syncMode === SyncMode.SENDER) {
+                console.log("📤 发送端模式：通过WebSocket发送语音识别结果");
+                webSocketSync.sendSpeechRecognition({
+                  text: trimmedText,
+                  isFinal,
+                  language: recognitionLanguage,
+                  sessionId: nanoid(),
+                });
+                console.log("📤 发送端模式：语音已通过WebSocket发送，跳过本地提交");
+              } else if (isAutoSubmit) {
+                // 普通模式或接收端模式下的本地自动提交
+                console.log("立即自动提交扬声器语音:", trimmedText);
+                submitMessage(trimmedText);
+              }
+            }
+          } else if (!isFinal) {
+            setTranscript(text);
+            transcriptRef.current = text;
+            onTextUpdate(text);
           }
         },
         // 错误回调
@@ -296,48 +309,7 @@ export const InterviewUnderwayLoudspeaker: React.FC<
     };
   }, [visible, isPaused, browserSupportsApi, mediaStream]);
 
-  // 自动提交扬声器语音（扬声器模式下所有音频都被视为面试官音频）
-  useEffect(() => {
-    // 清除之前的计时器
-    if (autoSubmitTimerRef.current) {
-      clearTimeout(autoSubmitTimerRef.current);
-      autoSubmitTimerRef.current = null;
-    }
 
-    // 如果有文本内容
-    if (transcript && transcript.trim() !== "") {
-      // 设置一个短暂的延迟，确保收集到完整的句子
-      autoSubmitTimerRef.current = setTimeout(() => {
-        // 只有当transcript没有变化时才处理，避免句子还在形成过程中就处理
-        if (transcript === transcriptRef.current) {
-          // 扬声器模式下，所有语音都来自系统音频
-          if (transcript !== lastSubmittedTextRef.current) {
-            console.log("检测到扬声器音频，添加到消息历史:", transcript);
-            onAddMessage?.(transcript); // 简化调用，不需要传递说话者标识
-            lastSubmittedTextRef.current = transcript;
-            resetTranscript();
-
-            // 如果启用同步功能且为发送端，不进行本地提交，只通过WebSocket发送
-            if (syncEnabled && syncMode === SyncMode.SENDER) {
-              console.log(
-                "📤 发送端模式：语音已通过WebSocket发送，跳过本地提交",
-              );
-            } else if (isAutoSubmit) {
-              // 普通模式或接收端模式下的本地自动提交
-              console.log("自动提交扬声器语音:", transcript);
-              submitMessage(transcript);
-            }
-          }
-        }
-      }, 1800); // 1.8秒延迟
-    }
-
-    return () => {
-      if (autoSubmitTimerRef.current) {
-        clearTimeout(autoSubmitTimerRef.current);
-      }
-    };
-  }, [transcript, submitMessage, isAutoSubmit, syncEnabled, syncMode]);
 
   // 暂停/恢复功能
   const togglePauseCommit = () => {
@@ -364,9 +336,6 @@ export const InterviewUnderwayLoudspeaker: React.FC<
   // 组件卸载时清理
   useEffect(() => {
     return () => {
-      if (autoSubmitTimerRef.current) {
-        clearTimeout(autoSubmitTimerRef.current);
-      }
       stopSpeechRecognition();
     };
   }, []);

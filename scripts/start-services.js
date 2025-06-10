@@ -23,7 +23,7 @@ function log(service, message) {
 function startNextJS() {
   log('NEXT', '正在启动Next.js应用...');
   
-  const nextProcess = spawn('node', ['server.cjs'], {
+  const nextProcess = spawn('node', ['server.js'], {
     stdio: 'pipe',
     env: {
       ...process.env,

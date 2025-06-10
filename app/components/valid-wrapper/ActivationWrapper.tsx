@@ -1,6 +1,7 @@
 import React, { useState, createContext, useContext, useCallback } from "react";
-import { isActivated } from "./activation";
+import { isActivated, isPaused } from "./activation";
 import ActivateKeyDialog from "./ActivateKeyDialog";
+import ResumeKeyDialog from "./ResumeKeyDialog";
 import { safeLocalStorage } from "../../utils";
 
 // 初始化localStorage
@@ -27,21 +28,47 @@ export const ActivationProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [showActivateDialog, setShowActivateDialog] = useState(false);
+  const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
   // 检查激活状态函数
   const checkActivation = useCallback((action: () => void) => {
-    if (!isActivated()) {
-      // 保存要执行的操作
+    // 如果已激活，直接执行操作
+    if (isActivated()) {
+      action();
+      return true;
+    }
+    
+    // 如果是暂停状态，显示恢复弹窗
+    if (isPaused()) {
       setPendingAction(() => action);
-      // 显示激活对话框
-      setShowActivateDialog(true);
+      setShowResumeDialog(true);
       return false;
     }
-    // 如果已激活，直接执行操作
-    action();
-    return true;
+    
+    // 否则显示激活弹窗
+    setPendingAction(() => action);
+    setShowActivateDialog(true);
+    return false;
   }, []);
+
+  // 处理激活成功后的回调
+  const handleActivateSuccess = () => {
+    setShowActivateDialog(false);
+    if (pendingAction) {
+      pendingAction();
+      setPendingAction(null);
+    }
+  };
+
+  // 处理恢复成功后的回调
+  const handleResumeSuccess = () => {
+    setShowResumeDialog(false);
+    if (pendingAction) {
+      pendingAction();
+      setPendingAction(null);
+    }
+  };
 
   return (
     <ActivationContext.Provider value={{ checkActivation }}>
@@ -52,13 +79,16 @@ export const ActivationProvider: React.FC<{ children: React.ReactNode }> = ({
         <ActivateKeyDialog
           isOpen={showActivateDialog}
           onClose={() => setShowActivateDialog(false)}
-          onSuccess={() => {
-            // 激活成功后执行保存的操作
-            if (pendingAction) {
-              pendingAction();
-              setPendingAction(null);
-            }
-          }}
+          onSuccess={handleActivateSuccess}
+        />
+      )}
+
+      {/* 恢复对话框 */}
+      {showResumeDialog && (
+        <ResumeKeyDialog
+          isOpen={showResumeDialog}
+          onClose={() => setShowResumeDialog(false)}
+          onSuccess={handleResumeSuccess}
         />
       )}
     </ActivationContext.Provider>

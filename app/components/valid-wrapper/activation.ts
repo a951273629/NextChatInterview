@@ -47,6 +47,24 @@ export function isActivated(): boolean {
 }
 
 /**
+ * 检查密钥是否处于暂停状态
+ * @returns 是否为暂停状态
+ */
+export function isPaused(): boolean {
+  try {
+    // 从localStorage获取激活状态和密钥字符串
+    const status = localStorage.getItem(ACTIVATION_KEY);
+    const keyString = localStorage.getItem(ACTIVATION_KEY_STRING);
+    
+    // 只有在有密钥字符串且状态为paused时才认为是暂停状态
+    return status === "paused" && !!keyString;
+  } catch (error) {
+    console.error("检查暂停状态失败:", error);
+    return false;
+  }
+}
+
+/**
  * 获取剩余激活时间（毫秒）- 安全版本
  * 定期与服务器同步以防止本地篡改
  * @returns 剩余时间（毫秒），如果未激活则返回0

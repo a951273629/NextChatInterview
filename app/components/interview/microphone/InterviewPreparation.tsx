@@ -8,9 +8,9 @@ import { useNavigate } from "react-router-dom";
 import { Path } from "@/app/constant";
 import { ACTIVATION_KEY } from "../../valid-wrapper/activation";
 import {
-  useLanguage,
+  useInterviewLanguage,
   RecognitionLanguage,
-} from "@/app/contexts/LanguageContext";
+} from "@/app/hooks/useInterviewLanguage";
 // 导入声纹存储服务
 import { voiceprintStorage } from "../../tensor-flow/services/voiceprint-storage";
 // 导入SVG图标
@@ -41,7 +41,7 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
   onStart,
 }) => {
   // 使用语言Context替代本地状态
-  const { recognitionLanguage, setRecognitionLanguage } = useLanguage();
+  const [recognitionLanguage, setRecognitionLanguage] = useInterviewLanguage();
 
   // 麦克风状态
   const [micStatus, setMicStatus] = useState<DeviceStatus>("unavailable");
@@ -284,8 +284,6 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
 
   // 开始面试，传递选择的语言
   const handleStartInterview = () => {
-    // 在开始面试前，保存选择的语言到localStorage
-    localStorage.setItem("interviewLanguage", recognitionLanguage);
     onStart();
   };
 

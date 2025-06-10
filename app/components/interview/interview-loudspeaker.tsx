@@ -6,6 +6,7 @@ import { MiniFloatWindow } from "./mini-float-window";
 import { SyncMode, ACTIVATION_KEY_STRING } from "@/app/types/websocket-sync";
 import RecorderIcon from "@/app/icons/record_light.svg";
 import { useOutletContext } from "react-router-dom";
+import { useInterviewLanguage } from "@/app/hooks/useInterviewLanguage";
 
 import WIFI from "@/app/icons/wifi.svg";
 import SpeakerIcon from "@/app/icons/speaker.svg";
@@ -111,10 +112,8 @@ export const InterviewLoudspeaker: React.FC = () => {
   const [showSpeakerDropdown, setShowSpeakerDropdown] = useState(false);
   const [isPlayingTest, setIsPlayingTest] = useState(false);
 
-  // 添加语言选择状态 - 从localStorage初始化
-  const [recognitionLanguage, setRecognitionLanguage] = useState<string>(
-    localStorage.getItem("interviewLanguage") || "zh-CN",
-  );
+  // 添加语言选择状态 - 使用新的钩子
+  const [recognitionLanguage, setRecognitionLanguage] = useInterviewLanguage();
 
   const [activationKey, setActivationKey] = useState<string>(
     localStorage.getItem(ACTIVATION_KEY_STRING) || "",
@@ -434,8 +433,7 @@ export const InterviewLoudspeaker: React.FC = () => {
   // 语言选择处理
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const language = e.target.value;
-    setRecognitionLanguage(language);
-    localStorage.setItem("interviewLanguage", language);
+    setRecognitionLanguage(language as "zh-CN" | "en-US");
   };
 
   // 拖拽相关处理函数

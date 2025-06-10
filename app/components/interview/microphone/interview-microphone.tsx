@@ -12,6 +12,9 @@ import { Toaster } from "react-hot-toast";
 import { MiniFloatWindow } from "../mini-float-window";
 import { useOutletContext } from "react-router-dom";
 
+import { useNavigate } from "react-router-dom";
+import { useInterviewLanguage } from "@/app/hooks/useInterviewLanguage";
+
 // 消息类型接口
 interface Message {
   id: string;
@@ -53,9 +56,9 @@ const useIsMobile = () => {
 };
 
 export const InterviewMicrophone: React.FC = () => {
-  // 从父路由获取context
-  const { onClose, onTextUpdate, submitMessage } =
-    useOutletContext<ChatOutletContext>();
+  const context = useOutletContext<ChatOutletContext>();
+  const navigate = useNavigate();
+  const { onClose, onTextUpdate, submitMessage } = context;
 
   const [visible, setVisible] = useState(true);
   const [width, setWidth] = useState("33vw");
@@ -83,10 +86,8 @@ export const InterviewMicrophone: React.FC = () => {
   const [recognitionStatus, setRecognitionStatus] =
     useState<VoiceRecognitionStatus>(VoiceRecognitionStatus.IDLE);
 
-  // 添加语言选择状态 - 从localStorage初始化
-  const [recognitionLanguage, setRecognitionLanguage] = useState<string>(
-    localStorage.getItem("interviewLanguage") || "zh-CN",
-  );
+  // 添加语言选择状态 - 使用新的钩子
+  const [recognitionLanguage] = useInterviewLanguage();
 
   // 声纹识别器引用
   const recognizerRef = useRef<RealtimeVoiceprintRecognizer | null>(null);

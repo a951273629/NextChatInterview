@@ -52,9 +52,9 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
         const status = localStorage.getItem(ACTIVATION_KEY);
         const keyString = localStorage.getItem(ACTIVATION_KEY_STRING);
         
-        if (status === "active" && keyString) {
+        if (status === "active" || status === "paused" && keyString) {
           // 从服务器获取真实状态
-          const keyData = await fetchKeyStatus(keyString);
+          const keyData = await fetchKeyStatus(keyString as string);
           
           if (keyData) {
             if (keyData.status === "paused") {
@@ -133,7 +133,7 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
           const errorData = await response.json();
           throw new Error(errorData.error || "暂停密钥失败");
         }
-
+        localStorage.setItem(ACTIVATION_KEY, "paused");
         // 更新状态
         setIsActive(false);
         setIsPaused(true);
@@ -180,6 +180,7 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
         // 更新本地存储的过期时间
         if (updatedKey && updatedKey.expires_at) {
           localStorage.setItem("user_activation_expiry", updatedKey.expires_at.toString());
+          localStorage.setItem(ACTIVATION_KEY, "active");
         }
 
         // 更新状态

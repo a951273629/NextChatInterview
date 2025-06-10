@@ -124,7 +124,7 @@ import { getAvailableClientsCount, isMcpEnabled } from "../mcp/actions";
 import { useActivation } from "./valid-wrapper/ActivationWrapper";
 import ActivationStatus from "./valid-wrapper/ActivationStatus";
 import { additionalResumeText } from "./personal-set/preparation-resumes-upload";
-import { useLanguage } from "@/app/contexts/LanguageContext";
+import { useInterviewLanguage } from "@/app/hooks/useInterviewLanguage";
 
 const localStorage = safeLocalStorage();
 
@@ -1088,7 +1088,7 @@ function _Chat() {
   const fontFamily = config.fontFamily;
 
   // 使用语言Context
-  const { isEnglish } = useLanguage();
+  const [, , isEnglish] = useInterviewLanguage();
 
   const [showExport, setShowExport] = useState(false);
 

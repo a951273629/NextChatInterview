@@ -9,7 +9,7 @@ export const ACTIVATION_IP = "user_activation_ip";
 export const ACTIVATION_EXPIRY = "user_activation_expiry";
 export const ACTIVATION_KEY_STRING = "user_activation_key_string";
 export const LAST_SYNC_TIME = "user_activation_last_sync";
-export const SYNC_INTERVAL = 3 * 60 * 1000; // 3分钟，单位：毫秒
+export const SYNC_INTERVAL =  60 * 1000; // 1分钟，单位：毫秒
 
 const localStorage = safeLocalStorage();
 let syncIntervalId: NodeJS.Timeout | null = null;
@@ -175,55 +175,15 @@ export function clearActivation(): void {
 }
 
 /**
- * 获取设备信息
- * @returns {Promise<{ipAddress: string, hardwareName: string}>} IP地址和硬件信息
- */
-export async function getDeviceInfo(): Promise<{
-  ipAddress: string;
-  hardwareName: string;
-}> {
-  try {
-    // 获取IP地址 (使用公共API)
-    const ipResponse = await fetch("https://api.ipify.org?format=json");
-    const ipData = await ipResponse.json();
-    const ipAddress = ipData.ip;
-
-    // 获取设备信息
-    const hardwareName = navigator.userAgent;
-
-    return {
-      ipAddress,
-      hardwareName: hardwareName.substring(0, 100), // 限制长度
-    };
-  } catch (error) {
-    console.error("获取设备信息失败:", error);
-    // 如果获取失败，返回默认值
-    return {
-      ipAddress: "未知IP",
-      hardwareName: navigator.userAgent.substring(0, 100) || "未知设备",
-    };
-  }
-}
-
-/**
  * 与服务器同步激活状态
  * @returns {Promise<boolean>} 同步是否成功
  */
 export async function syncActivationWithServer(): Promise<boolean> {
-  // 防止在同步过程中再次调用此函数
-  const syncInProgress = localStorage.getItem("sync_in_progress");
-  if (syncInProgress === "true") {
-    console.log("同步已在进行中，跳过");
-    return false;
-  }
-
   try {
-    localStorage.setItem("sync_in_progress", "true");
 
     // 获取密钥字符串
     const keyString = localStorage.getItem(ACTIVATION_KEY_STRING);
     if (!keyString) {
-      localStorage.removeItem("sync_in_progress");
       return false;
     }
 
@@ -234,7 +194,7 @@ export async function syncActivationWithServer(): Promise<boolean> {
     if (!response.ok) {
       console.warn("同步激活状态时遇到网络错误，稍后重试");
       // 不清除激活状态，等待下次同步
-      localStorage.removeItem("sync_in_progress");
+
       return false;
     }
 
@@ -244,21 +204,21 @@ export async function syncActivationWithServer(): Promise<boolean> {
       console.warn("密钥不存在，清除本地激活");
       // 直接清除激活状态，不通过isActivated函数
       clearActivation();
-      localStorage.removeItem("sync_in_progress");
+
       return false;
     }
     if (key.status === "expired" || key.status === "revoked") {
       // 判断秘钥是不是过期
       console.warn("密钥失效或者被撤销，清除本地激活");
       clearActivation();
-      localStorage.removeItem("sync_in_progress");
+
       return false;
     }
     if (!key.expires_at || Date.now() - key.expires_at > 0) {
       // 过期时间小于当前时间，清除本地激活
       console.warn("密钥已过期，清除本地激活");
       clearActivation();
-      localStorage.removeItem("sync_in_progress");
+
       return false;
     }
 
@@ -266,12 +226,12 @@ export async function syncActivationWithServer(): Promise<boolean> {
     // 更新最后同步时间
     localStorage.setItem(LAST_SYNC_TIME, Date.now().toString());
     console.log("同步激活状态成功，更新过期时间");
-    localStorage.removeItem("sync_in_progress");
+
     return true;
   } catch (error) {
     console.error("同步激活状态失败:", error);
     // 异常情况下不清除激活状态，等待下次同步
-    localStorage.removeItem("sync_in_progress");
+
     return false;
   }
 }
@@ -284,8 +244,7 @@ export function startActivationSync(): void {
   stopActivationSync();
 
   // 使用延迟而非立即同步，避免频繁请求导致激活失败
-  // 设置一个合理的延迟（30秒），给服务器和网络留出充分时间
-  const firstSyncDelay = 30 * 1000; // 30秒后首次同步
+  const firstSyncDelay = 5 * 1000; 
 
   console.log(`激活状态已设置，将在${firstSyncDelay / 1000}秒后开始同步`);
 

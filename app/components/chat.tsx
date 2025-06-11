@@ -124,7 +124,7 @@ import { getAvailableClientsCount, isMcpEnabled } from "../mcp/actions";
 import { useActivation } from "./valid-wrapper/ActivationWrapper";
 import ActivationStatus from "./valid-wrapper/ActivationStatus";
 import { additionalResumeText } from "./personal-set/preparation-resumes-upload";
-import { useInterviewLanguage } from "@/app/hooks/useInterviewLanguage";
+// import { useInterviewLanguage } from "@/app/hooks/useInterviewLanguage";
 
 const localStorage = safeLocalStorage();
 
@@ -1088,7 +1088,7 @@ function _Chat() {
   const fontFamily = config.fontFamily;
 
   // 使用语言Context
-  const [, , isEnglish] = useInterviewLanguage();
+  // const [, , isEnglish] = useInterviewLanguage();
 
   const [showExport, setShowExport] = useState(false);
 
@@ -1233,7 +1233,7 @@ function _Chat() {
     // console.log("发送消息 - 即将调用 chatStore.onUserInput");
     setIsLoading(true);
     chatStore
-      .onUserInput(additionalResumeText(userInput, isEnglish), attachImages)
+      .onUserInput(additionalResumeText(userInput), attachImages)
       .then(() => setIsLoading(false));
     setAttachImages([]);
     chatStore.setLastInput(userInput);

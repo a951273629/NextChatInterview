@@ -53,7 +53,7 @@ function main() {
       
       // 2. 读取新的schema并创建新表
       console.log("[迁移] 步骤2: 创建新的keys表结构");
-      const schemaPath = path.join(process.cwd(), "app/db/schema.sql");
+      const schemaPath = path.join(process.cwd(), "/schema.sql");
       
       if (!fs.existsSync(schemaPath)) {
         throw new Error(`Schema文件不存在: ${schemaPath}`);

@@ -9,6 +9,7 @@ import KeyIcon from "../../icons/key.svg";
 import { IconButton } from "../button";
 import ActivateKeyDialog from "./ActivateKeyDialog";
 import { safeLocalStorage } from "../../utils";
+import { pauseKey, resumeKey } from "../../services/keyService";
 
 const KEY_COLOR = "#FFD700"; // 明亮的黄色
 const localStorage = safeLocalStorage();
@@ -118,21 +119,8 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
       try {
         setIsLoading(true);
 
-        const response = await fetch("/api/key-generate", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            keyString,
-            action: "pause",
-          }),
-        });
+        await pauseKey(keyString);
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "暂停密钥失败");
-        }
         localStorage.setItem(ACTIVATION_KEY, "paused");
         // 更新状态
         setIsActive(false);
@@ -159,23 +147,7 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
       try {
         setIsLoading(true);
 
-        const response = await fetch("/api/key-generate", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            keyString,
-            action: "resume",
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "恢复密钥失败");
-        }
-
-        const updatedKey = await response.json();
+        const updatedKey = await resumeKey(keyString);
         
         // 更新本地存储的过期时间
         if (updatedKey && updatedKey.expires_at) {

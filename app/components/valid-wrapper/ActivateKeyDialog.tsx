@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import styles from "./ActivateKeyDialog.module.scss";
-import { getDeviceInfo, setActivated } from "./activation";
+import { setActivated } from "./activation";
+import { activateKey, getDeviceInfo } from "../../services/keyService";
 import { IconButton } from "../button";
 import CloseIcon from "../../icons/close.svg";
 import LoadingIcon from "../../icons/three-dots.svg";
@@ -45,7 +46,7 @@ const ActivateKeyDialog: React.FC<ActivateKeyDialogProps> = ({
       setError("请输入激活密钥");
       return;
     }
-    // keyString = keyString.trim();
+    
     try {
       setIsLoading(true);
       setError(null);
@@ -53,21 +54,8 @@ const ActivateKeyDialog: React.FC<ActivateKeyDialogProps> = ({
       // 获取设备信息
       const { ipAddress, hardwareName } = await getDeviceInfo();
 
-      // 调用API激活密钥
-      const response = await fetch("/api/key-generate", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ keyString: keyString.trim(), ipAddress, hardwareName }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "激活密钥失败");
-      }
-
-      const updatedKey = await response.json();
+      // 使用KeyService激活密钥
+      const updatedKey = await activateKey(keyString.trim(), ipAddress, hardwareName);
 
       if (updatedKey) {
         // 设置本地激活状态

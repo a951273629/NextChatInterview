@@ -1,6 +1,11 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import styles from "./preparation-resumes-upload.module.scss";
+import {
+  USER_RESUMES_STORAGE_KEY,
+  USER_RESUMES_NAME_STORAGE_KEY,
+} from "@/app/constant";
+import { extractTextFromPDF, type ProgressCallback } from "./resumes-extract"; 
 
 // Promise.withResolvers 类型声明
 declare global {
@@ -26,15 +31,8 @@ if (typeof (Promise as any).withResolvers === 'undefined') {
   };
 }
 
-// 动态导入 PDF 处理模块，仅在客户端环境执行
-let pdfToText: any = null;
-
 // 判断当前是否为开发环境
 const isDevelopment = process.env.NODE_ENV === "development";
-import {
-  USER_RESUMES_STORAGE_KEY,
-  USER_RESUMES_NAME_STORAGE_KEY,
-} from "@/app/constant";
 
 interface PreparationResumesUploadProps {
   onClose?: () => void; // 添加关闭回调函数
@@ -43,21 +41,36 @@ interface PreparationResumesUploadProps {
 /**
  * 给在chat中 dosubmit()要提交的文本 添加prompt
  * @param text 面试官的问题
- * @param isEnglish 是否使用英文
  */
-export function additionalResumeText(text: string, isEnglish: boolean = false) {
-  const addtionTextHead =
-    "\n\nYou are now a super interview assistant and need to respond to the interviewer's questions above .\n" +
-    "All answers should be in " +
-    (isEnglish ? "English" : "Chinese") +
-    " Language.\n" +
-    "Below is your resume, please answer the questions based on the contents of the resume:\n\n";
+export function additionalResumeText(text: string) {
 
-  const additionalText = localStorage.getItem(USER_RESUMES_STORAGE_KEY);
-  if (additionalText) {
-    return text + addtionTextHead + additionalText;
-  }
-  return text;
+  const addtionText =
+    `
+    Interview Question:
+      ${text}
+
+    Promt:
+      You are now a super interview assistant. Answer all upcoming questions in ${typeof window !== 'undefined' ? localStorage.getItem("interviewLanguage") || "Chinese" : "Chinese"} language. Base every answer strictly on my résumé. Speak succinctly and positively.
+     When responding, think step-by-step using the STAR method before you speak, but reveal only the final polished answer.
+     For behavioral questions, structure each reply as Situation → Action → Result and keep it under 2 minutes.
+     Whenever possible, include one quantified metric (e.g., % improvement, $ savings) to demonstrate impact.
+     Avoid filler words (‘um’, ‘like’) and finish with a forward-looking statement connecting to the company’s needs.
+    
+    Rules:
+      1. Use STAR / CAR / PAR consistently — Choose the framework that best fits the question, ensuring a clear beginning, action, and result.
+      2. Keep answers between ≈ 60–120 seconds; complex behavioral stories may extend to 2–3 minutes but never ramble.
+      3. Quantify achievements—cite numbers, percentages, or ranges to enhance credibility; approximate honestly if exact figures are unavailable. 
+      4. Tell a compelling story—create a clear arc (setup–challenge–resolution) that hooks the interviewer emotionally. 
+      5. Align with the job description—highlight skills the role values and mirror its language for relevance.
+      6. Stay positive and candid—frame setbacks as learning moments and avoid blaming others. 
+      7. Use resume-backed specifics only—no invented facts; verify every example against your documented experience.
+
+    
+    Fllow Resume Content:
+      ${typeof window !== 'undefined' ? localStorage.getItem(USER_RESUMES_STORAGE_KEY) : ''}
+    `;
+    
+  return addtionText;
 }
 
 const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
@@ -83,19 +96,7 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
     // 确保在客户端环境中初始化
     if (typeof window !== 'undefined') {
       setIsClientReady(true);
-      
-      // 动态加载 PDF 处理模块
-      const loadPdfModule = async () => {
-        try {
-          const pdfModule = await import("react-pdftotext");
-          pdfToText = pdfModule.default;
-          console.log("[PDF] react-pdftotext 模块已在客户端加载");
-        } catch (error) {
-          console.error("[PDF] 加载 react-pdftotext 失败:", error);
-        }
-      };
-      
-      loadPdfModule();
+      console.log("[PDF] 客户端环境已就绪，可以处理PDF文件");
     }
   }, []);
 
@@ -205,19 +206,6 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
     localStorage.setItem(USER_RESUMES_NAME_STORAGE_KEY, file.name);
     setUploadProgress(0);
     setExtractProgress(0);
-
-    // 检测是否为移动端
-    const isMobile =
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-        navigator.userAgent,
-      );
-
-    if (isMobile) {
-      console.log("检测到移动端设备，使用优化的处理流程");
-      // 移动端给用户更多反馈
-      setErrorMessage("正在处理文件，请稍候...");
-    }
-
     // 模拟上传进度
     simulateUploadProgress();
   };
@@ -238,7 +226,7 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
     }, 100); // 每100ms更新一次进度
   };
 
-  // 提取PDF文本 - 使用react-pdftotext库提取
+  // 提取PDF文本 - 使用PDF.js库提取
   const extractPdfText = async () => {
     console.log("开始提取PDF文本");
 
@@ -250,73 +238,32 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
       return;
     }
 
-    // 检查 PDF 模块是否已加载
-    if (!pdfToText) {
-      setErrorMessage("PDF 处理模块尚未加载完成，请稍后重试");
-      return;
-    }
-
     setIsExtracting(true);
     setErrorMessage("");
-    setExtractProgress(10); // 初始进度
+    setExtractProgress(0);
 
     try {
       const fileToProcess = uploadedFileRef.current;
-
-      // 设置进度为30%表示开始处理
-      setExtractProgress(30);
       console.log("准备提取PDF文本...");
 
-      // 直接使用pdfToText提取文本
-      const extractedText = await pdfToText(fileToProcess);
+      // 读取文件为ArrayBuffer
+      const arrayBuffer = await readFileAsArrayBuffer(fileToProcess);
       
-      // 设置进度为90%表示提取完成
-      setExtractProgress(90);
+      // 创建进度回调函数
+      const progressCallback: ProgressCallback = (progress: number) => {
+        setExtractProgress(progress);
+      };
 
-      // 处理可能的编码问题，特别是中文
-      const replacementChar = "\uFFFD"; // Unicode 替换字符，表示无法识别的字符
-      let finalText = extractedText;
-      
-      if (extractedText && extractedText.includes(replacementChar)) {
-        console.log("检测到编码问题，尝试修复...");
-        try {
-          // 尝试通过readFileAsArrayBuffer读取并使用不同编码解码
-          const arrayBuffer = await readFileAsArrayBuffer(fileToProcess);
+      // 使用新的PDF.js提取函数
+      const result = await extractTextFromPDF(arrayBuffer, progressCallback);
 
-          // 尝试不同的编码
-          const encodings = ["utf-8", "gbk", "gb2312", "big5"];
+      if (result.success && result.text && result.text.trim().length > 0) {
+        console.log("成功提取文本，长度:", result.text.length);
+        console.log("PDF页数:", result.numPages);
+        console.log(result.text); // 按要求输出提取内容
 
-          for (const encoding of encodings) {
-            try {
-              const decoder = new TextDecoder(encoding);
-              const decodedText = decoder.decode(new Uint8Array(arrayBuffer));
-
-              // 如果解码后的文本看起来更好（包含更少的问号），则使用它
-              if (
-                decodedText &&
-                (!decodedText.includes(replacementChar) ||
-                  decodedText.split(replacementChar).length <
-                    extractedText.split(replacementChar).length)
-              ) {
-                console.log(`使用 ${encoding} 编码解码成功`);
-                finalText = decodedText;
-                break;
-              }
-            } catch (e) {
-              console.log(`使用 ${encoding} 编码解码失败`, e);
-            }
-          }
-        } catch (encodingError) {
-          console.warn("尝试修复编码问题失败", encodingError);
-        }
-      }
-
-      if (finalText && finalText.trim().length > 0) {
-        console.log("成功提取文本，长度:", finalText.length);
-        console.log(finalText); // 按要求输出提取内容
-
-        setResumeText(finalText);
-        localStorage.setItem(USER_RESUMES_STORAGE_KEY, finalText);
+        setResumeText(result.text);
+        localStorage.setItem(USER_RESUMES_STORAGE_KEY, result.text);
         setHasResume(true);
         setExtractProgress(100);
 
@@ -325,21 +272,14 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
           setErrorMessage("");
         }
       } else {
-        throw new Error("提取的文本内容为空");
+        throw new Error(result.error || "PDF文本提取失败，未能获取到文本内容");
       }
     } catch (error: any) {
       console.error("PDF文本提取失败:", error);
       const errorMsg = error.message || String(error);
       setErrorMessage("PDF文本提取失败: " + errorMsg);
 
-      // 移动端提供额外的建议
-      const isMobile =
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-          navigator.userAgent,
-        );
-      if (isMobile) {
-        setErrorMessage(errorMsg + " (建议：尝试较小的PDF文件或在电脑端操作)");
-      }
+
     } finally {
       setIsExtracting(false);
     }

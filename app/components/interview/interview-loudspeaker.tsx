@@ -6,7 +6,7 @@ import { MiniFloatWindow } from "./mini-float-window";
 import { SyncMode, ACTIVATION_KEY_STRING } from "@/app/types/websocket-sync";
 import RecorderIcon from "@/app/icons/record_light.svg";
 import { useOutletContext } from "react-router-dom";
-import { useInterviewLanguage } from "@/app/hooks/useInterviewLanguage";
+import { useInterviewLanguage, LANGUAGE_OPTIONS, RecognitionLanguage } from "@/app/hooks/useInterviewLanguage";
 
 import WIFI from "@/app/icons/wifi.svg";
 import SpeakerIcon from "@/app/icons/speaker.svg";
@@ -433,7 +433,7 @@ export const InterviewLoudspeaker: React.FC = () => {
   // 语言选择处理
   const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const language = e.target.value;
-    setRecognitionLanguage(language as "zh-CN" | "en-US");
+    setRecognitionLanguage(language as RecognitionLanguage);
   };
 
   // 拖拽相关处理函数
@@ -775,8 +775,11 @@ export const InterviewLoudspeaker: React.FC = () => {
                 onChange={handleLanguageChange}
                 className={styles.languageSelect}
               >
-                <option value="zh-CN">中文 (普通话)</option>
-                <option value="en-US">English (US)</option>
+                {LANGUAGE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -852,28 +855,41 @@ export const InterviewLoudspeaker: React.FC = () => {
             {!isStarted ? (
               <InterviewPreparationUI />
             ) : (
-              <InterviewUnderwayLoudspeaker
-                visible={true}
-                // voiceprintEnabled={false} // 扬声器模式不需要声纹识别
-                recognitionLanguage={recognitionLanguage}
-                // isInterviewer={true} // 所有语音都是面试官
-                // voiceMatchScore={1.0} // 固定为100%匹配
-                onTextUpdate={onTextUpdate}
-                submitMessage={submitMessage}
-                onStop={handleStopInterview}
-                defaultAutoSubmit={true} // 扬声器模式默认开启自动提交
-                mediaStream={mediaStreamRef.current}
-                // audioContext={audioContextRef.current}
-                onRequestPermission={requestScreenCapture}
-                // 同步功能配置
-                syncEnabled={syncEnabled}
-                syncMode={syncMode}
-                activationKey={activationKey}
-                onMinimize={handleMinimize}
-                isMobile={isMobile}
-                messages={messages}
-                onAddMessage={handleAddMessage}
-              />
+              <>
+                {syncEnabled && syncMode === SyncMode.SENDER && (
+                  <div
+                    style={{
+                      color: "red",
+                      textAlign: "center",
+                      padding: "5px",
+                    }}
+                  >
+                    当前是监听端，请打开接收端获取答案。(监听端无法获取答案)
+                  </div>
+                )}
+                <InterviewUnderwayLoudspeaker
+                  visible={true}
+                  // voiceprintEnabled={false} // 扬声器模式不需要声纹识别
+                  recognitionLanguage={recognitionLanguage}
+                  // isInterviewer={true} // 所有语音都是面试官
+                  // voiceMatchScore={1.0} // 固定为100%匹配
+                  onTextUpdate={onTextUpdate}
+                  submitMessage={submitMessage}
+                  onStop={handleStopInterview}
+                  defaultAutoSubmit={true} // 扬声器模式默认开启自动提交
+                  mediaStream={mediaStreamRef.current}
+                  // audioContext={audioContextRef.current}
+                  onRequestPermission={requestScreenCapture}
+                  // 同步功能配置
+                  syncEnabled={syncEnabled}
+                  syncMode={syncMode}
+                  activationKey={activationKey}
+                  onMinimize={handleMinimize}
+                  isMobile={isMobile}
+                  messages={messages}
+                  onAddMessage={handleAddMessage}
+                />
+              </>
             )}
           </div>
         </div>

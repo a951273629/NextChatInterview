@@ -64,11 +64,11 @@ import {
   GoogleSafetySettingsThreshold,
   OPENAI_BASE_URL,
   Path,
-  RELEASE_URL,
+  // RELEASE_URL,
   STORAGE_KEY,
   ServiceProvider,
   SlotID,
-  UPDATE_URL,
+  // UPDATE_URL,
   Stability,
   Iflytek,
   SAAS_CHAT_URL,
@@ -638,7 +638,7 @@ export function Settings() {
   const currentVersion = updateStore.formatVersion(updateStore.version);
   const remoteId = updateStore.formatVersion(updateStore.remoteVersion);
   const hasNewVersion = semverCompare(currentVersion, remoteId) === -1;
-  const updateUrl = getClientConfig()?.isApp ? RELEASE_URL : UPDATE_URL;
+  // const updateUrl = getClientConfig()?.isApp ? RELEASE_URL : UPDATE_URL;
 
   /**
    * 检查应用更新
@@ -1620,9 +1620,10 @@ export function Settings() {
                   onClick={() => clientUpdate()}
                 />
               ) : (
-                <Link href={updateUrl} target="_blank" className="link">
-                  {Locale.Settings.Update.GoToUpdate}
-                </Link>
+                // <Link href={updateUrl} target="_blank" className="link">
+                //   {Locale.Settings.Update.GoToUpdate}
+                // </Link>
+                <></>
               )
             ) : (
               <IconButton

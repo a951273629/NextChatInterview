@@ -21,8 +21,10 @@ export class AzureSpeechRecognizer {
   private recognizer: SpeechSDK.SpeechRecognizer | null = null;
   private audioConfig: SpeechSDK.AudioConfig | null = null;
   private isListening: boolean = false;
+  private config: AzureSpeechConfig;
 
   constructor(config: AzureSpeechConfig) {
+    this.config = config;
     this.initializeSpeechConfig(config);
   }
 
@@ -37,7 +39,6 @@ export class AzureSpeechRecognizer {
         config.subscriptionKey,
         config.region,
       );
-      this.speechConfig.speechRecognitionLanguage = config.language;
 
       // 设置识别模式为连续识别
       this.speechConfig.setProperty(
@@ -110,11 +111,31 @@ export class AzureSpeechRecognizer {
     try {
       console.log("🚀 开始创建语音识别器...");
 
-      // 创建语音识别器
-      this.recognizer = new SpeechSDK.SpeechRecognizer(
-        this.speechConfig,
-        this.audioConfig,
-      );
+      // 根据语言配置决定识别模式
+      if (this.config.language === "auto-detect") {
+        // 中英混合模式：使用自动语言检测
+        console.log("🌐 启用中英混合语言识别模式");
+        const autoDetectSourceLanguageConfig = SpeechSDK.AutoDetectSourceLanguageConfig.fromLanguages(
+          ["zh-CN", "en-US"]
+        );
+        
+        // 创建支持多语言自动检测的语音识别器
+        this.recognizer = SpeechSDK.SpeechRecognizer.FromConfig(
+          this.speechConfig,
+          autoDetectSourceLanguageConfig,
+          this.audioConfig,
+        );
+      } else {
+        // 单语言模式：使用指定语言
+        console.log("🔤 启用单语言识别模式:", this.config.language);
+        this.speechConfig.speechRecognitionLanguage = this.config.language;
+        
+        // 创建标准语音识别器
+        this.recognizer = new SpeechSDK.SpeechRecognizer(
+          this.speechConfig,
+          this.audioConfig,
+        );
+      }
 
       // 处理识别中的结果（部分结果）
       this.recognizer.recognizing = (s, e) => {
@@ -180,36 +201,86 @@ export class AzureSpeechRecognizer {
   public stopRecognition(): void {
     if (this.recognizer && this.isListening) {
       console.log("⏹️ 停止语音识别...");
-      this.recognizer.stopContinuousRecognitionAsync(
-        () => {
-          console.log("✅ Azure 语音识别已停止");
-          this.isListening = false;
-        },
-        (error) => {
-          console.error("❌ 停止 Azure 语音识别失败:", error);
-          this.isListening = false;
-        },
-      );
+
+        this.recognizer.stopContinuousRecognitionAsync(
+          () => {
+            console.log("✅ Azure 语音识别已停止");
+            this.isListening = false;
+          },
+          (error) => {
+            console.error("❌ 停止 Azure 语音识别失败:", error);
+            this.isListening = false;
+          },
+        );
+
+    } else if (this.recognizer) {
+      // 即使没有在监听，也确保识别器处于停止状态
+      console.log("🔄 确保识别器处于停止状态...");
+      this.isListening = false;
     }
   }
 
   // 释放资源
   public dispose(): void {
-    console.log("🗑️ 释放 Azure Speech 资源...");
-    this.stopRecognition();
-
-    if (this.recognizer) {
-      this.recognizer.close();
+    console.log("🗑️ 开始释放 Azure Speech 资源...");
+    
+    try {
+      // 1. 首先确保停止所有识别活动
+      this.stopRecognition();
+      
+      // 2. 强制等待停止完成（使用简单的延迟确保异步操作完成）
+      setTimeout(() => {
+        try {
+          // 3. 彻底清理识别器
+          if (this.recognizer) {
+            console.log("🔧 清理语音识别器...");
+            
+            // 关闭识别器（Azure Speech SDK会自动清理事件监听器）
+            this.recognizer.close();
+            this.recognizer = null;
+            console.log("✅ 语音识别器已清理");
+          }
+          
+          // 4. 清理音频配置
+          if (this.audioConfig) {
+            console.log("🔧 清理音频配置...");
+            this.audioConfig.close();
+            this.audioConfig = null;
+            console.log("✅ 音频配置已清理");
+          }
+          
+          // 5. 清理语音配置
+          if (this.speechConfig) {
+            console.log("🔧 清理语音配置...");
+            this.speechConfig = null;
+            console.log("✅ 语音配置已清理");
+          }
+          
+          // 6. 重置状态标志
+          this.isListening = false;
+          
+          // 7. 清理配置对象引用
+          this.config = null as any;
+          
+          console.log("✅ Azure Speech 资源释放完成");
+          
+        } catch (error) {
+          console.error("❌ 资源清理过程中发生错误:", error);
+        }
+        
+        
+      }, 100); // 给异步停止操作留出时间
+      
+    } catch (error) {
+      console.error("❌ dispose 过程中发生错误:", error);
+      
+      // 即使出错也要确保清理基本资源
       this.recognizer = null;
-    }
-
-    if (this.audioConfig) {
-      this.audioConfig.close();
       this.audioConfig = null;
+      this.speechConfig = null;
+      this.isListening = false;
+      this.config = null as any;
     }
-
-    this.speechConfig = null;
-    console.log("✅ 资源释放完成");
   }
 
   // 检查是否正在监听
@@ -222,7 +293,7 @@ export class AzureSpeechRecognizer {
 export function getAzureSpeechConfig(): AzureSpeechConfig {
   const subscriptionKey = process.env.NEXT_PUBLIC_AZURE_SPEECH_KEY || ""
   const region = process.env.NEXT_PUBLIC_AZURE_SPEECH_REGION || "southeastasia";
-  const language = localStorage.getItem("interviewLanguage") || "zh-CN"; // 默认中文
+  const language = localStorage.getItem("interviewLanguage") || "auto-detect"; // 默认中英混合
 
   console.log("🔧 获取 Azure Speech 配置:", {
     hasKey: !!subscriptionKey,

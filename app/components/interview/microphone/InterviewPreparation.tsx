@@ -10,6 +10,7 @@ import { ACTIVATION_KEY } from "../../valid-wrapper/activation";
 import {
   useInterviewLanguage,
   RecognitionLanguage,
+  LANGUAGE_OPTIONS,
 } from "@/app/hooks/useInterviewLanguage";
 // 导入声纹存储服务
 import { voiceprintStorage } from "../../tensor-flow/services/voiceprint-storage";
@@ -80,7 +81,7 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
     const intervalActive = setInterval(() => {
       console.log("check active status");
       checkActivationStatus();
-    }, 1300);
+    }, 2000);
 
     checkActivationStatus();
     return () => {
@@ -460,8 +461,11 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
                 value={recognitionLanguage}
                 onChange={handleLanguageChange}
               >
-                <option value="zh-CN">中文 (普通话)</option>
-                <option value="en-US">English (US)</option>
+                {LANGUAGE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

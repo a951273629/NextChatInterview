@@ -5,6 +5,16 @@
 import { useState, useEffect } from "react";
 import { KeyStatus, Key } from "../constant";
 import styles from "./KeyGenerate.module.scss";
+import { 
+  pauseKey, 
+  resumeKey, 
+  getAllKeys, 
+  createKey, 
+  deleteKey, 
+  activateKey, 
+  revokeKey, 
+  getDeviceInfo 
+} from "../services/keyService";
 
 // 分页配置
 const PAGE_SIZE = 10;
@@ -40,14 +50,8 @@ export function KeyGeneratePage() {
       setLoading(true);
       setError(null);
 
-      // 使用API获取所有密钥
-      const response = await fetch("/api/key-generate");
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "获取密钥失败");
-      }
-
-      const allKeys = await response.json();
+      // 使用KeyService获取所有密钥
+      const allKeys = await getAllKeys();
       setKeys(allKeys);
       setTotalPages(Math.ceil(allKeys.length / PAGE_SIZE));
     } catch (err) {
@@ -60,6 +64,16 @@ export function KeyGeneratePage() {
   // 首次加载
   useEffect(() => {
     loadKeys();
+    
+    // 设置定时器，每分钟检查一次密钥状态，确保过期状态及时更新
+    const intervalId = setInterval(() => {
+      // 强制重新渲染以更新过期状态显示
+      setKeys(prevKeys => [...prevKeys]);
+    }, 120000); // 每2分钟检查一次
+    
+    return () => {
+      clearInterval(intervalId);
+    };
   }, []);
 
   // 显示通知
@@ -75,24 +89,8 @@ export function KeyGeneratePage() {
     try {
       setLoading(true);
 
-      // 使用API创建新密钥
-      const response = await fetch("/api/key-generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          expiresHours,
-          notes: noteInput.trim() || null,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "创建密钥失败");
-      }
-
-      const newKey = await response.json();
+      // 使用KeyService创建新密钥
+      const newKey = await createKey(expiresHours, noteInput);
       setKeys((prevKeys) => [newKey, ...prevKeys]);
       setTotalPages(Math.ceil((keys.length + 1) / PAGE_SIZE));
       setNoteInput(""); // 清空备注输入
@@ -111,17 +109,8 @@ export function KeyGeneratePage() {
       try {
         setLoading(true);
 
-        // 使用API删除密钥
-        const response = await fetch(`/api/key-generate?key=${keyString}`, {
-          method: "DELETE",
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "删除密钥失败");
-        }
-
-        const result = await response.json();
+        // 使用KeyService删除密钥
+        const result = await deleteKey(keyString);
         if (result.success) {
           const updatedKeys = keys.filter(
             (key) => key.key_string !== keyString,
@@ -163,11 +152,8 @@ export function KeyGeneratePage() {
       // 串行删除所有选中的密钥
       for (const keyString of selectedKeys) {
         try {
-          const response = await fetch(`/api/key-generate?key=${keyString}`, {
-            method: "DELETE",
-          });
-
-          if (response.ok) {
+          const result = await deleteKey(keyString);
+          if (result.success) {
             successCount++;
           } else {
             failCount++;
@@ -202,21 +188,8 @@ export function KeyGeneratePage() {
       setLoading(true);
       const { keyString, ipAddress, hardwareName } = activationInfo;
 
-      // 使用API激活密钥
-      const response = await fetch("/api/key-generate", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ keyString, ipAddress, hardwareName }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "激活密钥失败");
-      }
-
-      const updatedKey = await response.json();
+      // 使用KeyService激活密钥
+      const updatedKey = await activateKey(keyString, ipAddress, hardwareName);
 
       if (updatedKey) {
         setKeys((prevKeys) =>
@@ -242,24 +215,8 @@ export function KeyGeneratePage() {
       try {
         setLoading(true);
 
-        // 使用API撤销密钥
-        const response = await fetch("/api/key-generate", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            keyString,
-            action: "revoke",
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "撤销密钥失败");
-        }
-
-        const updatedKey = await response.json();
+        // 使用KeyService撤销密钥
+        const updatedKey = await revokeKey(keyString);
 
         if (updatedKey) {
           setKeys((prevKeys) =>
@@ -290,24 +247,8 @@ export function KeyGeneratePage() {
       try {
         setLoading(true);
 
-        // 使用API暂停密钥
-        const response = await fetch("/api/key-generate", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            keyString,
-            action: "pause",
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "暂停密钥失败");
-        }
-
-        const updatedKey = await response.json();
+        // 使用服务层暂停密钥
+        const updatedKey = await pauseKey(keyString);
 
         if (updatedKey) {
           setKeys((prevKeys) =>
@@ -338,24 +279,8 @@ export function KeyGeneratePage() {
       try {
         setLoading(true);
 
-        // 使用API恢复密钥
-        const response = await fetch("/api/key-generate", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            keyString,
-            action: "resume",
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "恢复密钥失败");
-        }
-
-        const updatedKey = await response.json();
+        // 使用服务层恢复密钥
+        const updatedKey = await resumeKey(keyString);
 
         if (updatedKey) {
           setKeys((prevKeys) =>
@@ -385,19 +310,14 @@ export function KeyGeneratePage() {
     try {
       setLoading(true);
 
-      // 获取IP地址 (使用公共API)
-      const ipResponse = await fetch("https://api.ipify.org?format=json");
-      const ipData = await ipResponse.json();
-      const ipAddress = ipData.ip;
-
-      // 获取设备信息
-      const hardwareName = navigator.userAgent;
+      // 使用KeyService获取设备信息
+      const { ipAddress, hardwareName } = await getDeviceInfo();
 
       // 更新表单
       setActivationInfo({
         ...activationInfo,
         ipAddress,
-        hardwareName: hardwareName.substring(0, 100), // 限制长度
+        hardwareName,
       });
 
       showNotification("已自动填充IP和设备信息", "success");
@@ -476,9 +396,7 @@ export function KeyGeneratePage() {
     setExportLoading(true);
 
     try {
-      // 构建导出文本
-      let exportText = "密钥管理系统导出\n";
-      exportText += "导出时间: " + new Date().toLocaleString() + "\n\n";
+       let exportText= "导出时间: " + new Date().toLocaleString() + "\n\n";
 
       // 添加选中的密钥信息
       const selectedKeysList = keys.filter((key) =>
@@ -486,22 +404,19 @@ export function KeyGeneratePage() {
       );
 
       selectedKeysList.forEach((key, index) => {
-        exportText += `===== 密钥 ${index + 1} =====\n`;
-        exportText += `密钥: ${key.key_string}\n`;
-        exportText += `状态: ${getStatusText(key.status)}\n`;
-        exportText += `创建时间: ${formatTimestamp(key.created_at)}\n`;
-        exportText += `过期时间: ${formatTimestamp(key.expires_at)}\n`;
-        exportText += `有效时长: ${key.duration_hours || 24}小时\n`;
+        exportText += `密钥 ${index + 1} `;
+        exportText += `密钥: ${key.key_string} `;
+        exportText += `有效时长: ${key.duration_hours || 2}小时`;
 
-        if (key.notes) {
-          exportText += `备注: ${key.notes}\n`;
-        }
+        // if (key.notes) {
+        //   exportText += `备注: ${key.notes}\n`;
+        // }
 
-        if (key.status === KeyStatus.ACTIVE) {
-          exportText += `激活时间: ${formatTimestamp(key.activated_at)}\n`;
-          exportText += `激活IP: ${key.activated_ip || "未记录"}\n`;
-          exportText += `硬件名称: ${key.hardware_name || "未记录"}\n`;
-        }
+        // if (key.status === KeyStatus.ACTIVE) {
+        //   exportText += `激活时间: ${formatTimestamp(key.activated_at)}\n`;
+        //   exportText += `激活IP: ${key.activated_ip || "未记录"}\n`;
+        //   exportText += `硬件名称: ${key.hardware_name || "未记录"}\n`;
+        // }
 
         exportText += "\n";
       });
@@ -646,8 +561,23 @@ export function KeyGeneratePage() {
     return new Date(timestamp).toLocaleString();
   };
 
+  // 检查密钥是否真正处于激活状态（未过期）
+  const isKeyActuallyActive = (key: Key) => {
+    if (key.status !== KeyStatus.ACTIVE) return false;
+    if (!key.expires_at) return false;
+    return key.expires_at >= Date.now();
+  };
+
   // 获取密钥状态的中文描述
-  const getStatusText = (status: KeyStatus) => {
+  const getStatusText = (status: KeyStatus, expiresAt?: number | null) => {
+    // 首先检查是否已过期（仅对激活状态的密钥）
+    if (status === KeyStatus.ACTIVE && expiresAt) {
+      const currentTime = Date.now();
+      if (expiresAt < currentTime) {
+        return "已过期";
+      }
+    }
+    
     switch (status) {
       case KeyStatus.INACTIVE:
         return "未激活";
@@ -665,7 +595,15 @@ export function KeyGeneratePage() {
   };
 
   // 根据状态获取状态的CSS类名
-  const getStatusClass = (status: KeyStatus) => {
+  const getStatusClass = (status: KeyStatus, expiresAt?: number | null) => {
+    // 首先检查是否已过期（仅对激活状态的密钥）
+    if (status === KeyStatus.ACTIVE && expiresAt) {
+      const currentTime = Date.now();
+      if (expiresAt < currentTime) {
+        return styles.statusExpired;
+      }
+    }
+    
     switch (status) {
       case KeyStatus.INACTIVE:
         return styles.statusInactive;
@@ -818,14 +756,14 @@ export function KeyGeneratePage() {
                         </td>
                         <td className={styles.keyCell}>{key.key_string}</td>
                         <td>
-                          <span className={getStatusClass(key.status)}>
-                            {getStatusText(key.status)}
+                          <span className={getStatusClass(key.status, key.expires_at)}>
+                            {getStatusText(key.status, key.expires_at)}
                           </span>
                         </td>
                         <td>{formatTimestamp(key.created_at)}</td>
                         <td>{formatTimestamp(key.expires_at)}</td>
                         <td>{formatTimestamp(key.activated_at) || "空"}</td>
-                        <td>{key.duration_hours || "24"}小时</td>
+                        <td>{key.duration_hours || "2"}小时</td>
                         <td>{key.activated_ip || "空"}</td>
                         <td className={styles.notesCell}>
                           {key.notes || "空"}
@@ -838,7 +776,7 @@ export function KeyGeneratePage() {
                             >
                               查看
                             </button>
-                            {key.status === KeyStatus.ACTIVE && (
+                            {isKeyActuallyActive(key) && (
                               <>
                                 <button
                                   className={styles.revokeButton}
@@ -912,9 +850,10 @@ export function KeyGeneratePage() {
                   <span
                     className={`${styles.detailValue} ${getStatusClass(
                       selectedKey.status,
+                      selectedKey.expires_at,
                     )}`}
                   >
-                    {getStatusText(selectedKey.status)}
+                    {getStatusText(selectedKey.status, selectedKey.expires_at)}
                   </span>
                 </div>
                 <div className={styles.detailRow}>
@@ -932,7 +871,7 @@ export function KeyGeneratePage() {
                 <div className={styles.detailRow}>
                   <span className={styles.detailLabel}>卡密时长:</span>
                   <span className={styles.detailValue}>
-                    {selectedKey.duration_hours || "24"}小时
+                    {selectedKey.duration_hours || "2"}小时
                   </span>
                 </div>
                 {selectedKey.notes && (
@@ -968,7 +907,7 @@ export function KeyGeneratePage() {
                   </>
                 )}
 
-                {selectedKey.status === KeyStatus.ACTIVE && (
+                {isKeyActuallyActive(selectedKey) && (
                   <div className={styles.detailActions}>
                     <button
                       className={styles.revokeButton}

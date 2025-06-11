@@ -20,6 +20,7 @@ import {
   MIN_SIDEBAR_WIDTH,
   NARROW_SIDEBAR_WIDTH,
   Path,
+  USER_RESUMES_STORAGE_KEY,
 } from "../constant";
 
 import { Link, useNavigate } from "react-router-dom";
@@ -233,6 +234,7 @@ export function SideBar(props: { className?: string }) {
   const chatStore = useChatStore();
   const [mcpEnabled, setMcpEnabled] = useState(false);
   const [showPersonalSet, setShowPersonalSet] = useState(false);
+  const [hasResume, setHasResume] = useState(false);
 
   useEffect(() => {
     // 检查 MCP 是否启用
@@ -243,6 +245,14 @@ export function SideBar(props: { className?: string }) {
     };
     checkMcpStatus();
   }, []);
+
+  // 检查是否已有简历
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedResume = localStorage.getItem(USER_RESUMES_STORAGE_KEY);
+      setHasResume(!!storedResume);
+    }
+  }, [showPersonalSet]); // 当简历上传弹窗关闭时重新检查
 
   return (
     <SideBarContainer
@@ -261,7 +271,7 @@ export function SideBar(props: { className?: string }) {
           {/* <PersonalSet /> */}
           <IconButton
             icon={<PersonalIcon />}
-            text={shouldNarrow ? undefined : "点击上传简历"}
+            text={hasResume ? "简历已上传" : "点击上传简历"}
             className={styles["sidebar-bar-button-resume-set"]}
             onClick={() => {
               setShowPersonalSet(true);

@@ -6,6 +6,7 @@ import { IconButton } from "../button";
 import CloseIcon from "../../icons/close.svg";
 import LoadingIcon from "../../icons/three-dots.svg";
 import { safeLocalStorage } from "../../utils";
+import { resumeKey } from "../../services/keyService";
 
 const localStorage = safeLocalStorage();
 
@@ -52,24 +53,8 @@ const ResumeKeyDialog: React.FC<ResumeKeyDialogProps> = ({
       setIsLoading(true);
       setError(null);
 
-      // 调用API恢复密钥
-      const response = await fetch("/api/key-generate", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          keyString,
-          action: "resume",
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "恢复密钥失败");
-      }
-
-      const updatedKey = await response.json();
+      // 调用服务层恢复密钥
+      const updatedKey = await resumeKey(keyString);
 
       if (updatedKey && updatedKey.expires_at) {
         // 更新本地存储

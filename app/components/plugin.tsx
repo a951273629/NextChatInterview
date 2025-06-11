@@ -1,7 +1,7 @@
 import { useDebouncedCallback } from "use-debounce";
 import OpenAPIClientAxios from "openapi-client-axios";
 import yaml from "js-yaml";
-import { PLUGINS_REPO_URL } from "../constant";
+// import { PLUGINS_REPO_URL } from "../constant";
 import { IconButton } from "./button";
 import { ErrorBoundary } from "./error";
 
@@ -130,7 +130,7 @@ export function PluginPage() {
           </div>
 
           <div className="window-actions">
-            <div className="window-action-button">
+            {/* <div className="window-action-button">
               <a
                 href={PLUGINS_REPO_URL}
                 target="_blank"
@@ -138,7 +138,8 @@ export function PluginPage() {
               >
                 <IconButton icon={<GithubIcon />} bordered />
               </a>
-            </div>
+            </div> */}
+
             <div className="window-action-button">
               <IconButton
                 icon={<CloseIcon />}
@@ -182,14 +183,14 @@ export function PluginPage() {
                 }}
               >
                 {Locale.Plugin.Page.Find}
-                <a
+                {/* <a
                   href={PLUGINS_REPO_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ marginLeft: 16 }}
                 >
                   <IconButton icon={<GithubIcon />} bordered />
-                </a>
+                </a> */}
               </div>
             )}
             {plugins.map((m) => (

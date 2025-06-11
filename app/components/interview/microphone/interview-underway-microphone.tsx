@@ -183,7 +183,7 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
 
       // 获取配置
       const config = getAzureSpeechConfig();
-      config.language = recognitionLanguage || "zh-CN";
+      config.language = recognitionLanguage || "auto-detect";
 
       // 创建识别器
       const newRecognizer = new AzureSpeechRecognizer(config);

@@ -1,12 +1,14 @@
 export const OWNER = "SheepInterviewOwner";
 export const REPO = "Sheep-Interview";
-export const REPO_URL = `https://github.com/${OWNER}/${REPO}`;
-export const PLUGINS_REPO_URL = `https://github.com/${OWNER}/Sheep-Interview-Awesome-Plugins`;
-export const ISSUE_URL = `https://github.com/${OWNER}/${REPO}/issues`;
-export const UPDATE_URL = `${REPO_URL}#keep-updated`;
-export const RELEASE_URL = `${REPO_URL}/releases`;
-export const FETCH_COMMIT_URL = `https://api.github.com/repos/${OWNER}/${REPO}/commits?per_page=1`;
-export const FETCH_TAG_URL = `https://api.github.com/repos/${OWNER}/${REPO}/tags?per_page=1`;
+
+// export const REPO_URL = `https://github.com/${OWNER}/${REPO}`;
+// export const PLUGINS_REPO_URL = `https://github.com/${OWNER}/Sheep-Interview-Awesome-Plugins`;
+// export const ISSUE_URL = `https://github.com/${OWNER}/${REPO}/issues`;
+// export const UPDATE_URL = `${REPO_URL}#keep-updated`;
+// export const RELEASE_URL = `${REPO_URL}/releases`;
+// export const FETCH_COMMIT_URL = `https://api.github.com/repos/${OWNER}/${REPO}/commits?per_page=1`;
+// export const FETCH_TAG_URL = `https://api.github.com/repos/${OWNER}/${REPO}/tags?per_page=1`;
+
 export const RUNTIME_CONFIG_DOM = "danger-runtime-config";
 
 export const STABILITY_BASE_URL = "https://api.stability.ai";
@@ -531,6 +533,7 @@ const openaiModels = [
   // "gpt-4-turbo",
   // "gpt-4-turbo-preview",
   "gpt-4.1",
+  "gpt-4.5-preview",
   // "gpt-4.1-2025-04-14",
   // "gpt-4.1-mini",
   // "gpt-4.1-mini-2025-04-14",
@@ -554,32 +557,35 @@ const openaiModels = [
   "o3-mini",
   "o3",
   "o4-mini",
+  "gemini-2.5-pro-preview-06-05",
+  "deepseek-r1-250528",
 ];
 
 // const googleModels = [
-//   "gemini-1.0-pro", // Deprecated on 2/15/2025
-//   "gemini-1.5-pro-latest",
-//   "gemini-1.5-pro",
-//   "gemini-1.5-pro-002",
-//   "gemini-1.5-pro-exp-0827",
-//   "gemini-1.5-flash-latest",
-//   "gemini-1.5-flash-8b-latest",
-//   "gemini-1.5-flash",
-//   "gemini-1.5-flash-8b",
-//   "gemini-1.5-flash-002",
-//   "gemini-1.5-flash-exp-0827",
-//   "learnlm-1.5-pro-experimental",
-//   "gemini-exp-1114",
-//   "gemini-exp-1121",
-//   "gemini-exp-1206",
-//   "gemini-2.0-flash",
-//   "gemini-2.0-flash-exp",
-//   "gemini-2.0-flash-lite-preview-02-05",
-//   "gemini-2.0-flash-thinking-exp",
-//   "gemini-2.0-flash-thinking-exp-1219",
-//   "gemini-2.0-flash-thinking-exp-01-21",
-//   "gemini-2.0-pro-exp",
-//   "gemini-2.0-pro-exp-02-05",
+//   // "gemini-1.0-pro", // Deprecated on 2/15/2025
+//   // "gemini-1.5-pro-latest",
+//   // "gemini-1.5-pro",
+//   // "gemini-1.5-pro-002",
+//   // "gemini-1.5-pro-exp-0827",
+//   // "gemini-1.5-flash-latest",
+//   // "gemini-1.5-flash-8b-latest",
+//   // "gemini-1.5-flash",
+//   // "gemini-1.5-flash-8b",
+//   // "gemini-1.5-flash-002",
+//   // "gemini-1.5-flash-exp-0827",
+//   // "learnlm-1.5-pro-experimental",
+//   // "gemini-exp-1114",
+//   // "gemini-exp-1121",
+//   // "gemini-exp-1206",
+//   // "gemini-2.0-flash",
+//   // "gemini-2.0-flash-exp",
+//   // "gemini-2.0-flash-lite-preview-02-05",
+//   // "gemini-2.0-flash-thinking-exp",
+//   // "gemini-2.0-flash-thinking-exp-1219",
+//   // "gemini-2.0-flash-thinking-exp-01-21",
+//   // "gemini-2.0-pro-exp",
+//   // "gemini-2.0-pro-exp-02-05",
+  
 // ];
 
 // const anthropicModels = [
@@ -688,22 +694,22 @@ const openaiModels = [
 //   //   "cogvideox-flash", // free
 // ];
 
-const siliconflowModels = [
-  // "Qwen/Qwen2.5-7B-Instruct",
-  // "Qwen/Qwen2.5-72B-Instruct",
-  "deepseek-ai/DeepSeek-R1",
-  // "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
-  // "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
-  // "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
-  // "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
-  // "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
-  // "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
-  "deepseek-ai/DeepSeek-V3",
-  // "meta-llama/Llama-3.3-70B-Instruct",
-  // "THUDM/glm-4-9b-chat",
-  // "Pro/deepseek-ai/DeepSeek-R1",
-  // "Pro/deepseek-ai/DeepSeek-V3",
-];
+// const siliconflowModels = [
+//   // "Qwen/Qwen2.5-7B-Instruct",
+//   // "Qwen/Qwen2.5-72B-Instruct",
+//   "deepseek-ai/DeepSeek-R1",
+//   // "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
+//   // "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+//   // "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+//   // "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
+//   // "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+//   // "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+//   "deepseek-ai/DeepSeek-V3",
+//   // "meta-llama/Llama-3.3-70B-Instruct",
+//   // "THUDM/glm-4-9b-chat",
+//   // "Pro/deepseek-ai/DeepSeek-R1",
+//   // "Pro/deepseek-ai/DeepSeek-V3",
+// ];
 
 let seq = 1000; // 内置的模型序号生成器从1000开始
 export const DEFAULT_MODELS = [

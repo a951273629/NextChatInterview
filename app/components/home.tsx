@@ -174,20 +174,20 @@ const useHasHydrated = () => {
   return hasHydrated;
 };
 
-const loadAsyncGoogleFont = () => {
-  const linkEl = document.createElement("link");
-  const proxyFontUrl = "/google-fonts";
-  const remoteFontUrl = "https://fonts.googleapis.com";
-  const googleFontUrl =
-    getClientConfig()?.buildMode === "export" ? remoteFontUrl : proxyFontUrl;
-  linkEl.rel = "stylesheet";
-  linkEl.href =
-    googleFontUrl +
-    "/css2?family=" +
-    encodeURIComponent("Noto Sans:wght@300;400;700;900") +
-    "&display=swap";
-  document.head.appendChild(linkEl);
-};
+// const loadAsyncGoogleFont = () => {
+//   const linkEl = document.createElement("link");
+//   const proxyFontUrl = "/google-fonts";
+//   const remoteFontUrl = "https://fonts.googleapis.com";
+//   const googleFontUrl =
+//     getClientConfig()?.buildMode === "export" ? remoteFontUrl : proxyFontUrl;
+//   linkEl.rel = "stylesheet";
+//   linkEl.href =
+//     googleFontUrl +
+//     "/css2?family=" +
+//     encodeURIComponent("Noto Sans:wght@300;400;700;900") +
+//     "&display=swap";
+//   document.head.appendChild(linkEl);
+// };
 
 export function WindowContent(props: { children: React.ReactNode }) {
   return (
@@ -219,7 +219,7 @@ function Screen() {
     getClientConfig()?.isApp || (config.tightBorder && !isMobileScreen);
 
   useEffect(() => {
-    loadAsyncGoogleFont();
+    // loadAsyncGoogleFont();
   }, []);
 
   // 移动端默认路由重定向

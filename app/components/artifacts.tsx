@@ -18,7 +18,7 @@ import ReloadButtonIcon from "../icons/reload.svg";
 import Locale from "../locales";
 import { Modal, showToast } from "./ui-lib";
 import { copyToClipboard, downloadAs } from "../utils";
-import { Path, ApiPath, REPO_URL } from "@/app/constant";
+import { Path, ApiPath } from "@/app/constant";
 import { Loading } from "./home";
 import styles from "./artifacts.module.scss";
 
@@ -229,9 +229,9 @@ export function Artifacts() {
   return (
     <div className={styles["artifacts"]}>
       <div className={styles["artifacts-header"]}>
-        <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
+        {/* <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
           <IconButton bordered icon={<GithubIcon />} shadow />
-        </a>
+        </a> */}
         <IconButton
           bordered
           style={{ marginLeft: 20 }}

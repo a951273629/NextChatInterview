@@ -400,8 +400,8 @@ export const useChatStore = createPersistStore(
         get().updateStat(message, targetSession);
 
         get().checkMcpJson(message);
-
-        get().summarizeSession(false, targetSession);
+        // TODO: 会报错，暂时注释
+        // get().summarizeSession(false, targetSession);
       },
 
       async onUserInput(

@@ -67,9 +67,7 @@ Thumbs.db
 *.pem
 *.key
 *.key.pub
-.env
-.env.test
-.env*.local
+
 
 # Large media files (if not part of the core source code context)
 *.mp3
@@ -129,8 +127,7 @@ mlflow-artifacts/
 # Virtual environments
 venv/
 .venv/
-env/
-.env/
+
 
 # Jupyter Notebook specific
 .ipynb_checkpoints/

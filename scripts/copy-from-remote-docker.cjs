@@ -10,10 +10,10 @@ const { promisify } = require('util');
 const config = {
   // 远程服务器配置
   remote: {
-    host: '81.68.92.237',
+    host: '',
     port: 22,
-    username: 'root', // 根据实际情况修改
-    password: 'Wangnan200401', // 或使用密码
+    username: '', // 根据实际情况修改
+    password: '', // 或使用密码
     privateKey: null, // 或使用私钥路径
   },
   

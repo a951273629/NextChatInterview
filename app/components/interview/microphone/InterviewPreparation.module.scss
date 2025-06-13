@@ -51,6 +51,11 @@
       }
     }
     
+    // 麦克风选择容器
+    .mic-select-container {
+      position: relative;
+    }
+
     // 设备检查区域样式
     .device-status-item {
       display: flex;
@@ -59,6 +64,8 @@
       padding: 0.75rem;
       border-radius: 0.4rem;
       background-color: rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      transition: all 0.2s ease;
       
       &.status-success {
         border-left: 3px solid #4caf50;
@@ -68,16 +75,27 @@
         border-left: 3px solid #ff9800;
       }
       
-      &.status-error {
-        border-left: 3px solid #f44336;
-      }
-      
-      .status-icon {
-        font-size: 1.5rem;
-        margin-right: 1rem;
-        width: 2rem;
-        text-align: center;
-      }
+              &.status-error {
+          border-left: 3px solid #f44336;
+        }
+
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.4);
+        }
+        
+        .status-icon {
+          font-size: 1.5rem;
+          margin-right: 1rem;
+          width: 2rem;
+          text-align: center;
+        }
+
+        .dropdown-arrow {
+          margin-left: auto;
+          font-size: 0.8rem;
+          opacity: 0.7;
+          transition: transform 0.2s ease;
+        }
       
       .status-info {
         flex: 1;
@@ -105,6 +123,57 @@
           }
         }
       }
+
+      // 麦克风设备选择下拉列表
+      .mic-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: rgba(0, 0, 0, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 0.4rem;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+        margin-top: 0.25rem;
+
+        .mic-option {
+          padding: 0.75rem;
+          cursor: pointer;
+          transition: background-color 0.2s ease;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+          &:last-child {
+            border-bottom: none;
+          }
+
+          &:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+          }
+
+          &.selected {
+            background-color: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+            font-weight: 500;
+          }
+        }
+
+        // 滚动条样式
+        &::-webkit-scrollbar {
+          width: 4px;
+        }
+        
+        &::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.1);
+        }
+        
+        &::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.3);
+          border-radius: 2px;
+        }
+      }
     }
     
     // 设置区域样式
@@ -115,16 +184,6 @@
       padding: 0.75rem;
       border-radius: 0.4rem;
       background-color: rgba(0, 0, 0, 0.3);
-      
-      &.clickable-setting {
-        transition: all 0.2s ease;
-        
-        &:hover {
-          background-color: rgba(33, 150, 243, 0.15);
-          border-left: 3px solid #2196F3;
-          transform: translateX(2px);
-        }
-      }
       
       .setting-label {
         width: 6rem;
@@ -140,72 +199,6 @@
         .setting-status {
           margin-left: 0.75rem;
           font-size: 0.85rem;
-        }
-        
-        .setting-warning {
-          width: 100%;
-          margin-top: 0.5rem;
-          font-size: 0.8rem;
-          color: #ff9800;
-        }
-      }
-      
-      // 开关样式优化
-      .switch {
-        position: relative;
-        width: 50px;
-        height: 24px;
-        
-        input {
-          opacity: 0;
-          width: 0;
-          height: 0;
-          
-          &:checked + .slider {
-            background-color: #2196F3;
-            
-            &:before {
-              transform: translateX(26px);
-            }
-          }
-          
-          &:focus + .slider {
-            box-shadow: 0 0 1px #2196F3;
-          }
-          
-          &:disabled + .slider {
-            opacity: 0.5;
-            cursor: not-allowed;
-          }
-        }
-        
-        .slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: #ccc;
-          transition: .4s;
-          border-radius: 24px;
-          
-          &:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-          }
-          
-          &.disabled {
-            background-color: #888;
-            cursor: not-allowed;
-          }
         }
       }
       
@@ -313,6 +306,19 @@
       .status-text {
         font-size: 0.85rem;
       }
+
+      .dropdown-arrow {
+        font-size: 0.7rem;
+      }
+    }
+
+    // 移动端麦克风下拉列表样式
+    .mic-list {
+      font-size: 0.85rem;
+
+      .mic-option {
+        padding: 0.6rem;
+      }
     }
     
     .setting-item {
@@ -326,10 +332,6 @@
       .setting-control {
         .setting-status {
           font-size: 0.8rem;
-        }
-        
-        .setting-warning {
-          font-size: 0.75rem;
         }
       }
     }
@@ -393,6 +395,16 @@
     .status-info {
       display: none;
     }
+
+    // 隐藏下拉箭头
+    .dropdown-arrow {
+      display: none;
+    }
+  }
+
+  // 在窄屏模式下隐藏麦克风下拉列表
+  .mic-list {
+    display: none;
   }
 
   // 设置项调整
@@ -407,9 +419,8 @@
     .setting-control {
       flex: none; // 取消 flex 伸缩
 
-      // 隐藏状态文字和警告
-      .setting-status,
-      .setting-warning {
+      // 隐藏状态文字
+      .setting-status {
         display: none;
       }
 

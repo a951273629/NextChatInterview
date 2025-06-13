@@ -1,7 +1,6 @@
 // ===== 变量定义区域 =====
 // 颜色变量
-$interviewer-color: #ff6347;
-$interviewee-color: #4caf50;
+$user-color: #4caf50;
 $warning-color: #ff9800;
 $warning-hover-color: #f57c00;
 $success-color: #4caf50;
@@ -46,23 +45,11 @@ $box-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
 $box-shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15);
 
 // ===== Mixin 定义区域 =====
-// 角色样式 mixin
-@mixin role-styles($role-color) {
-  background-color: rgba($role-color, 0.15);
-  border: 1px solid rgba($role-color, 0.3);
-  color: $role-color;
-}
-
-// 角色背景样式 mixin (用于 transcriptDisplay)
-@mixin role-background($role-color) {
-  border-left: 3px solid $role-color;
-  background-color: rgba($role-color, 0.05);
-}
-
-// 角色指示器样式 mixin
-@mixin role-indicator($role-color) {
-  background-color: rgba($role-color, 0.2);
-  color: darken($role-color, 10%);
+// 用户消息样式 mixin
+@mixin user-message-styles() {
+  background-color: rgba($user-color, 0.15);
+  border: 1px solid rgba($user-color, 0.3);
+  color: $user-color;
 }
 
 // 按钮悬停效果 mixin
@@ -138,15 +125,9 @@ $box-shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15);
     box-shadow: $box-shadow-sm;
   }
   
-  // 面试官消息样式 (红色)
-  &.interviewerMessage {
-    @include role-styles($interviewer-color);
-    align-self: flex-start;
-  }
-  
-  // 面试者消息样式 (绿色)
-  &.intervieweeMessage {
-    @include role-styles($interviewee-color);
+  // 用户消息样式 (绿色)
+  &.userMessage {
+    @include user-message-styles();
     align-self: flex-end;
     
     @media only screen and (max-width: 600px) {
@@ -172,8 +153,8 @@ $box-shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15);
     margin-right: 10px;
     
     &.listening {
-      background-color: $interviewee-color;
-      box-shadow: 0 0 10px $interviewee-color;
+      background-color: $user-color;
+      box-shadow: 0 0 10px $user-color;
       animation: pulse 1.5s infinite;
     }
     
@@ -219,6 +200,8 @@ $box-shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15);
   line-height: $line-height-base;
   border: 1px solid $border-semi;
   position: relative;
+  border-left: 3px solid $user-color;
+  background-color: rgba($user-color, 0.05);
 
   .transcriptLabel {
     position: absolute;
@@ -227,14 +210,6 @@ $box-shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15);
     font-size: $font-size-xs;
     color: $white-semi-light;
     font-style: italic;
-  }
-
-  &.interviewerText {
-    @include role-background($interviewer-color);
-  }
-
-  &.intervieweeText {
-    @include role-background($interviewee-color);
   }
 
   @media only screen and (max-width: 600px) {
@@ -305,36 +280,9 @@ $box-shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15);
 }
 
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba($interviewee-color, 0.7); }
-  70% { box-shadow: 0 0 0 10px rgba($interviewee-color, 0); }
-  100% { box-shadow: 0 0 0 0 rgba($interviewee-color, 0); }
-}
-
-.voiceprintStatus {
-  display: flex;
-  align-items: center;
-  margin-left: 15px;
-  font-size: $font-size-md;
-  
-  .identityIndicator {
-    padding: 3px 8px;
-    border-radius: 4px;
-    margin-right: 8px;
-    font-weight: 500;
-    
-    &.interviewer {
-      @include role-indicator($interviewer-color);
-    }
-    
-    &.interviewee {
-      @include role-indicator($interviewee-color);
-    }
-  }
-  
-  .matchScore {
-    font-size: $font-size-sm;
-    color: #666;
-  }
+  0% { box-shadow: 0 0 0 0 rgba($user-color, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba($user-color, 0); }
+  100% { box-shadow: 0 0 0 0 rgba($user-color, 0); }
 }
 
 .settingItem {
@@ -429,23 +377,23 @@ $box-shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15);
 .clickableTooltip {
   display: flex;
   align-items: center;
-  background-color: rgba($interviewee-color, 0.2);
+  background-color: rgba($user-color, 0.2);
   border-radius: $border-radius-lg;
   padding: $spacing-md $spacing-xl;
   margin-left: $spacing-lg;
-  border: 1px solid rgba($interviewee-color, 0.3);
+  border: 1px solid rgba($user-color, 0.3);
   max-width: 200px;
   
   .tooltipContent {
     font-size: $font-size-md;
-    color: $interviewee-color;
+    color: $user-color;
     margin-right: $spacing-md;
   }
   
   .tooltipCloseBtn {
     background: none;
     border: none;
-    color: $interviewee-color;
+    color: $user-color;
     font-size: $font-size-sm;
     cursor: pointer;
     padding: 0;
@@ -456,7 +404,7 @@ $box-shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15);
     height: 16px;
     
     &:hover {
-      color: darken($interviewee-color, 10%);
+      color: darken($user-color, 10%);
     }
   }
 
@@ -478,13 +426,6 @@ $box-shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15);
   // 隐藏状态指示器中的文字
   .statusIndicator {
     .statusText {
-      display: none;
-    }
-  }
-
-  // 隐藏声纹状态中的文字
-  .voiceprintStatus {
-    .matchScore {
       display: none;
     }
   }

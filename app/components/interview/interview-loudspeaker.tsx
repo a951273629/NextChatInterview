@@ -256,41 +256,41 @@ export const InterviewLoudspeaker: React.FC = () => {
   };
 
   // 播放测试音频
-  const playTestAudio = async () => {
-    try {
-      setIsPlayingTest(true);
+  // const playTestAudio = async () => {
+  //   try {
+  //     setIsPlayingTest(true);
 
-      // 创建测试音频 - 使用一个简单的正弦波
-      const audioContext = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
+  //     // 创建测试音频 - 使用一个简单的正弦波
+  //     const audioContext = new (window.AudioContext ||
+  //       (window as any).webkitAudioContext)();
+  //     const oscillator = audioContext.createOscillator();
+  //     const gainNode = audioContext.createGain();
 
-      // 设置音调和音量
-      oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 音符
-      gainNode.gain.setValueAtTime(
-        (audioVolume / 100) * 0.1,
-        audioContext.currentTime,
-      ); // 控制音量
+  //     // 设置音调和音量
+  //     oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4 音符
+  //     gainNode.gain.setValueAtTime(
+  //       (audioVolume / 100) * 0.1,
+  //       audioContext.currentTime,
+  //     ); // 控制音量
 
-      // 连接节点
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
+  //     // 连接节点
+  //     oscillator.connect(gainNode);
+  //     gainNode.connect(audioContext.destination);
 
-      // 播放 0.5 秒
-      oscillator.start();
-      oscillator.stop(audioContext.currentTime + 0.5);
+  //     // 播放 0.5 秒
+  //     oscillator.start();
+  //     oscillator.stop(audioContext.currentTime + 0.5);
 
-      // 清理
-      setTimeout(() => {
-        setIsPlayingTest(false);
-        audioContext.close();
-      }, 600);
-    } catch (error) {
-      console.error("播放测试音频失败:", error);
-      setIsPlayingTest(false);
-    }
-  };
+  //     // 清理
+  //     setTimeout(() => {
+  //       setIsPlayingTest(false);
+  //       audioContext.close();
+  //     }, 600);
+  //   } catch (error) {
+  //     console.error("播放测试音频失败:", error);
+  //     setIsPlayingTest(false);
+  //   }
+  // };
 
   // 选择扬声器设备
   const selectSpeakerDevice = async (deviceId: string) => {
@@ -410,13 +410,13 @@ export const InterviewLoudspeaker: React.FC = () => {
   };
 
   // 音量调节处理
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const volume = parseInt(e.target.value);
-    setAudioVolume(volume);
-    if (audioElementRef.current) {
-      audioElementRef.current.volume = volume / 100;
-    }
-  };
+  // const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const volume = parseInt(e.target.value);
+  //   setAudioVolume(volume);
+  //   if (audioElementRef.current) {
+  //     audioElementRef.current.volume = volume / 100;
+  //   }
+  // };
 
   // 初始化时检测设备状态
   useEffect(() => {
@@ -769,7 +769,7 @@ export const InterviewLoudspeaker: React.FC = () => {
               </div>
 
               {/* 音量控制和测试按钮 */}
-              <div className={styles.volumeControl}>
+              {/* <div className={styles.volumeControl}>
                 <span>音量:</span>
                 <input
                   type="range"
@@ -789,7 +789,7 @@ export const InterviewLoudspeaker: React.FC = () => {
                 >
                   {isPlayingTest ? "播放中..." : "测试音频"}
                 </button>
-              </div>
+              </div> */}
             </div>
           </div>
 

@@ -79,7 +79,7 @@ Thumbs.db
 *.jpeg
 *.png
 *.gif
-*.svg
+# *.svg
 *.ico
 *.webp
 *.psd
@@ -133,8 +133,8 @@ venv/
 .ipynb_checkpoints/
 
 # Lock files (can be large and change often)
-package-lock.json
-yarn.lock
+# package-lock.json
+# yarn.lock
 Cargo.lock
 pnpm-lock.yaml
 

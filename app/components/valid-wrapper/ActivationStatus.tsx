@@ -9,7 +9,10 @@ import {
   LAST_SYNC_TIME,
   getRemainingTime,
 } from "./activation";
+import SettingsIcon from "../../icons/settings.svg";
 import KeyIcon from "../../icons/key.svg";
+import PauseIcon from "../../icons/pause.svg";
+import PlayIcon from "../../icons/play.svg";
 import { IconButton } from "../button";
 import ActivateKeyDialog from "./ActivateKeyDialog";
 import { safeLocalStorage } from "../../utils";
@@ -289,27 +292,38 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
             display: "flex",
             alignItems: "center",
             gap: "6px",
+            position: "relative",
           }}
         >
-          <KeyIcon style={{ height: "16px", width: "16px" }} />
-          <span>剩余: {formatRemainingTime(remainingTime)}</span>
-          <button
+          <SettingsIcon style={{ height: "16px", width: "16px" }} />
+          {/* 剩余时间悬浮样式 */}
+          <span
+            style={{
+              position: "absolute",
+              top: "0.3rem",
+              right: "5rem",
+              // left: "0",
+              color: "rgba(255, 215, 0, 0.7)", // 半透明黄色字体
+              padding: "2px 6px",
+              borderRadius: "4px",
+              fontSize: "1rem",
+              fontWeight: "normal",
+              whiteSpace: "nowrap",
+              zIndex: 1000,
+            }}
+          >
+            剩余: {formatRemainingTime(remainingTime)}
+          </span>
+          <IconButton
+            icon={<PauseIcon />}
             onClick={handlePauseKey}
             disabled={isLoading}
+            title="暂停密钥"
+            text={isLoading ? "..." : undefined}
             style={{
               marginLeft: "8px",
-              padding: "2px 6px",
-              fontSize: "12px",
-              backgroundColor: "#ff9800",
-              color: "white",
-              border: "none",
-              borderRadius: "3px",
-              cursor: isLoading ? "not-allowed" : "pointer",
             }}
-            title="暂停密钥"
-          >
-            {isLoading ? "..." : "暂停"}
-          </button>
+          />
         </div>
       );
     } else if (isPaused) {
@@ -325,25 +339,18 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
             gap: "6px",
           }}
         >
-          <KeyIcon style={{ height: "16px", width: "16px" }} />
+          <SettingsIcon style={{ height: "16px", width: "16px" }} />
           <span>已暂停</span>
-          <button
+          <IconButton
+            icon={<PlayIcon />}
             onClick={handleResumeKey}
             disabled={isLoading}
+            title="恢复密钥"
+            text={isLoading ? "..." : undefined}
             style={{
               marginLeft: "8px",
-              padding: "2px 6px",
-              fontSize: "12px",
-              backgroundColor: "#4caf50",
-              color: "white",
-              border: "none",
-              borderRadius: "3px",
-              cursor: isLoading ? "not-allowed" : "pointer",
             }}
-            title="恢复密钥"
-          >
-            {isLoading ? "..." : "恢复"}
-          </button>
+          />
         </div>
       );
     } else {

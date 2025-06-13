@@ -19,12 +19,8 @@ interface Message {
 interface InterviewUnderwayProps {
   // 控制状态
   visible: boolean;
-  voiceprintEnabled: boolean;
   recognitionLanguage: string;
-
-  // 声纹识别相关
-  isInterviewer: boolean;
-  voiceMatchScore: number;
+  selectedMicId?: string;
 
   // 回调函数
   onTextUpdate: (text: string) => void;
@@ -48,10 +44,8 @@ interface InterviewUnderwayProps {
 
 export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
   visible,
-  voiceprintEnabled,
   recognitionLanguage,
-  isInterviewer,
-  voiceMatchScore,
+  selectedMicId,
   onTextUpdate,
   submitMessage,
   onStop,
@@ -99,7 +93,6 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
     scrollToBottom();
   }, [messages]);
 
-
   // 消息点击处理函数
   const handleMessageClick = (messageText: string) => {
     console.log("消息被点击:", messageText);
@@ -137,13 +130,20 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
         throw new Error("浏览器不支持麦克风访问");
       }
 
+      // 构建音频约束，如果有选定的设备ID就使用它
+      const audioConstraints: MediaStreamConstraints['audio'] = {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        sampleRate: 16000,
+      };
+
+      if (selectedMicId) {
+        audioConstraints.deviceId = { exact: selectedMicId };
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 16000,
-        }
+        audio: audioConstraints
       });
 
       console.log("✅ 麦克风权限获取成功");
@@ -216,24 +216,13 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
     transcriptRef.current = text;
     onTextUpdate(text);
     
-    // 只有最终结果才触发自动提交相关逻辑，不需要延迟
+    // 只有最终结果才触发自动提交相关逻辑
     if (isFinal && text && text.trim() !== "") {
-      console.log("🎯 最终识别结果，立即处理自动提交逻辑:", text);
+      console.log("🎯 最终识别结果，立即处理:", text);
       
-      // 直接处理自动提交逻辑，不需要延迟
-      // 如果声纹识别启用，并且被识别为面试官
-      if (voiceprintEnabled && isInterviewer) {
-        console.log("检测到面试官语音，添加到消息历史:", text);
-        onAddMessage?.(text, true);
-        lastSubmittedTextRef.current = text;
-        // 重置文本
-        setTranscript("");
-        transcriptRef.current = "";
-        onTextUpdate("");
-      }
-      // 如果是面试者或声纹未启用
-      else if (text !== lastSubmittedTextRef.current) {
-        console.log("检测到面试者语音，添加到消息历史:", text);
+      // 检查是否是重复文本
+      if (text !== lastSubmittedTextRef.current) {
+        console.log("检测到用户语音，添加到消息历史:", text);
         onAddMessage?.(text, false);
         lastSubmittedTextRef.current = text;
         // 重置文本
@@ -243,8 +232,8 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
       }
 
       // 如果自动提交开启
-      if (isAutoSubmit && (isInterviewer || !voiceprintEnabled)) {
-        console.log("自动提交面试者语音:", text);
+      if (isAutoSubmit) {
+        console.log("自动提交用户语音:", text);
         submitMessage(text);
       }
     }
@@ -351,7 +340,7 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
         cleanup();
       }
     };
-  }, [visible, isPaused, azureSpeechAvailable, recognitionLanguage]);
+  }, [visible, isPaused, azureSpeechAvailable, recognitionLanguage, selectedMicId]);
 
   // 暂停/恢复功能
   const togglePauseCommit = () => {
@@ -411,24 +400,6 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
             </button>
           </div>
         )}
-
-        {/* 添加声纹识别状态显示 */}
-        {voiceprintEnabled && (
-          <div className={styles.voiceprintStatus}>
-            <span
-              className={`${styles.identityIndicator} ${
-                isInterviewer ? styles.interviewer : styles.interviewee
-              }`}
-            >
-              {isInterviewer ? "面试官" : "面试者"}
-            </span>
-            {voiceMatchScore > 0 && (
-              <span className={styles.matchScore}>
-                相似度: {(voiceMatchScore * 100).toFixed(1)}%
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       {/* 错误提示 */}
@@ -447,11 +418,7 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`${styles.message} ${
-              message.isInterviewer
-                ? styles.interviewerMessage
-                : styles.intervieweeMessage
-            }`}
+            className={`${styles.message} ${styles.userMessage}`}
             onClick={() => handleMessageClick(message.text)}
           >
             {message.text}
@@ -462,13 +429,7 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
 
       {/* 当前识别文本显示区域 */}
       {transcript && transcript.trim() !== "" && (
-        <div
-          className={`${styles.transcriptDisplay} ${
-            voiceprintEnabled && isInterviewer
-              ? styles.interviewerText
-              : styles.intervieweeText
-          }`}
-        >
+        <div className={styles.transcriptDisplay}>
           <div className={styles.transcriptLabel}>当前识别:</div>
           {transcript}
         </div>
@@ -484,16 +445,12 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
               <input
                 type="checkbox"
                 checked={isAutoSubmit}
-                onChange={
-                  voiceprintEnabled
-                    ? () => setIsAutoSubmit(!isAutoSubmit)
-                    : () => {}
-                }
+                onChange={() => setIsAutoSubmit(!isAutoSubmit)}
               />
               <span className={styles.slider}></span>
             </label>
             <span className={styles.settingStatus}>
-              {voiceprintEnabled ? "可启用" : "声纹未启用,请先打开声纹识别"}
+              {isAutoSubmit ? "已启用" : "已禁用"}
             </span>
           </div>
         </div>

@@ -41,6 +41,20 @@
     cursor: col-resize;
   }
 
+  // 收缩模式样式
+  &.narrow-mode {
+    border: 2px solid #007bff;
+    
+    .close-button {
+      display: none;
+    }
+    
+    .content-container {
+      align-items: center;
+      justify-content: center;
+    }
+  }
+
   .drag-handle {
     position: absolute;
     left: 0;

@@ -1,3 +1,80 @@
+// ===== 变量定义区域 =====
+// 颜色变量
+$interviewer-color: #ff6347;
+$interviewee-color: #4caf50;
+$warning-color: #ff9800;
+$warning-hover-color: #f57c00;
+$success-color: #4caf50;
+$success-hover-color: #45a049;
+$error-color: #ff6b6b;
+$primary-color: #2196F3;
+$dark-bg-semi: rgba(0, 0, 0, 0.5);
+$dark-bg-light: rgba(0, 0, 0, 0.3);
+$dark-bg-full: #000000;
+$white-semi: rgba(255, 255, 255, 0.2);
+$white-semi-hover: rgba(255, 255, 255, 0.3);
+$white-semi-light: rgba(255, 255, 255, 0.5);
+$scrollbar-track: rgba(0, 0, 0, 0.1);
+$border-semi: rgba(0, 0, 0, 0.5);
+
+// 字体大小变量
+$font-size-xs: 0.7rem;
+$font-size-sm: 0.8rem;
+$font-size-md: 0.85rem;
+$font-size-lg: 0.9rem;
+$font-size-base: 1rem;
+$font-size-regular: 14px;
+
+// 间距变量
+$spacing-xs: 0.3rem;
+$spacing-sm: 0.4rem;
+$spacing-md: 0.5rem;
+$spacing-lg: 0.75rem;
+$spacing-xl: 1rem;
+$spacing-2xl: 1.5rem;
+$spacing-3xl: 2rem;
+
+// 其他常用值
+$border-radius-sm: 0.4rem;
+$border-radius-md: 0.5rem;
+$border-radius-lg: 1rem;
+$border-radius-xl: 24px;
+$line-height-base: 1.5;
+$transition-base: all 0.2s ease;
+$transition-slow: .4s;
+$box-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+$box-shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15);
+
+// ===== Mixin 定义区域 =====
+// 角色样式 mixin
+@mixin role-styles($role-color) {
+  background-color: rgba($role-color, 0.15);
+  border: 1px solid rgba($role-color, 0.3);
+  color: $role-color;
+}
+
+// 角色背景样式 mixin (用于 transcriptDisplay)
+@mixin role-background($role-color) {
+  border-left: 3px solid $role-color;
+  background-color: rgba($role-color, 0.05);
+}
+
+// 角色指示器样式 mixin
+@mixin role-indicator($role-color) {
+  background-color: rgba($role-color, 0.2);
+  color: darken($role-color, 10%);
+}
+
+// 按钮悬停效果 mixin
+@mixin button-hover-effect($base-color, $hover-percentage: 5%) {
+  background-color: $base-color;
+  
+  &:hover {
+    background-color: darken($base-color, $hover-percentage);
+  }
+}
+
+// ===== 样式规则区域 =====
 // 消息容器样式
 .messagesContainer {
   width: 100%;
@@ -17,17 +94,17 @@
   }
   
   &::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.1);
+    background: $scrollbar-track;
     border-radius: 3px;
   }
   
   &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: $white-semi;
     border-radius: 3px;
-  }
-  
-  &::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
+    
+    &:hover {
+      background: $white-semi-hover;
+    }
   }
 
   // 响应式布局 - 手机尺寸
@@ -43,43 +120,37 @@
   border-radius: 8px;
   max-width: 85%;
   word-break: break-word;
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: $font-size-regular;
+  line-height: $line-height-base;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: $transition-base;
+  box-shadow: $box-shadow-sm;
   
   // 点击效果
   &:hover {
     opacity: 0.9;
     transform: translateY(-1px);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    box-shadow: $box-shadow-md;
   }
   
   &:active {
     transform: translateY(0);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    box-shadow: $box-shadow-sm;
   }
   
   // 面试官消息样式 (红色)
   &.interviewerMessage {
-    background-color: rgba(255, 99, 71, 0.15);
-    border: 1px solid rgba(255, 99, 71, 0.3);
-    color: #ff6347;
+    @include role-styles($interviewer-color);
     align-self: flex-start;
   }
   
   // 面试者消息样式 (绿色)
   &.intervieweeMessage {
-    background-color: rgba(76, 175, 80, 0.15);
-    border: 1px solid rgba(76, 175, 80, 0.3);
-    color: #4caf50;
+    @include role-styles($interviewee-color);
     align-self: flex-end;
-  }
-
-  @media only screen and (max-width: 600px) {
-    &.intervieweeMessage {
-      margin-right: 2rem;
+    
+    @media only screen and (max-width: 600px) {
+      margin-right: $spacing-3xl;
     }
   }
 }
@@ -88,10 +159,10 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  margin-bottom: 1rem;
-  background-color: rgba(0, 0, 0, 0.5);
-  padding: 0.5rem 1rem;
-  border-radius: 1rem;
+  margin-bottom: $spacing-xl;
+  background-color: $dark-bg-semi;
+  padding: $spacing-md $spacing-xl;
+  border-radius: $spacing-xl;
   width: fit-content;
 
   .indicatorDot {
@@ -101,173 +172,149 @@
     margin-right: 10px;
     
     &.listening {
-      background-color: #4caf50;
-      box-shadow: 0 0 10px #4caf50;
+      background-color: $interviewee-color;
+      box-shadow: 0 0 10px $interviewee-color;
       animation: pulse 1.5s infinite;
     }
     
     &.notListening {
-      background-color: #ff6b6b;
+      background-color: $error-color;
     }
   }
 
   .statusText {
-    font-size: 0.9rem;
+    font-size: $font-size-lg;
   }
 
   @media only screen and (max-width: 600px) {
-    margin-bottom: 0.75rem;
-    padding: 0.4rem 0.75rem;
+    margin-bottom: $spacing-lg;
+    padding: $spacing-sm $spacing-lg;
     
     .statusText {
-      font-size: 0.8rem;
+      font-size: $font-size-sm;
     }
   }
 }
 
 .errorMessage {
-  color: #ff6b6b;
-  margin-bottom: 1rem;
-  background-color: rgba(0, 0, 0, 0.5);
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
+  color: $error-color;
+  margin-bottom: $spacing-xl;
+  background-color: $dark-bg-semi;
+  padding: $spacing-lg $spacing-xl;
+  border-radius: $border-radius-md;
   width: 100%;
   text-align: center;
 }
 
 .transcriptDisplay {
   width: 100%;
-  margin-bottom: 1rem;
-  padding: 1rem;
-  background-color: rgba(0, 0, 0, 0.5);
-  border-radius: 0.5rem;
+  margin-bottom: $spacing-xl;
+  padding: $spacing-xl;
+  background-color: $dark-bg-semi;
+  border-radius: $border-radius-md;
   max-height: 80px;
   overflow-y: auto;
   text-align: left;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  border: 1px solid rgba(0, 0, 0, 0.5);
+  font-size: $font-size-lg;
+  line-height: $line-height-base;
+  border: 1px solid $border-semi;
   position: relative;
 
   .transcriptLabel {
     position: absolute;
     top: 5px;
     right: 10px;
-    font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.5);
+    font-size: $font-size-xs;
+    color: $white-semi-light;
     font-style: italic;
   }
 
   &.interviewerText {
-    border-left: 3px solid #ff6347;
-    background-color: rgba(255, 99, 71, 0.05);
+    @include role-background($interviewer-color);
   }
 
   &.intervieweeText {
-    border-left: 3px solid #4caf50;
-    background-color: rgba(76, 175, 80, 0.05);
+    @include role-background($interviewee-color);
   }
 
   @media only screen and (max-width: 600px) {
     max-height: 70px;
-    padding: 0.75rem;
-    margin-bottom: 0.75rem;
-    font-size: 0.85rem;
+    padding: $spacing-lg;
+    margin-bottom: $spacing-lg;
+    font-size: $font-size-md;
   }
 }
 
 .buttonContainer {
   display: flex;
   justify-content: space-between;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  gap: $spacing-md;
+  margin-top: $spacing-xl;
   width: 100%;
   flex-wrap: wrap;
-
-  .settingItem {
-    width: 100%;
-    margin-bottom: 0.75rem;
-  }
 
   .button {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    border-radius: 0.5rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
+    gap: $spacing-md;
+    border-radius: $border-radius-md;
+    padding: $spacing-md $spacing-xl;
+    font-size: $font-size-lg;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: $transition-base;
     flex: 1;
     color: white;
     border: none;
 
     &.pauseButton {
-      background-color: #ff9800;
-      
-      &:hover {
-        background-color: #f57c00;
-      }
+      @include button-hover-effect($warning-color);
       
       &.paused {
-        background-color: #4caf50;
-        
-        &:hover {
-          background-color: #45a049;
-        }
+        @include button-hover-effect($success-color);
       }
     }
 
     &.stopButton {
-      background-color: rgba(0, 0, 0, 0.5);
-      
-      &:hover {
-        background-color: #000000;
-      }
+      @include button-hover-effect($dark-bg-semi, 100%);
     }
 
     &.clearButton {
       background-color: transparent;
-      border: 1px solid rgba(0, 0, 0, 0.5);
+      border: 1px solid $border-semi;
       
       &:hover {
-        background-color: rgba(0, 0, 0, 0.5);
+        background-color: $dark-bg-semi;
       }
     }
   }
 
   @media only screen and (max-width: 600px) {
-    gap: 0.3rem;
-    margin-top: 0.75rem;
+    gap: $spacing-xs;
+    margin-top: $spacing-lg;
     margin-bottom: calc(5rem + env(safe-area-inset-bottom, 0));
     
     .button {
-      padding: 0.5rem 0.5rem;
-      font-size: 0.8rem;
+      padding: $spacing-md;
+      font-size: $font-size-sm;
       flex: 1;
       min-height: 40px;
       margin-bottom: 0;
-    }
-    
-    .settingItem {
-      margin-bottom: 0.5rem;
-      order: -1;
     }
   }
 }
 
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
-  70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+  0% { box-shadow: 0 0 0 0 rgba($interviewee-color, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba($interviewee-color, 0); }
+  100% { box-shadow: 0 0 0 0 rgba($interviewee-color, 0); }
 }
 
 .voiceprintStatus {
   display: flex;
   align-items: center;
   margin-left: 15px;
-  font-size: 0.85rem;
+  font-size: $font-size-md;
   
   .identityIndicator {
     padding: 3px 8px;
@@ -276,18 +323,16 @@
     font-weight: 500;
     
     &.interviewer {
-      background-color: rgba(255, 99, 71, 0.2);
-      color: #e74c3c;
+      @include role-indicator($interviewer-color);
     }
     
     &.interviewee {
-      background-color: rgba(76, 175, 80, 0.2);
-      color: #4caf50;
+      @include role-indicator($interviewee-color);
     }
   }
   
   .matchScore {
-    font-size: 0.8rem;
+    font-size: $font-size-sm;
     color: #666;
   }
 }
@@ -295,14 +340,20 @@
 .settingItem {
   display: flex;
   align-items: center;
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  border-radius: 0.4rem;
-  background-color: rgba(0, 0, 0, 0.3);
+  margin-bottom: $spacing-xl;
+  padding: $spacing-lg;
+  border-radius: $border-radius-sm;
+  background-color: $dark-bg-light;
+  
+  // 在 buttonContainer 内的特殊样式
+  .buttonContainer & {
+    width: 100%;
+    margin-bottom: $spacing-lg;
+  }
   
   .settingLabel {
     width: 6rem;
-    font-size: 0.9rem;
+    font-size: $font-size-lg;
   }
   
   .settingControl {
@@ -311,17 +362,22 @@
     align-items: center;
     
     .settingStatus {
-      margin-left: 0.75rem;
-      font-size: 0.85rem;
+      margin-left: $spacing-lg;
+      font-size: $font-size-md;
     }
   }
 
   @media only screen and (max-width: 600px) {
-    padding: 0.5rem;
+    padding: $spacing-md;
     
     .settingLabel {
       width: 5rem;
-      font-size: 0.85rem;
+      font-size: $font-size-md;
+    }
+    
+    .buttonContainer & {
+      margin-bottom: $spacing-md;
+      order: -1;
     }
   }
 }
@@ -337,7 +393,7 @@
     height: 0;
     
     &:checked + .slider {
-      background-color: #2196F3;
+      background-color: $primary-color;
       
       &:before {
         transform: translateX(26px);
@@ -353,8 +409,8 @@
     right: 0;
     bottom: 0;
     background-color: #ccc;
-    transition: .4s;
-    border-radius: 24px;
+    transition: $transition-slow;
+    border-radius: $border-radius-xl;
     
     &:before {
       position: absolute;
@@ -364,7 +420,7 @@
       left: 3px;
       bottom: 3px;
       background-color: white;
-      transition: .4s;
+      transition: $transition-slow;
       border-radius: 50%;
     }
   }
@@ -373,24 +429,24 @@
 .clickableTooltip {
   display: flex;
   align-items: center;
-  background-color: rgba(76, 175, 80, 0.2);
-  border-radius: 1rem;
-  padding: 0.5rem 1rem;
-  margin-left: 0.75rem;
-  border: 1px solid rgba(76, 175, 80, 0.3);
+  background-color: rgba($interviewee-color, 0.2);
+  border-radius: $border-radius-lg;
+  padding: $spacing-md $spacing-xl;
+  margin-left: $spacing-lg;
+  border: 1px solid rgba($interviewee-color, 0.3);
   max-width: 200px;
   
   .tooltipContent {
-    font-size: 0.85rem;
-    color: #4caf50;
-    margin-right: 0.5rem;
+    font-size: $font-size-md;
+    color: $interviewee-color;
+    margin-right: $spacing-md;
   }
   
   .tooltipCloseBtn {
     background: none;
     border: none;
-    color: #4caf50;
-    font-size: 0.8rem;
+    color: $interviewee-color;
+    font-size: $font-size-sm;
     cursor: pointer;
     padding: 0;
     display: flex;
@@ -400,12 +456,12 @@
     height: 16px;
     
     &:hover {
-      color: darken(#4caf50, 10%);
+      color: darken($interviewee-color, 10%);
     }
   }
 
   @media only screen and (max-width: 600px) {
     max-width: 180px;
-    padding: 0.4rem 0.75rem;
+    padding: $spacing-sm $spacing-lg;
   }
 } 

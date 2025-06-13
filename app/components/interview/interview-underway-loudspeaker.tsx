@@ -155,7 +155,7 @@ export const InterviewUnderwayLoudspeaker: React.FC<
     }
   };
 
-  // 开始语音识别（使用 Azure Speech SDK）
+  // 开始语音识别 Azure Speech SDK
   const startSpeechRecognition = () => {
     if (!mediaStream) {
       console.log("⚠️ 媒体流未准备就绪，请先获取录屏权限");
@@ -265,9 +265,15 @@ export const InterviewUnderwayLoudspeaker: React.FC<
   };
 
   // 将transcript更新到父组件
+  const lastTranscriptRef = useRef("");
   useEffect(() => {
     transcriptRef.current = transcript;
-    onTextUpdate(transcript);
+    
+    // 只有在transcript真正变化时才调用onTextUpdate
+    if (transcript !== lastTranscriptRef.current) {
+      lastTranscriptRef.current = transcript;
+      onTextUpdate(transcript);
+    }
   }, [transcript, onTextUpdate]);
 
   // 滚动到最新消息

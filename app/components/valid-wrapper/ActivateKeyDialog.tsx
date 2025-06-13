@@ -2,7 +2,13 @@ import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import styles from "./ActivateKeyDialog.module.scss";
 import { setActivated } from "./activation";
-import { activateKey, getDeviceInfo } from "../../services/keyService";
+import {
+  activateKey,
+  getDeviceInfo,
+  getKeyByString,
+  resumeKey,
+} from "../../services/keyService";
+import { KeyStatus } from "@/app/constant";
 import { IconButton } from "../button";
 import CloseIcon from "../../icons/close.svg";
 import LoadingIcon from "../../icons/three-dots.svg";
@@ -41,12 +47,11 @@ const ActivateKeyDialog: React.FC<ActivateKeyDialogProps> = ({
 
   // 激活密钥
   const handleActivateKey = async () => {
-    
     if (!keyString.trim()) {
       setError("请输入激活密钥");
       return;
     }
-    
+
     try {
       setIsLoading(true);
       setError(null);
@@ -54,8 +59,50 @@ const ActivateKeyDialog: React.FC<ActivateKeyDialogProps> = ({
       // 获取设备信息
       const { ipAddress, hardwareName } = await getDeviceInfo();
 
-      // 使用KeyService激活密钥
-      const updatedKey = await activateKey(keyString.trim(), ipAddress, hardwareName);
+      // 首先查询密钥状态
+      const keyInfo = await getKeyByString(keyString.trim());
+
+      if (!keyInfo) {
+        throw new Error("密钥不存在");
+      }
+
+      let updatedKey;
+      let operationType = "激活";
+
+      if (keyInfo.status === KeyStatus.EXPIRED) {
+        throw new Error("密钥已过期");
+      }
+
+      if (keyInfo.status === KeyStatus.REVOKED) {
+        throw new Error("密钥已被撤销");
+      }
+
+      if (
+        keyInfo.status === KeyStatus.INACTIVE ||
+        keyInfo.status === KeyStatus.ACTIVE
+      ) {
+        updatedKey = await activateKey(
+          keyString.trim(),
+          ipAddress,
+          hardwareName,
+        );
+      } else if (keyInfo.status === KeyStatus.PAUSED) {
+        updatedKey = await resumeKey(keyString.trim()); // 如果是暂停状态，检查剩余时间是否有效
+
+        if (
+          keyInfo.remaining_time_on_pause &&
+          keyInfo.remaining_time_on_pause > 0
+        ) {
+          // 执行恢复操作
+          updatedKey = await resumeKey(keyString.trim());
+          operationType = "恢复";
+        } else {
+          throw new Error("暂停的密钥剩余时间已耗尽，无法恢复");
+        }
+        
+      } else if (keyInfo.status === KeyStatus.ACTIVE) {
+        updatedKey = keyInfo;
+      }
 
       if (updatedKey) {
         // 设置本地激活状态
@@ -68,7 +115,7 @@ const ActivateKeyDialog: React.FC<ActivateKeyDialogProps> = ({
           );
 
           // 显示成功消息
-          toast.success("密钥激活成功！", {
+          toast.success(`密钥${operationType}成功！`, {
             duration: 3000,
             style: {
               border: "1px solid #4CAF50",
@@ -85,12 +132,12 @@ const ActivateKeyDialog: React.FC<ActivateKeyDialogProps> = ({
             onSuccess();
           }
         } else {
-          throw new Error("激活成功但未返回过期时间");
+          throw new Error(`${operationType}成功但未返回过期时间`);
         }
       }
     } catch (err) {
-      setError(`激活密钥失败: ${(err as Error).message}`);
-      toast.error(`激活密钥失败: ${(err as Error).message}`, {
+      setError(`操作失败: ${(err as Error).message}`);
+      toast.error(`操作失败: ${(err as Error).message}`, {
         duration: 5000,
       });
     } finally {

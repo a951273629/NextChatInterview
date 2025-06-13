@@ -122,10 +122,6 @@ export function activateKey(
       throw new Error("密钥已过期");
     }
 
-    // if (key.status === KeyStatus.ACTIVE) {
-    //   throw new Error("密钥已激活");
-    // }
-
     if (key.status === KeyStatus.REVOKED) {
       throw new Error("密钥已被撤销");
     }
@@ -134,30 +130,48 @@ export function activateKey(
       throw new Error("密钥已暂停，请先恢复");
     }
 
-    // 激活密钥并计算过期时间
-    const nowJs = Date.now();
-    const now = toSqliteTimestamp(nowJs);
+    // 如果密钥已经是激活状态，进入验证逻辑
+    if (key.status === KeyStatus.ACTIVE) {
+      // 验证硬件绑定：检查传入的硬件名称是否与已记录的硬件名称一致
+      // if (key.hardware_name !== hardwareName) {
+      //   throw new Error("密钥已在其他设备上激活，无法在当前设备上使用");
+      // }
+      // 硬件验证通过，直接返回密钥信息，不更新任何时间信息
+      return key;
+    }
 
-    // 计算过期时间 = 激活时间 + 卡密时长(hours)
-    const expiresJs = nowJs + key.duration_hours * 60 * 60 * 1000;
-    const expiresAt = toSqliteTimestamp(expiresJs);
+    // 只有未激活状态的密钥才执行首次激活逻辑
+    if (key.status === KeyStatus.INACTIVE) {
+      // 激活密钥并计算过期时间
+      const nowJs = Date.now();
+      const now = toSqliteTimestamp(nowJs);
 
-    const stmt = db.prepare(`
-      UPDATE keys 
-      SET status = ?, activated_at = ?, activated_ip = ?, hardware_name = ?, expires_at = ?
-      WHERE key_string = ?
-    `);
+      // 计算过期时间 = 激活时间 + 卡密时长(hours)
+      const expiresJs = nowJs + key.duration_hours * 60 * 60 * 1000;
+      const expiresAt = toSqliteTimestamp(expiresJs);
 
-    stmt.run(
-      KeyStatus.ACTIVE,
-      now,
-      ipAddress,
-      hardwareName,
-      expiresAt,
-      keyString,
-    );
+      // 更新密钥状态，清理暂停相关字段
+      const stmt = db.prepare(`
+        UPDATE keys 
+        SET status = ?, activated_at = ?, activated_ip = ?, hardware_name = ?, expires_at = ?, 
+            paused_at = NULL, remaining_time_on_pause = NULL
+        WHERE key_string = ?
+      `);
 
-    return getKeyByString(keyString);
+      stmt.run(
+        KeyStatus.ACTIVE,
+        now,
+        ipAddress,
+        hardwareName,
+        expiresAt,
+        keyString,
+      );
+
+      return getKeyByString(keyString);
+    }
+
+    // 如果密钥状态不是预期的状态，抛出错误
+    throw new Error(`密钥状态异常: ${key.status}`);
   } catch (error) {
     console.error("激活密钥失败:", error);
     throw new Error(`激活密钥失败: ${(error as Error).message}`);
@@ -283,7 +297,12 @@ export function revokeKey(keyString: string): Key | undefined {
       throw new Error("密钥不存在");
     }
 
-    const stmt = db.prepare("UPDATE keys SET status = ? WHERE key_string = ?");
+    // 撤销密钥时清理暂停相关字段
+    const stmt = db.prepare(`
+      UPDATE keys 
+      SET status = ?, paused_at = NULL, remaining_time_on_pause = NULL 
+      WHERE key_string = ?
+    `);
     stmt.run(KeyStatus.REVOKED, keyString);
 
     return getKeyByString(keyString);

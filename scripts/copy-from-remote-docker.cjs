@@ -1,37 +1,66 @@
-// scripts/copy-from-remote-docker.js
-// 从远程Docker容器复制文件到本地的脚本
+// scripts/copy-from-remote.cjs
+// 从远程服务器复制文件到本地的脚本
 
 const { Client } = require('ssh2');
 const fs = require('fs');
 const path = require('path');
 const { promisify } = require('util');
 
+// 手动读取 .env.local 文件
+function loadEnvLocal() {
+  const envPath = path.join(process.cwd(), '.env.local');
+  const env = {};
+  
+  try {
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, 'utf8');
+      const lines = envContent.split('\n');
+      
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        // 跳过空行和注释
+        if (trimmedLine && !trimmedLine.startsWith('#')) {
+          const [key, ...valueParts] = trimmedLine.split('=');
+          if (key && valueParts.length > 0) {
+            // 支持值中包含 = 号的情况
+            const value = valueParts.join('=').replace(/^["']|["']$/g, ''); // 移除引号
+            env[key.trim()] = value;
+          }
+        }
+      }
+      console.log('✅ 已加载 .env.local 配置文件');
+    } else {
+      console.warn('⚠️ 未找到 .env.local 文件，将使用默认配置或命令行参数');
+    }
+  } catch (error) {
+    console.warn('⚠️ 读取 .env.local 文件失败:', error.message);
+  }
+  
+  return env;
+}
+
+// 加载环境变量
+const envVars = loadEnvLocal();
+
 // 配置参数
 const config = {
   // 远程服务器配置
   remote: {
-    host: '81.68.92.237',
-    port: 22,
-    username: 'root', // 根据实际情况修改
-    password: 'Wangnan200401', // 或使用密码
-    privateKey: null, // 或使用私钥路径
-  },
-  
-  // Docker配置
-  docker: {
-    containerId: '480f3615860e',
-    sourcePath: '/app/data/.',
-    containerName: 'coderunxiaoming/nextchat_interview:latest',
+    host: envVars.REMOTE_HOST || '',
+    port: parseInt(envVars.REMOTE_PORT) || 22,
+    username: envVars.REMOTE_USERNAME || 'root',
+    password: envVars.REMOTE_PASSWORD || null, // 从 .env.local 读取
+    privateKey: envVars.REMOTE_PRIVATE_KEY || null, // 或使用私钥路径
   },
   
   // 本地目标路径
   localTarget: path.join(process.cwd(), 'database'),
   
-  // 远程临时目录
-  remoteTempDir: '/tmp/docker_copy_temp'
+  // 远程数据库目录
+  remotePath: envVars.REMOTE_DATA_PATH || '/root/nextchat-data'
 };
 
-class RemoteDockerCopy {
+class RemoteFileCopy {
   constructor() {
     this.ssh = new Client();
   }
@@ -50,13 +79,15 @@ class RemoteDockerCopy {
       });
 
       // 根据配置连接
-      if (config.remote.privateKey) {
+      if (config.remote.privateKey && fs.existsSync(config.remote.privateKey)) {
         this.ssh.connect({
           ...config.remote,
           privateKey: fs.readFileSync(config.remote.privateKey)
         });
-      } else {
+      } else if (config.remote.password) {
         this.ssh.connect(config.remote);
+      } else {
+        reject(new Error('请提供SSH密码或私钥路径'));
       }
     });
   }
@@ -91,24 +122,6 @@ class RemoteDockerCopy {
     });
   }
 
-  // 从Docker容器复制文件到远程服务器临时目录
-  async copyFromContainer() {
-    console.log('📦 开始从Docker容器复制文件...');
-    
-    // 创建远程临时目录
-    await this.execCommand(`mkdir -p ${config.remoteTempDir}`);
-    
-    // 使用docker cp命令复制文件
-    const dockerCpCommand = `docker cp ${config.docker.containerId}:${config.docker.sourcePath} ${config.remoteTempDir}/`;
-    
-    try {
-      await this.execCommand(dockerCpCommand);
-      console.log('✅ 文件已复制到远程临时目录');
-    } catch (error) {
-      throw new Error(`Docker复制失败: ${error.message}`);
-    }
-  }
-
   // 通过SFTP下载文件到本地
   async downloadFiles() {
     return new Promise((resolve, reject) => {
@@ -125,7 +138,7 @@ class RemoteDockerCopy {
           fs.mkdirSync(config.localTarget, { recursive: true });
         }
 
-        this.downloadDirectory(sftp, config.remoteTempDir, config.localTarget)
+        this.downloadDirectory(sftp, config.remotePath, config.localTarget)
           .then(() => {
             console.log('✅ 文件下载完成');
             resolve();
@@ -167,16 +180,6 @@ class RemoteDockerCopy {
     }
   }
 
-  // 清理远程临时文件
-  async cleanup() {
-    try {
-      await this.execCommand(`rm -rf ${config.remoteTempDir}`);
-      console.log('🧹 清理远程临时文件完成');
-    } catch (error) {
-      console.warn('⚠️ 清理临时文件失败:', error.message);
-    }
-  }
-
   // 断开连接
   disconnect() {
     this.ssh.end();
@@ -186,16 +189,13 @@ class RemoteDockerCopy {
   // 主执行函数
   async run() {
     try {
-      console.log('🚀 开始从远程Docker容器复制文件...');
+      console.log('🚀 开始从远程服务器复制文件...');
       console.log(`📍 远程服务器: ${config.remote.host}`);
-      console.log(`📦 容器ID: ${config.docker.containerId}`);
-      console.log(`📂 源路径: ${config.docker.sourcePath}`);
-      console.log(`💾 目标路径: ${config.localTarget}`);
+      console.log(`📂 远程路径: ${config.remotePath}`);
+      console.log(`💾 本地目标路径: ${config.localTarget}`);
       
       await this.connect();
-      await this.copyFromContainer();
       await this.downloadFiles();
-      await this.cleanup();
       
       console.log('🎉 文件复制完成！');
     } catch (error) {
@@ -214,23 +214,35 @@ if (require.main === module) {
   
   if (args.includes('--help')) {
     console.log(`
-使用方法: node copy-from-remote-docker.js [选项]
+使用方法: node copy-from-remote.cjs [选项]
 
 选项:
-  --username <用户名>    SSH用户名 (默认: root)
-  --password <密码>      SSH密码
-  --key <私钥路径>       SSH私钥文件路径
-  --container <容器ID>   Docker容器ID (默认: ${config.docker.containerId})
-  --help                显示帮助信息
+  --username <用户名>     SSH用户名 (默认: root)
+  --password <密码>       SSH密码
+  --key <私钥路径>        SSH私钥文件路径
+  --host <服务器地址>     远程服务器地址
+  --port <端口>           SSH端口 (默认: 22)
+  --remote-path <路径>    远程数据路径
+  --help                  显示帮助信息
+
+环境变量 (.env.local):
+  REMOTE_HOST            远程服务器地址
+  REMOTE_PORT            SSH端口
+  REMOTE_USERNAME        SSH用户名
+  REMOTE_PASSWORD        SSH密码
+  REMOTE_PRIVATE_KEY     SSH私钥文件路径
+  REMOTE_DATA_PATH       远程数据目录路径
 
 示例:
-  node copy-from-remote-docker.js --username myuser --password mypass
-  node copy-from-remote-docker.js --username myuser --key ~/.ssh/id_rsa
+  node copy-from-remote.cjs --username myuser --password mypass
+  node copy-from-remote.cjs --username myuser --key ~/.ssh/id_rsa
+  
+注意: 建议在 .env.local 文件中配置敏感信息（如密码），该文件不会被提交到版本控制。
     `);
     process.exit(0);
   }
 
-  // 解析命令行参数
+  // 解析命令行参数（命令行参数优先级高于环境变量）
   for (let i = 0; i < args.length; i += 2) {
     const flag = args[i];
     const value = args[i + 1];
@@ -245,8 +257,14 @@ if (require.main === module) {
       case '--key':
         config.remote.privateKey = value;
         break;
-      case '--container':
-        config.docker.containerId = value;
+      case '--host':
+        config.remote.host = value;
+        break;
+      case '--port':
+        config.remote.port = parseInt(value);
+        break;
+      case '--remote-path':
+        config.remotePath = value;
         break;
     }
   }
@@ -254,16 +272,18 @@ if (require.main === module) {
   // 验证认证方式
   if (!config.remote.password && !config.remote.privateKey) {
     console.error('❌ 请提供SSH密码或私钥路径');
-    console.log('使用 --help 查看使用方法');
+    console.log('💡 提示: 可以在 .env.local 文件中设置 REMOTE_PASSWORD 环境变量');
+    console.log('💡 或者使用命令行参数: --password <密码> 或 --key <私钥路径>');
+    console.log('使用 --help 查看详细使用方法');
     process.exit(1);
   }
 
   // 执行复制
-  const copier = new RemoteDockerCopy();
+  const copier = new RemoteFileCopy();
   copier.run().catch((error) => {
     console.error('脚本执行失败:', error);
     process.exit(1);
   });
 }
 
-module.exports = RemoteDockerCopy;
+module.exports = RemoteFileCopy;

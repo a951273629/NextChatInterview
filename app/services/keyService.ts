@@ -66,6 +66,23 @@ export async function deleteKey(keyString: string): Promise<any> {
 }
 
 /**
+ * 根据密钥字符串查询密钥信息
+ * @param keyString 密钥字符串
+ * @returns Promise<any> 返回密钥对象或null
+ * @throws Error 当API调用失败时抛出错误
+ */
+export async function getKeyByString(keyString: string): Promise<any> {
+  const response = await fetch(`/api/key-generate?key=${keyString}`);
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "查询密钥失败");
+  }
+
+  return await response.json();
+}
+
+/**
  * 激活密钥
  * @param keyString 密钥字符串
  * @param ipAddress IP地址

@@ -1130,10 +1130,10 @@ function _Chat() {
 
   const isTyping = userInput !== "";
   // 当子组件传回文本时更新 userInput
-  const handleTextUpdate = (text: string) => {
+  const handleTextUpdate = useCallback((text: string) => {
     // console.log(`传入的文本:${text}`);
     setUserInput(text);
-  };
+  }, []);
   // if user is typing, should auto scroll to bottom
   // if user is not typing, should auto scroll to bottom only if already at bottom
   const { setAutoScroll, scrollDomToBottom } = useScrollToBottom(
@@ -1799,7 +1799,7 @@ function _Chat() {
 
   const [showChatSidePanel, setShowChatSidePanel] = useState(false);
 
-  const toastShow = (text: string): void => {
+  const toastShow = useCallback((text: string): void => {
     if (text.length <= 3) {
       toast("没有监听到任何文本!!!", {
         icon: "⚠️", // 自定义图标
@@ -1813,8 +1813,9 @@ function _Chat() {
     }
 
     checkActivation(() => doSubmit(text));
-  };
-  const toastShowDebounce = debounce(toastShow, 500);
+  }, [checkActivation, doSubmit]);
+
+  const toastShowDebounce = useMemo(() => debounce(toastShow, 500), [toastShow]);
 
   return (
     <>

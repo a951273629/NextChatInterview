@@ -11,9 +11,14 @@ import { InterviewUnderway } from "./interview-underway-microphone";
 import { Toaster } from "react-hot-toast";
 import { MiniFloatWindow } from "../mini-float-window";
 import { useOutletContext } from "react-router-dom";
-
 import { useNavigate } from "react-router-dom";
 import { useInterviewLanguage } from "@/app/hooks/useInterviewLanguage";
+import clsx from "clsx";
+
+// 宽度管理常量
+const DEFAULT_INTERVIEW_WIDTH_VW = 20;
+const NARROW_INTERVIEW_WIDTH_VW = 8;
+const MIN_INTERVIEW_WIDTH_VW = 10;
 
 // 消息类型接口
 interface Message {
@@ -61,11 +66,15 @@ export const InterviewMicrophone: React.FC = () => {
   const { onClose, onTextUpdate, submitMessage } = context;
 
   const [visible, setVisible] = useState(true);
-  const [width, setWidth] = useState("33vw");
+  const [width, setWidth] = useState(DEFAULT_INTERVIEW_WIDTH_VW);
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(isDragging);
   const dragStartXRef = useRef(0);
   const initialWidthRef = useRef(0);
+  const dragStartTimeRef = useRef(0);
+
+  // 计算是否应该收缩
+  const shouldNarrow = width < MIN_INTERVIEW_WIDTH_VW;
 
   // 添加控制面试开始的状态
   const [isStarted, setIsStarted] = useState(false);
@@ -373,6 +382,17 @@ export const InterviewMicrophone: React.FC = () => {
     }
   };
 
+  // 切换宽度的函数
+  const toggleWidth = () => {
+    setWidth((prevWidth) => {
+      if (prevWidth < MIN_INTERVIEW_WIDTH_VW) {
+        return DEFAULT_INTERVIEW_WIDTH_VW;
+      } else {
+        return NARROW_INTERVIEW_WIDTH_VW;
+      }
+    });
+  };
+
   // 添加拖动相关的事件处理函数
   const handleDragStart = (e: React.MouseEvent) => {
     setIsDragging(() => {
@@ -380,7 +400,8 @@ export const InterviewMicrophone: React.FC = () => {
       return true;
     });
     dragStartXRef.current = e.clientX;
-    initialWidthRef.current = parseInt(width);
+    initialWidthRef.current = width;
+    dragStartTimeRef.current = Date.now();
     document.addEventListener("mousemove", handleDragMove);
     document.addEventListener("mouseup", handleDragEnd);
   };
@@ -388,16 +409,20 @@ export const InterviewMicrophone: React.FC = () => {
   const handleDragMove = (e: MouseEvent) => {
     if (isDraggingRef.current) {
       const deltaX = e.clientX - dragStartXRef.current;
-      const newWidth = parseInt(
-        Math.max(
-          15,
-          Math.min(
-            80,
-            initialWidthRef.current - (deltaX / window.innerWidth) * 100,
-          ),
-        ).toFixed(0),
+      const newWidth = Math.max(
+        NARROW_INTERVIEW_WIDTH_VW,
+        Math.min(
+          80,
+          initialWidthRef.current - (deltaX / window.innerWidth) * 100,
+        ),
       );
-      setWidth(`${newWidth}vw`);
+      
+      // 当宽度小于最小值时，吸附到收缩宽度
+      if (newWidth < MIN_INTERVIEW_WIDTH_VW) {
+        setWidth(NARROW_INTERVIEW_WIDTH_VW);
+      } else {
+        setWidth(newWidth);
+      }
     }
   };
 
@@ -408,6 +433,12 @@ export const InterviewMicrophone: React.FC = () => {
     });
     document.removeEventListener("mousemove", handleDragMove);
     document.removeEventListener("mouseup", handleDragEnd);
+    
+    // 如果用户点击拖拽手柄，应该切换宽度
+    const shouldFireClick = Date.now() - dragStartTimeRef.current < 300;
+    if (shouldFireClick) {
+      toggleWidth();
+    }
   };
 
   // 组件卸载时清理事件监听器
@@ -431,14 +462,13 @@ export const InterviewMicrophone: React.FC = () => {
   return (
     <>
       <div
-        className={`interview-overlay ${isDragging ? "dragging" : ""} ${
-          isInterviewerRef.current && voiceprintEnabled
-            ? "interviewer-mode"
-            : ""
-        }`}
-        style={{ 
-          width: !isMobile ? width : "100vw"
-        }}
+        className={clsx(
+          "interview-overlay",
+          isDragging ? "dragging" : "",
+          isInterviewerRef.current && voiceprintEnabled ? "interviewer-mode" : "",
+          shouldNarrow ? "narrow-mode" : ""
+        )}
+        style={{ width: isMobile ? "100vw" : `${width}vw` }}
       >
         <div className="drag-handle" onMouseDown={handleDragStart} />
 

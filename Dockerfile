@@ -23,6 +23,11 @@ ENV OPENAI_API_KEY=""
 ENV GOOGLE_API_KEY=""
 ENV CODE=""
 
+# 接收从 docker build 命令传入的构建参数
+ARG NEXT_PUBLIC_AZURE_SPEECH_KEY
+# 将构建参数设置为环境变量，以便 next build 命令可以访问
+ENV NEXT_PUBLIC_AZURE_SPEECH_KEY=$NEXT_PUBLIC_AZURE_SPEECH_KEY
+
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -42,7 +47,6 @@ ENV OPENAI_API_KEY=""
 ENV GOOGLE_API_KEY=""
 ENV CODE=""
 ENV ENABLE_MCP=""
-ENV NEXT_PUBLIC_AZURE_SPEECH_KEY=""
 ENV NEXT_PUBLIC_AZURE_SPEECH_REGION=""
 
 ENV DB_PATH="/app/data/nextchat.db"

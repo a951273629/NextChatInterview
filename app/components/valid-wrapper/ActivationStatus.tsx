@@ -3,13 +3,17 @@ import {
   formatRemainingTime,
   ACTIVATION_KEY,
   ACTIVATION_KEY_STRING,
+  ACTIVATION_HARDWARE,
+  ACTIVATION_IP,
+  ACTIVATION_EXPIRY,
+  LAST_SYNC_TIME,
   getRemainingTime,
 } from "./activation";
 import KeyIcon from "../../icons/key.svg";
 import { IconButton } from "../button";
 import ActivateKeyDialog from "./ActivateKeyDialog";
 import { safeLocalStorage } from "../../utils";
-import { pauseKey, resumeKey } from "../../services/keyService";
+import { pauseKey, resumeKey, getKeyByString } from "../../services/keyService";
 
 const KEY_COLOR = "#FFD700"; // 明亮的黄色
 const localStorage = safeLocalStorage();
@@ -108,10 +112,61 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
   }, []);
 
   // 暂停密钥
+  // 从服务器同步密钥状态
+  const syncKeyStatusFromServer = async (keyString: string) => {
+    try {
+      const serverKey = await getKeyByString(keyString);
+      if (!serverKey) {
+        throw new Error("服务器上未找到该密钥");
+      }
+      return serverKey;
+    } catch (error) {
+      console.error("同步密钥状态失败:", error);
+      throw new Error(`同步密钥状态失败: ${(error as Error).message}`);
+    }
+  };
+
+  // 更新本地存储中的所有密钥相关信息
+  const updateLocalStorage = (key: any) => {
+    // 根据密钥状态设置激活状态
+    let activationStatus = "inactive";
+    if (key.status === "active") {
+      activationStatus = "active";
+    } else if (key.status === "paused") {
+      activationStatus = "paused";
+    } else if (key.status === "revoked") {
+      activationStatus = "revoked";
+    } else if (key.status === "expired") {
+      activationStatus = "expired";
+    }
+
+    localStorage.setItem(ACTIVATION_KEY, activationStatus);
+    localStorage.setItem(ACTIVATION_KEY_STRING, key.key_string);
+    
+    // 更新过期时间（如果存在）
+    if (key.expires_at) {
+      localStorage.setItem(ACTIVATION_EXPIRY, key.expires_at.toString());
+    } else {
+      localStorage.removeItem(ACTIVATION_EXPIRY);
+    }
+    
+    // 更新IP和硬件信息（如果存在）
+    if (key.activated_ip) {
+      localStorage.setItem(ACTIVATION_IP, key.activated_ip);
+    }
+    if (key.hardware_name) {
+      localStorage.setItem(ACTIVATION_HARDWARE, key.hardware_name);
+    }
+    
+    // 更新最后同步时间
+    localStorage.setItem(LAST_SYNC_TIME, Date.now().toString());
+  };
+
   const handlePauseKey = async () => {
     const keyString = localStorage.getItem(ACTIVATION_KEY_STRING);
     if (!keyString) {
       console.error("未找到激活的密钥");
+      alert("未找到激活的密钥");
       return;
     }
 
@@ -119,13 +174,33 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
       try {
         setIsLoading(true);
 
-        await pauseKey(keyString);
+        // 1. 首先从服务器查询当前密钥状态
+        console.log("正在从服务器查询密钥状态...");
+        const serverKey = await syncKeyStatusFromServer(keyString);
+        
+        // 2. 验证密钥是否可以暂停
+        if (serverKey.status !== "active") {
+          throw new Error(`密钥当前状态为 ${serverKey.status}，只能暂停激活状态的密钥`);
+        }
 
-        localStorage.setItem(ACTIVATION_KEY, "paused");
-        // 更新状态
+        // 3. 执行暂停操作
+        console.log("密钥状态验证通过，正在执行暂停操作...");
+        const updatedKey = await pauseKey(keyString);
+
+        // 4. 验证暂停操作是否成功
+        if (!updatedKey) {
+          throw new Error("暂停操作未返回有效的密钥信息");
+        }
+
+        // 5. 更新本地存储
+        updateLocalStorage(updatedKey);
+
+        // 6. 更新组件状态
         setIsActive(false);
         setIsPaused(true);
-        console.log("密钥暂停成功");
+        
+        console.log("密钥暂停成功，本地状态已更新");
+        // alert("密钥暂停成功！");
       } catch (error) {
         console.error("暂停密钥失败:", error);
         alert(`暂停密钥失败: ${(error as Error).message}`);
@@ -140,6 +215,7 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
     const keyString = localStorage.getItem(ACTIVATION_KEY_STRING);
     if (!keyString) {
       console.error("未找到激活的密钥");
+      alert("未找到激活的密钥");
       return;
     }
 
@@ -147,18 +223,33 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
       try {
         setIsLoading(true);
 
-        const updatedKey = await resumeKey(keyString);
+        // 1. 首先从服务器查询当前密钥状态
+        console.log("正在从服务器查询密钥状态...");
+        const serverKey = await syncKeyStatusFromServer(keyString);
         
-        // 更新本地存储的过期时间
-        if (updatedKey && updatedKey.expires_at) {
-          localStorage.setItem("user_activation_expiry", updatedKey.expires_at.toString());
-          localStorage.setItem(ACTIVATION_KEY, "active");
+        // 2. 验证密钥是否可以恢复
+        if (serverKey.status !== "paused") {
+          throw new Error(`密钥当前状态为 ${serverKey.status}，只能恢复暂停状态的密钥`);
         }
 
-        // 更新状态
+        // 3. 执行恢复操作
+        console.log("密钥状态验证通过，正在执行恢复操作...");
+        const updatedKey = await resumeKey(keyString);
+        
+        // 4. 验证恢复操作是否成功
+        if (!updatedKey) {
+          throw new Error("恢复操作未返回有效的密钥信息");
+        }
+
+        // 5. 更新本地存储
+        updateLocalStorage(updatedKey);
+
+        // 6. 更新组件状态
         setIsActive(true);
         setIsPaused(false);
-        console.log("密钥恢复成功");
+        
+        console.log("密钥恢复成功，本地状态已更新");
+        // alert("密钥恢复成功！");
       } catch (error) {
         console.error("恢复密钥失败:", error);
         alert(`恢复密钥失败: ${(error as Error).message}`);

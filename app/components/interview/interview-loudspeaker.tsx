@@ -7,6 +7,8 @@ import { SyncMode, ACTIVATION_KEY_STRING } from "@/app/types/websocket-sync";
 import RecorderIcon from "@/app/icons/record_light.svg";
 import { useOutletContext } from "react-router-dom";
 import { useInterviewLanguage, LANGUAGE_OPTIONS, RecognitionLanguage } from "@/app/hooks/useInterviewLanguage";
+import { useAppConfig } from "@/app/store";
+import { NARROW_SIDEBAR_WIDTH } from "@/app/constant";
 
 import WIFI from "@/app/icons/wifi.svg";
 import SpeakerIcon from "@/app/icons/speaker.svg";
@@ -71,8 +73,11 @@ export const InterviewLoudspeaker: React.FC = () => {
   const { onClose, onTextUpdate, submitMessage } =
     useOutletContext<ChatOutletContext>();
 
+  // 获取应用配置用于控制侧边栏宽度
+  const config = useAppConfig();
+
   const [visible, setVisible] = useState(true);
-  const [width, setWidth] = useState("33vw");
+  const [width, setWidth] = useState("20vw");
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(isDragging);
   const dragStartXRef = useRef(0);
@@ -420,6 +425,10 @@ export const InterviewLoudspeaker: React.FC = () => {
 
   // 开始面试
   const startInterview = () => {
+    // 进入面试时将侧边栏宽度调整到最小
+    config.update((config) => {
+      config.sidebarWidth = NARROW_SIDEBAR_WIDTH;
+    });
     setIsStarted(true);
   };
 
@@ -454,7 +463,7 @@ export const InterviewLoudspeaker: React.FC = () => {
 
     const deltaX = e.clientX - dragStartXRef.current;
     const newWidth = Math.max(
-      20,
+      10,
       Math.min(
         80,
         initialWidthRef.current - (deltaX / window.innerWidth) * 100,

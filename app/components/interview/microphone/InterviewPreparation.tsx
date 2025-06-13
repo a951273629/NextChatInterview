@@ -1,12 +1,13 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./InterviewPreparation.module.scss";
 import { toast } from "react-hot-toast";
 import { useActivation } from "../../valid-wrapper/ActivationWrapper";
 import ActivationStatus from "../../valid-wrapper/ActivationStatus";
 import { safeLocalStorage } from "@/app/utils";
 import { useNavigate } from "react-router-dom";
-import { Path } from "@/app/constant";
+import { Path, NARROW_SIDEBAR_WIDTH } from "@/app/constant";
 import { ACTIVATION_KEY } from "../../valid-wrapper/activation";
+import { useAppConfig } from "@/app/store";
 import {
   useInterviewLanguage,
   RecognitionLanguage,
@@ -43,6 +44,9 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
 }) => {
   // 使用语言Context替代本地状态
   const [recognitionLanguage, setRecognitionLanguage] = useInterviewLanguage();
+  
+  // 获取应用配置用于控制侧边栏宽度
+  const config = useAppConfig();
 
   // 麦克风状态
   const [micStatus, setMicStatus] = useState<DeviceStatus>("unavailable");
@@ -117,8 +121,42 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
 
   // 获取激活检查函数
   const { checkActivation } = useActivation();
+
+  // 监测麦克风音量
+  const startVolumeMonitoring = useCallback(() => {
+    if (!analyserRef.current) return;
+
+    // 防御性清理：确保在创建新定时器之前，旧的已停止
+    if (animationFrameIdRef.current) {
+      clearInterval(animationFrameIdRef.current);
+      animationFrameIdRef.current = null;
+    }
+
+    const analyser = analyserRef.current;
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    // 使用setInterval每100ms更新一次音量
+    const intervalId = setInterval(() => {
+      analyser.getByteFrequencyData(dataArray);
+
+      // 计算音量平均值
+      let sum = 0;
+      dataArray.forEach((value) => {
+        sum += value;
+      });
+      const average = sum / dataArray.length;
+
+      // 归一化到0-100范围
+      const volume = Math.min(100, Math.max(0, average));
+      setMicVolume(volume);
+    }, 100);
+
+    // 保存intervalId以便清理
+    animationFrameIdRef.current = intervalId;
+  }, []);
+
   // 检测麦克风状态
-  const checkMicrophoneStatus = async () => {
+  const checkMicrophoneStatus = useCallback(async () => {
     try {
       // 检查麦克风权限
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -155,34 +193,7 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
         setMicStatus("error");
       }
     }
-  };
-
-  // 监测麦克风音量
-  const startVolumeMonitoring = () => {
-    if (!analyserRef.current) return;
-
-    const analyser = analyserRef.current;
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-    // 使用setInterval每100ms更新一次音量
-    const intervalId = setInterval(() => {
-      analyser.getByteFrequencyData(dataArray);
-
-      // 计算音量平均值
-      let sum = 0;
-      dataArray.forEach((value) => {
-        sum += value;
-      });
-      const average = sum / dataArray.length;
-
-      // 归一化到0-100范围
-      const volume = Math.min(100, Math.max(0, average));
-      setMicVolume(volume);
-    }, 100);
-
-    // 保存intervalId以便清理
-    animationFrameIdRef.current = intervalId;
-  };
+  }, [startVolumeMonitoring]);
 
   // 清理音频资源
   const cleanupAudioResources = () => {
@@ -285,6 +296,10 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
 
   // 开始面试，传递选择的语言
   const handleStartInterview = () => {
+    // 进入面试时将侧边栏宽度调整到最小
+    config.update((config) => {
+      config.sidebarWidth = NARROW_SIDEBAR_WIDTH;
+    });
     onStart();
   };
 

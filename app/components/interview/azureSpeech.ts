@@ -49,6 +49,11 @@ export class AzureSpeechRecognizer {
         SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
         "1000",
       );
+      // 设置语音分段静默超时时间，延长断句判断时间以避免过快断句
+      this.speechConfig.setProperty(
+        SpeechSDK.PropertyId.Speech_SegmentationSilenceTimeoutMs,
+        "2300",
+      );
 
       console.log("✅ Azure Speech 配置初始化成功");
     } catch (error) {
@@ -291,7 +296,7 @@ export class AzureSpeechRecognizer {
 
 // 工具函数：从环境变量获取 Azure 配置
 export function getAzureSpeechConfig(): AzureSpeechConfig {
-  const subscriptionKey = process.env.NEXT_PUBLIC_AZURE_SPEECH_KEY || ""
+  const subscriptionKey = process.env.NEXT_PUBLIC_AZURE_SPEECH_KEY;
   const region = process.env.NEXT_PUBLIC_AZURE_SPEECH_REGION || "southeastasia";
   const language = localStorage.getItem("interviewLanguage") || "auto-detect"; // 默认中英混合
 

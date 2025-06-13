@@ -16,8 +16,8 @@ services:
       WS_PORT: 8080
       WS_HOST: 0.0.0.0
       NODE_ENV: production
-    # volumes:
-    #   - /root/nextchat-data:/app/data
+    volumes:
+      - /root/nextchat-data:/app/data
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/", "||", "exit", "1"]
       interval: 30s
@@ -37,7 +37,3 @@ services:
       - /root/nginx/certs:/etc/nginx/certs
     depends_on:
       - nextchat
-
-# volumes:
-#   nextchat-data:
-#     driver: local

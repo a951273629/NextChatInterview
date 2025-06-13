@@ -464,4 +464,143 @@ $box-shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15);
     max-width: 180px;
     padding: $spacing-sm $spacing-lg;
   }
+}
+
+// ===============================================
+// Narrow Mode Styles for Interview Underway
+// ===============================================
+.narrow-mode {
+  // 整体居中对齐
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  // 隐藏状态指示器中的文字
+  .statusIndicator {
+    .statusText {
+      display: none;
+    }
+  }
+
+  // 隐藏声纹状态中的文字
+  .voiceprintStatus {
+    .matchScore {
+      display: none;
+    }
+  }
+
+  // 隐藏错误消息文字
+  .errorMessage {
+    font-size: 0;
+    padding: $spacing-sm;
+    
+    // 显示一个错误图标
+    &::before {
+      content: "⚠️";
+      font-size: 20px;
+      display: block;
+    }
+  }
+
+  // 消息容器在收窄模式下只显示图标
+  // .messagesContainer {
+  //   display: none; // 在极窄模式下完全隐藏消息历史
+  // }
+
+  // 隐藏当前识别文本的标签
+  .transcriptDisplay {
+    .transcriptLabel {
+      display: none;
+    }
+    
+    // 文字变小或隐藏
+    font-size: 10px;
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    // 显示一个音频图标代表正在识别
+    &::before {
+      content: "🎤";
+      font-size: 20px;
+    }
+  }
+
+  // 设置项隐藏标签和状态文字
+  .settingItem {
+    .settingLabel,
+    .settingStatus {
+      display: none;
+    }
+    
+    justify-content: center;
+    padding: $spacing-sm;
+  }
+
+  // 按钮文字隐藏，图标化
+  .buttonContainer {
+    .button {
+      span {
+        display: none; // 隐藏所有按钮文字
+      }
+      
+      // 为不同按钮添加图标
+      &.pauseButton {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        min-width: 40px;
+        
+        &::before {
+          content: "⏸️";
+          font-size: 16px;
+        }
+        
+        &.paused::before {
+          content: "▶️";
+        }
+      }
+      
+      &.stopButton {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        min-width: 40px;
+        
+        // 保留 SVG 图标，隐藏文字
+        svg {
+          width: 16px;
+          height: 16px;
+        }
+      }
+      
+      &.clearButton {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        min-width: 40px;
+        
+        &::before {
+          content: "🗑️";
+          font-size: 16px;
+        }
+      }
+    }
+  }
+
+  // 隐藏提示气泡的文字
+  .clickableTooltip {
+    .tooltipContent {
+      display: none;
+    }
+    
+    padding: $spacing-sm;
+    max-width: 40px;
+    
+    // 只保留关闭按钮
+    .tooltipCloseBtn {
+      display: none;
+    }
+  }
 } 

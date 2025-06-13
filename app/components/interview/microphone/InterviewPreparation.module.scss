@@ -362,4 +362,93 @@
   }
 }
 
+// ===============================================
+// Narrow Mode Styles for Interview Preparation
+// ===============================================
+.narrow-mode {
+  // 整体居中对齐
+  align-items: center;
+
+  // 隐藏头部所有文字和状态
+  .prep-header {
+   
+    p
+     {
+      display: none;
+    }
+  }
+
+  // 隐藏区域标题
+  .section-title {
+    display: none;
+  }
+
+  // 设备检查项调整
+  .device-status-item {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    justify-content: center; // 图标居中
+
+    // 隐藏状态文字和音量条
+    .status-info {
+      display: none;
+    }
+  }
+
+  // 设置项调整
+  .setting-item {
+    justify-content: center;
+
+    // 隐藏标签文字
+    .setting-label {
+      display: none;
+    }
+
+    .setting-control {
+      flex: none; // 取消 flex 伸缩
+
+      // 隐藏状态文字和警告
+      .setting-status,
+      .setting-warning {
+        display: none;
+      }
+
+      // 语言选择只留一个图标（需要配合修改组件来显示图标）
+      // 这里我们先简化，让它和开关保持一致的间距
+      .language-select {
+        margin-left: 0.75rem;
+      }
+    }
+  }
+
+  // 开始按钮图标化
+  .prep-footer {
+    .start-button {
+      font-size: 0; // 隐藏文字
+      width: 50px; // 固定宽度
+      height: 50px; // 固定高度
+      min-width: 50px;
+      padding: 0; // 移除内边距
+      border-radius: 50%; // 变为圆形
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      // 如果按钮内有图标，需要确保图标显示
+      // 例如: & > svg { font-size: 24px; }
+      // 这里我们假设未来会添加一个图标
+      &::before {
+        content: "▶"; // 暂时用一个符号代替图标
+        font-size: 24px;
+        line-height: 1;
+        color: white;
+      }
+
+      &.disabled::before {
+        color: #aaa;
+      }
+    }
+  }
+}
+
 

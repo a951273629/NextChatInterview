@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import StopIcon from "@/app/icons/pause.svg";
 import styles from "./interview-underway-loudspeaker.module.scss";
+import clsx from "clsx";
 import {
   AzureSpeechRecognizer,
   getAzureSpeechConfig,
@@ -47,6 +48,9 @@ interface InterviewUnderwayLoudspeakerProps {
   // 消息管理
   messages?: Message[];
   onAddMessage?: (text: string) => void;
+
+  // 是否窄屏
+  shouldNarrow: boolean;
 }
 
 export const InterviewUnderwayLoudspeaker: React.FC<
@@ -68,6 +72,7 @@ export const InterviewUnderwayLoudspeaker: React.FC<
   isMobile = false,
   messages = [],
   onAddMessage,
+  shouldNarrow,
 }) => {
   // 语音识别相关状态
   const [transcript, setTranscript] = useState("");
@@ -347,7 +352,11 @@ export const InterviewUnderwayLoudspeaker: React.FC<
   }, []);
 
   return (
-    <>
+    <div
+      className={clsx({
+        [styles["narrow-mode"]]: shouldNarrow,
+      })}
+    >
       {/* 语音识别状态指示器 */}
       <div className={styles.statusIndicator}>
         <div
@@ -504,6 +513,6 @@ export const InterviewUnderwayLoudspeaker: React.FC<
           <span>🗑️ 清空</span>
         </button>
       </div>
-    </>
+    </div>
   );
 };

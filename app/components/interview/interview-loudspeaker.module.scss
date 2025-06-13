@@ -64,7 +64,7 @@
     background: rgba(255, 255, 255, 0.2);
     transform: rotate(90deg);
   }
-  
+
   @media only screen and (max-width: 600px) {
     top: 10px;
     right: 10px;
@@ -95,7 +95,7 @@
   &:hover {
     background: rgba(255, 255, 255, 0.2);
   }
-  
+
   @media only screen and (max-width: 600px) {
     top: 10px;
     right: 55px;
@@ -107,14 +107,14 @@
 
 .content {
   flex: 1;
-  padding: 60px 20px 20px;
-  overflow-y: auto;
+  padding: 1rem 1rem;
+  // overflow-y: auto;
+  justify-content: center;
   display: flex;
   flex-direction: column;
-  height: 80%;
 
   @media only screen and (max-width: 600px) {
-    padding: 50px 10px 20px;
+    padding: 0.6rem;
     min-height: 0;
     // 移动端滚动优化
     -webkit-overflow-scrolling: touch;
@@ -134,11 +134,10 @@
 .preparationContainer {
   display: flex;
   flex-direction: column;
-  gap: 2rem;
   max-width: 100%;
-  
+
   @media only screen and (max-width: 600px) {
-    gap: 1rem;
+    // gap: 1rem;
     // 移动端触摸优化
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
@@ -147,14 +146,14 @@
 
 .header {
   text-align: center;
-  
+
   .title {
     font-size: 1.5rem;
     font-weight: 600;
     margin-bottom: 0.5rem;
     color: #ffffff;
   }
-  
+
   .subtitle {
     font-size: 0.9rem;
     color: rgba(255, 255, 255, 0.7);
@@ -181,22 +180,22 @@
     border-radius: 0.5rem;
     margin-bottom: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    
+
     .deviceIcon {
       font-size: 1.5rem;
       width: 40px;
       text-align: center;
     }
-    
+
     .deviceInfo {
       flex: 1;
-      
+
       .deviceName {
         font-weight: 500;
         margin-bottom: 0.5rem;
         color: #ffffff;
       }
-      
+
       .progressContainer {
         width: 100%;
         height: 6px;
@@ -204,14 +203,14 @@
         border-radius: 3px;
         overflow: hidden;
         margin-bottom: 0.5rem;
-        
+
         .progressBar {
           height: 100%;
           border-radius: 3px;
           transition: all 0.3s ease;
         }
       }
-      
+
       .volumeControl {
         display: flex;
         align-items: center;
@@ -274,21 +273,21 @@
           }
         }
       }
-      
+
       // 扬声器选择器样式
       .speakerSelector {
         margin-bottom: 0.5rem;
-        
+
         .selectorLabel {
           font-size: 0.8rem;
           color: rgba(255, 255, 255, 0.7);
           margin-bottom: 0.25rem;
           display: block;
         }
-        
+
         .dropdownContainer {
           position: relative;
-          
+
           .dropdownButton {
             width: 100%;
             background: rgba(255, 255, 255, 0.1);
@@ -302,22 +301,22 @@
             justify-content: space-between;
             align-items: center;
             transition: all 0.3s ease;
-            
+
             &:hover {
               background: rgba(255, 255, 255, 0.15);
               border-color: #4caf50;
             }
-            
+
             .dropdownArrow {
               transition: transform 0.3s ease;
               font-size: 0.7rem;
-              
+
               &.dropdownArrowUp {
                 transform: rotate(180deg);
               }
             }
           }
-          
+
           .dropdownMenu {
             position: absolute;
             top: 100%;
@@ -331,43 +330,43 @@
             overflow-y: auto;
             z-index: 100;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            
+
             .dropdownItem {
               padding: 0.5rem 0.75rem;
               color: rgba(255, 255, 255, 0.9);
               cursor: pointer;
               transition: all 0.2s ease;
               border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-              
+
               &:last-child {
                 border-bottom: none;
               }
-              
+
               &:hover {
                 background: rgba(255, 255, 255, 0.1);
                 color: white;
               }
-              
+
               &.dropdownItemSelected {
                 background: rgba(76, 175, 80, 0.2);
                 color: #4caf50;
                 font-weight: 500;
               }
             }
-            
+
             // 滚动条样式
             &::-webkit-scrollbar {
               width: 4px;
             }
-            
+
             &::-webkit-scrollbar-track {
               background: rgba(255, 255, 255, 0.1);
             }
-            
+
             &::-webkit-scrollbar-thumb {
               background: rgba(255, 255, 255, 0.3);
               border-radius: 2px;
-              
+
               &:hover {
                 background: rgba(255, 255, 255, 0.5);
               }
@@ -390,12 +389,12 @@
     border-radius: 0.5rem;
     margin-bottom: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    
+
     .settingLabel {
       font-weight: 500;
       color: #ffffff;
     }
-    
+
     .settingControl {
       .languageSelect {
         background: rgba(255, 255, 255, 0.1);
@@ -406,13 +405,13 @@
         font-size: 0.9rem;
         cursor: pointer;
         min-width: 160px;
-        
+
         &:focus {
           outline: none;
           border-color: #4caf50;
           box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
         }
-        
+
         option {
           background: #333;
           color: white;
@@ -426,8 +425,8 @@
 .startButtonContainer {
   display: flex;
   justify-content: center;
-  margin-top: 1rem;
-  
+  // margin-top: 1rem;
+
   .startButton {
     background: linear-gradient(135deg, #4caf50, #45a049);
     border: none;
@@ -439,16 +438,16 @@
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-    
+
     &:hover:not(:disabled) {
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
     }
-    
+
     &:active:not(:disabled) {
       transform: translateY(0);
     }
-    
+
     &:disabled {
       background: rgba(255, 255, 255, 0.1);
       color: rgba(255, 255, 255, 0.5);
@@ -461,66 +460,66 @@
 // 响应式设计
 @media only screen and (max-width: 600px) {
   .preparationContainer {
-    gap: 1rem;
+    gap: 0.1rem;
     // 移动端触摸优化
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
   }
-  
+
   .header {
     .title {
       font-size: 1.2rem;
       margin-bottom: 0.25rem;
     }
-    
+
     .subtitle {
       font-size: 0.8rem;
     }
   }
-  
+
   .sectionTitle {
     font-size: 1rem;
     margin-bottom: 0.75rem;
   }
-  
+
   .deviceCheck .deviceItem {
-    padding: 0.5rem;
-    margin-bottom: 0.75rem;
+    padding: 0.2rem;
+    margin-bottom: 0.3rem;
     // 移动端触摸优化
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
-    
+
     .deviceIcon {
       font-size: 1rem;
       width: 30px;
     }
-    
+
     .deviceInfo {
       .deviceName {
         font-size: 0.9rem;
         margin-bottom: 0.25rem;
       }
-      
+
       .progressContainer {
         margin-bottom: 0.25rem;
       }
     }
   }
-  
+
   .interviewSettings .settingItem {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.5rem;
+    // gap: 0.5rem;
     padding: 0.75rem;
-    margin-bottom: 0.75rem;
+    // margin-bottom: 0.75rem;
     // 移动端触摸优化
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
-    
+
     .settingLabel {
       font-size: 0.9rem;
     }
-    
+
     .settingControl .languageSelect {
       width: 100%;
       min-width: unset;
@@ -528,10 +527,10 @@
       font-size: 0.85rem;
     }
   }
-  
+
   .startButtonContainer {
-    margin-top: 0.75rem;
-    
+    // margin-top: 0.75rem;
+
     .startButton {
       width: 100%;
       max-width: 280px;
@@ -542,30 +541,30 @@
       -webkit-touch-callout: none;
     }
   }
-  
+
   // 设置项目样式优化
   .setting-item {
     padding: 0.5rem;
     margin-bottom: 0.75rem;
-    
+
     .setting-label {
       width: 4rem;
       font-size: 0.8rem;
     }
-    
+
     .setting-control {
       .setting-status {
         margin-left: 0.5rem;
         font-size: 0.8rem;
       }
-      
+
       .setting-warning {
         margin-top: 0.25rem;
         font-size: 0.75rem;
       }
     }
   }
-  
+
   // 模式描述样式
   .mode-description {
     margin-top: 0.25rem;
@@ -575,9 +574,12 @@
 
 // 动画效果
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 10px #4caf50;
   }
+
   50% {
     box-shadow: 0 0 20px #4caf50, 0 0 30px #4caf50;
   }
@@ -586,7 +588,7 @@
 // 录屏权限控制样式
 .screenCaptureControl {
   margin-top: 12px;
-  
+
   .permissionButton {
     padding: 8px 16px;
     background: #2196F3;
@@ -639,7 +641,7 @@
       }
     }
   }
-} 
+}
 
 // 添加同步设置相关样式（从 InterviewPreparation.module.scss 复制）
 .setting-item {
@@ -649,23 +651,23 @@
   padding: 0.75rem;
   border-radius: 0.4rem;
   background-color: rgba(0, 0, 0, 0.3);
-  
+
   .setting-label {
     width: 6rem;
     font-size: 0.9rem;
   }
-  
+
   .setting-control {
     flex: 1;
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    
+
     .setting-status {
       margin-left: 0.75rem;
       font-size: 0.85rem;
     }
-    
+
     .setting-warning {
       width: 100%;
       margin-top: 0.5rem;
@@ -673,36 +675,36 @@
       color: #ff9800;
     }
   }
-  
+
   // 开关样式优化
   .switch {
     position: relative;
     width: 50px;
     height: 24px;
-    
+
     input {
       opacity: 0;
       width: 0;
       height: 0;
-      
-      &:checked + .slider {
+
+      &:checked+.slider {
         background-color: #2196F3;
-        
+
         &:before {
           transform: translateX(26px);
         }
       }
-      
-      &:focus + .slider {
+
+      &:focus+.slider {
         box-shadow: 0 0 1px #2196F3;
       }
-      
-      &:disabled + .slider {
+
+      &:disabled+.slider {
         opacity: 0.5;
         cursor: not-allowed;
       }
     }
-    
+
     .slider {
       position: absolute;
       cursor: pointer;
@@ -713,7 +715,7 @@
       background-color: #ccc;
       transition: .4s;
       border-radius: 24px;
-      
+
       &:before {
         position: absolute;
         content: "";
@@ -725,7 +727,7 @@
         transition: .4s;
         border-radius: 50%;
       }
-      
+
       &.disabled {
         background-color: #888;
         cursor: not-allowed;
@@ -735,7 +737,7 @@
 
   @media only screen and (max-width: 600px) {
     padding: 0.5rem;
-    
+
     .setting-label {
       width: 5rem;
       font-size: 0.85rem;
@@ -750,4 +752,119 @@
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.7);
   font-style: italic;
-} 
+}
+
+// ===============================================
+// Narrow Mode Styles for Interview Loudspeaker
+// ===============================================
+.narrow-mode {
+  // 主容器收窄样式
+  // border: 2px solid #007bff;
+  // display: flex;
+  // flex-direction: column;
+  // align-items: center;
+
+  // 整体居中对齐
+  // display: flex;
+  // flex-direction: column;
+  // align-items: center;
+
+  .content {
+    // display: flex;
+    // flex-direction: column;
+    // justify-content: center;
+    // align-items: center;
+    // justify-content: center;
+  }
+
+  // 隐藏准备界面中的文字内容
+  .preparationContainer {
+    align-items: center;
+
+    .header {
+
+      .title,
+      .subtitle {
+        display: none;
+      }
+    }
+
+    .sectionTitle {
+      display: none;
+    }
+
+    // 设备检查项只显示图标
+    .deviceCheck .deviceItem {
+      justify-content: center;
+      padding: 0.5rem;
+      margin-bottom: 0.5rem;
+
+      .deviceInfo {
+        display: none;
+      }
+
+      .deviceIcon {
+        margin: 0;
+      }
+    }
+
+    // 面试设置项只显示控件
+    .interviewSettings .settingItem {
+      justify-content: center;
+
+      .settingLabel {
+        display: none;
+      }
+
+      .settingControl {
+        flex: none;
+      }
+    }
+
+    // 开始按钮图标化
+    .startButtonContainer {
+      .startButton {
+        font-size: 0; // 隐藏文字
+        width: 50px; // 固定宽度
+        height: 50px; // 固定高度
+        min-width: 50px;
+        padding: 0; // 移除内边距
+        border-radius: 50%; // 变为圆形
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        // 显示播放图标
+        &::before {
+          content: "▶"; // 播放符号
+          font-size: 24px;
+          line-height: 1;
+          color: white;
+        }
+
+        &:disabled::before {
+          color: #aaa;
+        }
+      }
+    }
+  }
+
+  // 同步设置项收窄样式
+  .setting-item {
+    justify-content: center;
+
+    .setting-label {
+      display: none;
+    }
+
+    .setting-control {
+      flex: none;
+
+      .setting-status,
+      .mode-description,
+      .activationKey .keyDescription {
+        display: none;
+      }
+    }
+  }
+}

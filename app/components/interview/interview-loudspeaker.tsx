@@ -9,9 +9,15 @@ import { useOutletContext } from "react-router-dom";
 import { useInterviewLanguage, LANGUAGE_OPTIONS, RecognitionLanguage } from "@/app/hooks/useInterviewLanguage";
 import { useAppConfig } from "@/app/store";
 import { NARROW_SIDEBAR_WIDTH } from "@/app/constant";
+import clsx from "clsx";
 
 import WIFI from "@/app/icons/wifi.svg";
 import SpeakerIcon from "@/app/icons/speaker.svg";
+
+// 宽度管理常量
+const DEFAULT_INTERVIEW_WIDTH_VW = 20;
+const NARROW_INTERVIEW_WIDTH_VW = 10;
+const MIN_INTERVIEW_WIDTH_VW = 14;
 
 // 消息类型接口
 interface Message {
@@ -77,11 +83,15 @@ export const InterviewLoudspeaker: React.FC = () => {
   const config = useAppConfig();
 
   const [visible, setVisible] = useState(true);
-  const [width, setWidth] = useState("20vw");
+  const [width, setWidth] = useState(DEFAULT_INTERVIEW_WIDTH_VW);
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(isDragging);
   const dragStartXRef = useRef(0);
   const initialWidthRef = useRef(0);
+  const dragStartTimeRef = useRef(0);
+
+  // 计算是否应该收缩
+  const shouldNarrow = width < MIN_INTERVIEW_WIDTH_VW;
 
   // 添加控制面试开始的状态
   const [isStarted, setIsStarted] = useState(false);
@@ -445,6 +455,17 @@ export const InterviewLoudspeaker: React.FC = () => {
     setRecognitionLanguage(language as RecognitionLanguage);
   };
 
+  // 切换宽度的函数
+  const toggleWidth = () => {
+    setWidth((prevWidth) => {
+      if (prevWidth < MIN_INTERVIEW_WIDTH_VW) {
+        return DEFAULT_INTERVIEW_WIDTH_VW;
+      } else {
+        return NARROW_INTERVIEW_WIDTH_VW;
+      }
+    });
+  };
+
   // 拖拽相关处理函数
   const handleDragStart = (e: React.MouseEvent) => {
     if (isMobile) return;
@@ -452,7 +473,8 @@ export const InterviewLoudspeaker: React.FC = () => {
     setIsDragging(true);
     isDraggingRef.current = true;
     dragStartXRef.current = e.clientX;
-    initialWidthRef.current = parseFloat(width);
+    initialWidthRef.current = width;
+    dragStartTimeRef.current = Date.now();
 
     document.addEventListener("mousemove", handleDragMove);
     document.addEventListener("mouseup", handleDragEnd);
@@ -463,13 +485,19 @@ export const InterviewLoudspeaker: React.FC = () => {
 
     const deltaX = e.clientX - dragStartXRef.current;
     const newWidth = Math.max(
-      10,
+      NARROW_INTERVIEW_WIDTH_VW,
       Math.min(
         80,
         initialWidthRef.current - (deltaX / window.innerWidth) * 100,
       ),
     );
-    setWidth(`${newWidth}vw`);
+    
+    // 当宽度小于最小值时，吸附到收缩宽度
+    if (newWidth < MIN_INTERVIEW_WIDTH_VW) {
+      setWidth(NARROW_INTERVIEW_WIDTH_VW);
+    } else {
+      setWidth(newWidth);
+    }
   };
 
   const handleDragEnd = () => {
@@ -478,6 +506,12 @@ export const InterviewLoudspeaker: React.FC = () => {
 
     document.removeEventListener("mousemove", handleDragMove);
     document.removeEventListener("mouseup", handleDragEnd);
+    
+    // 如果用户点击拖拽手柄，应该切换宽度
+    const shouldFireClick = Date.now() - dragStartTimeRef.current < 300;
+    if (shouldFireClick) {
+      toggleWidth();
+    }
   };
 
   // 获取扬声器状态信息
@@ -543,7 +577,15 @@ export const InterviewLoudspeaker: React.FC = () => {
     const screenCaptureInfo = getScreenCaptureStatusInfo();
 
     return (
-      <div className={styles.preparationContainer}>
+      <div 
+      className={clsx(
+        styles.preparationContainer,
+        {
+          [styles.mobileOverlay]: isMobile,
+          [styles["narrow-mode"]]: shouldNarrow && !isMobile,
+        }
+      )}
+      >
         <div className={styles.header}>
           <h2 className={styles.title}>面试准备就绪</h2>
           <div className={styles.subtitle}>请确认以下设置后开始面试</div>
@@ -832,12 +874,16 @@ export const InterviewLoudspeaker: React.FC = () => {
       {/* 主界面 */}
       {visible && (
         <div
-          className={`${styles.overlay} ${
-            isMobile ? styles.mobileOverlay : ""
-          }`}
+          className={clsx(
+            styles.overlay,
+            {
+              [styles.mobileOverlay]: isMobile,
+              [styles["narrow-mode"]]: shouldNarrow && !isMobile,
+            }
+          )}
           style={{
-            ...(isMobile ? {} : { width }),
-            display: isMobile && (isMinimized || (syncMode === SyncMode.RECEIVER && isStarted)) ? "none" : "block"
+            ...(isMobile ? {} : { width: `${width}vw` }),
+            ...(isMobile && (isMinimized || (syncMode === SyncMode.RECEIVER && isStarted)) ? { display: "none" } : {})
           }}
         >
           {/* 拖拽边缘 */}
@@ -897,6 +943,7 @@ export const InterviewLoudspeaker: React.FC = () => {
                   isMobile={isMobile}
                   messages={messages}
                   onAddMessage={handleAddMessage}
+                  shouldNarrow={shouldNarrow}
                 />
               </>
             )}

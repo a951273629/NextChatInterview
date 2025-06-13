@@ -43,17 +43,13 @@ export class AzureSpeechRecognizer {
       // 设置识别模式为连续识别
       this.speechConfig.setProperty(
         SpeechSDK.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs,
-        "5000",
+        "15000",
       );
       this.speechConfig.setProperty(
         SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
-        "1000",
+        "2000",
       );
-      // 设置语音分段静默超时时间，延长断句判断时间以避免过快断句
-      this.speechConfig.setProperty(
-        SpeechSDK.PropertyId.Speech_SegmentationSilenceTimeoutMs,
-        "2300",
-      );
+
 
       console.log("✅ Azure Speech 配置初始化成功");
     } catch (error) {

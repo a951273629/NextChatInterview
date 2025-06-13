@@ -17,8 +17,8 @@ import clsx from "clsx";
 
 // 宽度管理常量
 const DEFAULT_INTERVIEW_WIDTH_VW = 20;
-const NARROW_INTERVIEW_WIDTH_VW = 8;
-const MIN_INTERVIEW_WIDTH_VW = 10;
+const NARROW_INTERVIEW_WIDTH_VW = 10;
+const MIN_INTERVIEW_WIDTH_VW = 12;
 
 // 消息类型接口
 interface Message {
@@ -482,9 +482,11 @@ export const InterviewMicrophone: React.FC = () => {
               onStart={startInterview}
               voiceprintEnabled={voiceprintEnabled}
               setVoiceprintEnabled={setVoiceprintEnabled}
+              shouldNarrow={shouldNarrow}
             />
           ) : (
             <InterviewUnderway
+              shouldNarrow={shouldNarrow}
               visible={visible}
               voiceprintEnabled={voiceprintEnabled}
               recognitionLanguage={recognitionLanguage}

@@ -20,6 +20,7 @@ import VoiceIcon from "@/app/icons/voice.svg";
 import VoiceOffIcon from "@/app/icons/voice-off.svg";
 import WIFI from "@/app/icons/wifi.svg";
 import WIFIOff from "@/app/icons/wifi-off.svg";
+import clsx from "clsx";
 
 // import PowerIcon from "@/app/icons/power.svg";
 
@@ -29,6 +30,7 @@ interface InterviewPreparationProps {
   voiceprintEnabled: boolean;
   setVoiceprintEnabled: (enabled: boolean) => void;
   onStart: () => void;
+  shouldNarrow: boolean;
 }
 
 // 设备状态类型
@@ -41,6 +43,7 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
   voiceprintEnabled,
   setVoiceprintEnabled,
   onStart,
+  shouldNarrow,
 }) => {
   // 使用语言Context替代本地状态
   const [recognitionLanguage, setRecognitionLanguage] = useInterviewLanguage();
@@ -369,7 +372,11 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
   const networkStatusInfo = getNetworkStatusInfo();
 
   return (
-    <div className={styles["interview-prep-container"]}>
+    <div
+      className={clsx(styles["interview-prep-container"], {
+        [styles["narrow-mode"]]: shouldNarrow,
+      })}
+    >
       <div className={styles["prep-header"]}>
         <h3>面试准备就绪</h3>
         <ActivationStatus className={styles["activation-status"]} />

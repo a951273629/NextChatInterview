@@ -45,13 +45,14 @@
   &.narrow-mode {
     border: 2px solid #007bff;
     
-    .close-button {
-      display: none;
-    }
+    // .close-button {
+    //   display: none;
+    // }
     
     .content-container {
       align-items: center;
       justify-content: center;
+      // padding: 20px 0; // 上下留白，左右不留
     }
   }
 

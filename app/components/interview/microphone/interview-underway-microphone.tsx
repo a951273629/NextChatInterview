@@ -6,6 +6,7 @@ import {
   isAzureSpeechAvailable 
 } from "../azureSpeech";
 import styles from "./interview-underway-microphone.module.scss";
+import clsx from "clsx";
 
 // 消息类型接口
 interface Message {
@@ -40,6 +41,9 @@ interface InterviewUnderwayProps {
   // 消息管理
   messages?: Message[];
   onAddMessage?: (text: string, isInterviewer: boolean) => void;
+
+  // 是否窄屏
+  shouldNarrow?: boolean;
 }
 
 export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
@@ -56,6 +60,7 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
   isMobile = false,
   messages = [],
   onAddMessage,
+  shouldNarrow,
 }) => {
   // Azure Speech 相关状态
   const [transcript, setTranscript] = useState("");
@@ -75,8 +80,6 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
   const [isAutoSubmit, setIsAutoSubmit] = useState(defaultAutoSubmit);
   const [showTooltip, setShowTooltip] = useState(true);
 
-  // 消息相关 - 移除内部状态，使用外部传入的
-  // const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSubmittedTextRef = useRef("");
 
@@ -96,12 +99,6 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
     scrollToBottom();
   }, [messages]);
 
-  // 消息添加函数 - 使用外部传入的回调
-  // const addMessage = (text: string, isInterviewer: boolean) => {
-  //   if (onAddMessage) {
-  //     onAddMessage(text, isInterviewer);
-  //   }
-  // };
 
   // 消息点击处理函数
   const handleMessageClick = (messageText: string) => {
@@ -386,7 +383,11 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
   }, []);
 
   return (
-    <>
+    <div
+      className={clsx({
+        [styles["narrow-mode"]]: shouldNarrow,
+      })}
+    >
       {/* 语音识别状态指示器 */}
       <div className={styles.statusIndicator}>
         <div
@@ -522,6 +523,6 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
           <span>🗑️ 清空</span>
         </button>
       </div>
-    </>
+    </div>
   );
 };

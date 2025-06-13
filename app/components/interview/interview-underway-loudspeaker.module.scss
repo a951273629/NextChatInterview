@@ -432,4 +432,158 @@
     max-width: 180px;
     padding: 0.4rem 0.75rem;
   }
+}
+
+// ===============================================
+// Narrow Mode Styles for Interview Underway Loudspeaker
+// ===============================================
+.narrow-mode {
+  // 整体居中对齐
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  // 隐藏状态指示器中的文字
+  .statusIndicator {
+    .statusText {
+      display: none;
+    }
+    
+    // 隐藏扬声器模式状态文字
+    .modeStatus {
+      .audioSource,
+      .syncText,
+      .syncError {
+        display: none;
+      }
+    }
+  }
+
+  // 隐藏错误消息文字
+  .errorMessage {
+    font-size: 0;
+    padding: 12px;
+    
+    // 显示一个错误图标
+    &::before {
+      content: "⚠️";
+      font-size: 20px;
+      display: block;
+    }
+    
+    .permissionRequest {
+      .requestButton {
+        margin-top: 8px;
+        padding: 8px 16px;
+        font-size: 14px;
+      }
+    }
+  }
+
+  // 消息容器在收窄模式下保持显示但样式简化
+  .messagesContainer {
+    max-height: 100px; // 限制高度
+  }
+
+  // 隐藏当前识别文本的标签
+  .transcriptDisplay {
+    // 隐藏标签，只显示麦克风图标
+    .transcriptLabel {
+      display: none;
+    }
+    
+    // 文字变小或隐藏
+    font-size: 10px;
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    // 添加麦克风图标
+    &::before {
+      content: "🎤";
+      font-size: 18px;
+      margin-right: 8px;
+    }
+  }
+
+  // 设置项收窄样式
+  .settingItem {
+    justify-content: center;
+    
+    .settingLabel {
+      display: none;
+    }
+    
+    .settingControl {
+      flex: none;
+      
+      .settingStatus {
+        display: none;
+      }
+    }
+  }
+
+  // 按钮容器收窄样式
+  .buttonContainer {
+    gap: 0.3rem;
+    
+    .button {
+      font-size: 0; // 隐藏文字
+      width: 40px; // 固定宽度
+      height: 40px; // 固定高度
+      padding: 0; // 移除内边距
+      border-radius: 50%; // 变为圆形
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      // 暂停/播放按钮
+      &.pauseButton {
+        &::before {
+          content: "⏸️";
+          font-size: 16px;
+        }
+        
+        &.paused::before {
+          content: "▶️";
+        }
+      }
+      
+      // 停止按钮 
+      &.stopButton {
+        &::before {
+          content: "⏹️";
+          font-size: 16px;
+        }
+      }
+      
+      // 清空按钮
+      &.clearButton {
+        &::before {
+          content: "🗑️";
+          font-size: 16px;
+        }
+      }
+      
+      // 隐藏SVG图标和文字
+      svg,
+      span {
+        display: none;
+      }
+    }
+  }
+
+  // 可点击提示气泡收窄样式s
+  .clickableTooltip {
+    display: none;
+    .tooltipContent {
+      display: none;
+    }
+    
+  
+    .tooltipCloseBtn {
+      display: none;
+    }
+  }
 } 

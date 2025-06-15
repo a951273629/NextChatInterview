@@ -324,4 +324,66 @@ export class MessageHandler {
       });
     }
   }
+
+  /**
+   * 广播对端状态更新
+   * @param {string} activationKey - 激活密钥
+   */
+  broadcastPeerStatus(activationKey) {
+    const room = this.roomManager.rooms.get(activationKey);
+    if (!room) return;
+
+    const clients = Array.from(room);
+    const senders = clients.filter(c => c.mode === 'sender' && c.ws.readyState === 1);
+    const receivers = clients.filter(c => c.mode === 'receiver' && c.ws.readyState === 1);
+
+    // 为每个客户端发送对端状态信息
+    clients.forEach(client => {
+      if (client.ws.readyState !== 1) return;
+
+      // 根据客户端模式确定对端信息
+      const peerClients = client.mode === 'sender' ? receivers : senders;
+      const peerMode = client.mode === 'sender' ? 'receiver' : 'sender';
+      
+      const peerStatus = {
+        connected: peerClients.length > 0,
+        count: peerClients.length,
+        mode: peerMode,
+        clients: peerClients.map(peer => ({
+          id: peer.id,
+          sessionId: peer.sessionId,
+          joinTime: peer.joinTime
+        }))
+      };
+
+      const message = {
+        type: 'peer_status_update',
+        timestamp: Date.now(),
+        data: {
+          peerStatus,
+          roomStats: {
+            total: clients.length,
+            senders: senders.length,
+            receivers: receivers.length
+          }
+        }
+      };
+
+      try {
+        client.ws.send(JSON.stringify(message));
+      } catch (error) {
+        console.error(formatLog('error', '发送对端状态失败', {
+          clientId: client.id,
+          error: error.message
+        }));
+      }
+    });
+
+    console.log(formatLog('info', '广播对端状态完成', {
+      activationKey,
+      totalClients: clients.length,
+      senders: senders.length,
+      receivers: receivers.length
+    }));
+  }
 } 

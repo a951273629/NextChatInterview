@@ -2,7 +2,7 @@
 
 require("../polyfill");
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import styles from "./home.module.scss";
 
 import BotIcon from "../icons/bot.svg";
@@ -158,6 +158,84 @@ export function useSwitchTheme() {
       metaDescriptionLight?.setAttribute("content", themeColor);
     }
   }, [config.theme]);
+}
+
+// 移动端全屏Hook
+export function useMobileFullscreen() {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const isMobileScreen = useMobileScreen();
+
+  const enterFullscreen = useCallback(() => {
+    if (!isMobileScreen) return;
+    
+    const element = document.documentElement;
+    if (element.requestFullscreen) {
+      element.requestFullscreen();
+    } else if ((element as any).webkitRequestFullscreen) { // Safari
+      (element as any).webkitRequestFullscreen();
+    } else if ((element as any).mozRequestFullScreen) { // Firefox
+      (element as any).mozRequestFullScreen();
+    } else if ((element as any).msRequestFullscreen) { // IE/Edge
+      (element as any).msRequestFullscreen();
+    }
+  }, [isMobileScreen]);
+
+  const exitFullscreen = useCallback(() => {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if ((document as any).webkitExitFullscreen) {
+      (document as any).webkitExitFullscreen();
+    }
+  }, []);
+
+  const hideAddressBar = useCallback(() => {
+    if (!isMobileScreen) return;
+    
+    // 通过滚动隐藏地址栏
+    setTimeout(() => {
+      window.scrollTo(0, 1);
+    }, 100);
+  }, [isMobileScreen]);
+
+  useEffect(() => {
+    if (!isMobileScreen) return;
+
+    const handleFullscreenChange = () => {
+      setIsFullscreen(
+        !!(document.fullscreenElement || (document as any).webkitFullscreenElement)
+      );
+    };
+
+    const handleOrientationChange = () => {
+      setTimeout(hideAddressBar, 100);
+    };
+
+    // 监听全屏状态变化
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    
+    // 监听设备方向变化
+    window.addEventListener('orientationchange', handleOrientationChange);
+    window.addEventListener('load', hideAddressBar);
+
+    // 初始尝试隐藏地址栏
+    hideAddressBar();
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      window.removeEventListener('load', hideAddressBar);
+    };
+  }, [isMobileScreen, hideAddressBar]);
+
+  return { 
+    isFullscreen, 
+    enterFullscreen, 
+    exitFullscreen, 
+    hideAddressBar,
+    isMobileScreen 
+  };
 }
 
 function useHtmlLang() {

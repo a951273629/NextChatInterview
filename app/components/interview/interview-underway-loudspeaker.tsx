@@ -89,10 +89,24 @@ export const InterviewUnderwayLoudspeaker: React.FC<
   const [isAutoSubmit, setIsAutoSubmit] = useState(defaultAutoSubmit);
   const [showTooltip, setShowTooltip] = useState(true);
 
+  // 测试音频播放相关状态
+  const [isPlayingTestAudio, setIsPlayingTestAudio] = useState(false);
+  const testAudioRef = useRef<HTMLAudioElement>(null);
+
   // 消息相关 - 移除内部状态，使用外部传入的
   // const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastSubmittedTextRef = useRef("");
+
+  // 🎯 延迟处理机制：双重保险防止断句过快
+  const finalTextDelayTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingFinalTextRef = useRef<string>("");
+  // 🎯 跟踪当前延迟周期内已处理的文本片段，避免重复拼接
+  const pendingTextSegmentsRef = useRef<Set<string>>(new Set());
+
+  // 对端连接状态管理（现在从WebSocket获取真实状态）
+  const [peerConnected, setPeerConnected] = useState(false);
+  const [peerMode, setPeerMode] = useState<SyncMode | null>(null);
 
   // WebSocket 同步功能
   const webSocketSync = useWebSocketSync({
@@ -108,6 +122,12 @@ export const InterviewUnderwayLoudspeaker: React.FC<
         // 可选：也添加到消息历史
         onAddMessage?.(data.text);
       }
+    },
+    onPeerStatusChange: (peerStatus) => {
+      // 处理对端状态变化
+      console.log("👥 对端状态更新:", peerStatus);
+      setPeerConnected(peerStatus.connected);
+      setPeerMode(peerStatus.mode === "sender" ? SyncMode.SENDER : SyncMode.RECEIVER);
     },
   });
 
@@ -134,6 +154,23 @@ export const InterviewUnderwayLoudspeaker: React.FC<
     checkBrowserSupport();
   }, []);
 
+  // 监听WebSocket连接状态变化，重置对端连接状态
+  useEffect(() => {
+    if (webSocketSync.connectionStatus !== "connected") {
+      setPeerConnected(false);
+      setPeerMode(null);
+    }
+  }, [webSocketSync.connectionStatus]);
+
+  // 使用WebSocket提供的真实对端状态
+  useEffect(() => {
+    if (webSocketSync.peerStatus) {
+      setPeerConnected(webSocketSync.peerStatus.connected);
+      setPeerMode(webSocketSync.peerStatus.mode === "sender" ? SyncMode.SENDER : SyncMode.RECEIVER);
+    }
+  }, [webSocketSync.peerStatus]);
+
+  
   // 初始化 Azure Speech 识别器
   const initializeAzureSpeechRecognizer = () => {
     try {
@@ -182,34 +219,75 @@ export const InterviewUnderwayLoudspeaker: React.FC<
             text,
           );
 
-          // 当识别结果为最终结果且有内容时，立即处理
-          if (isFinal && text.trim() !== "") {
+          // 🎯 核心改进：任何有内容的识别都会刷新延迟定时器
+          if (text.trim() !== "") {
             const trimmedText = text.trim();
+            console.log(`🎙️ 检测到语音内容 (${isFinal ? "✅最终" : "🔄进行中"}):`, trimmedText);
             
-            // 避免重复提交相同的文本
-            if (trimmedText !== lastSubmittedTextRef.current) {
-              console.log("检测到最终扬声器音频，立即添加到消息历史:", trimmedText);
-              onAddMessage?.(trimmedText);
-              lastSubmittedTextRef.current = trimmedText;
-              resetTranscript();
-
-              // 如果启用同步功能且为发送端，发送WebSocket消息但不进行本地提交
-              if (syncEnabled && syncMode === SyncMode.SENDER) {
-                console.log("📤 发送端模式：通过WebSocket发送语音识别结果");
-                webSocketSync.sendSpeechRecognition({
-                  text: trimmedText,
-                  isFinal,
-                  language: recognitionLanguage,
-                  sessionId: nanoid(),
-                });
-                console.log("📤 发送端模式：语音已通过WebSocket发送，跳过本地提交");
-              } else if (isAutoSubmit) {
-                // 普通模式或接收端模式下的本地自动提交
-                console.log("立即自动提交扬声器语音:", trimmedText);
-                submitMessage(trimmedText);
+            // 🎯 延迟定时器刷新逻辑：任何有内容的识别都刷新
+            // 清除之前的定时器（如果有）
+            if (finalTextDelayTimerRef.current) {
+              clearTimeout(finalTextDelayTimerRef.current);
+              console.log("⏱️ 刷新延迟定时器 - 检测到新的语音活动");
+            }
+            
+            // 🎯 文本拼接逻辑：只有最终结果才进行拼接
+            if (isFinal) {
+              // 避免重复处理相同的文本片段
+              if (!pendingTextSegmentsRef.current.has(trimmedText)) {
+                console.log("📝 处理最终语音片段:", trimmedText);
+                
+                // 拼接新文本到待处理文本中，而非替换
+                if (pendingFinalTextRef.current) {
+                  pendingFinalTextRef.current += " " + trimmedText;
+                  console.log("🔗 拼接文本:", pendingFinalTextRef.current);
+                } else {
+                  pendingFinalTextRef.current = trimmedText;
+                  console.log("📝 首次设置文本:", pendingFinalTextRef.current);
+                }
+                
+                // 记录已处理的文本片段，避免重复拼接
+                pendingTextSegmentsRef.current.add(trimmedText);
               }
             }
-          } else if (!isFinal) {
+            
+            // 🎯 重新设置延迟处理定时器（不管是interim还是final都会刷新）
+            finalTextDelayTimerRef.current = setTimeout(() => {
+              const finalText = pendingFinalTextRef.current;
+              if (finalText && finalText !== lastSubmittedTextRef.current) {
+                console.log("✅ 延迟3秒后处理拼接的语音结果:", finalText);
+                
+                onAddMessage?.(finalText);
+                lastSubmittedTextRef.current = finalText;
+                resetTranscript();
+
+                // 如果启用同步功能且为发送端，发送WebSocket消息但不进行本地提交
+                if (syncEnabled && syncMode === SyncMode.SENDER) {
+                  console.log("📤 发送端模式：通过WebSocket发送语音识别结果");
+                  webSocketSync.sendSpeechRecognition({
+                    text: finalText,
+                    isFinal: true, // 注意：这里应该是true，因为是延迟处理后的最终结果
+                    language: recognitionLanguage,
+                    sessionId: nanoid(),
+                  });
+                  console.log("📤 发送端模式：语音已通过WebSocket发送，跳过本地提交");
+                } else if (isAutoSubmit) {
+                  // 普通模式或接收端模式下的本地自动提交
+                  console.log("🚀 延迟处理完成，自动提交拼接的语音:", finalText);
+                  submitMessage(finalText);
+                }
+              }
+              
+              // 清理定时器引用和文本片段记录
+              finalTextDelayTimerRef.current = null;
+              pendingFinalTextRef.current = "";
+              pendingTextSegmentsRef.current.clear();
+              console.log("🧹 清理延迟处理状态");
+            }, 2300); // 2.3秒延迟
+          }
+          
+          // 🎯 更新interim结果显示（不影响延迟处理逻辑）
+          if (!isFinal) {
             setTranscript(text);
             transcriptRef.current = text;
             onTextUpdate(text);
@@ -254,6 +332,15 @@ export const InterviewUnderwayLoudspeaker: React.FC<
         azureSpeechRecognizerRef.current.dispose();
         azureSpeechRecognizerRef.current = null;
       }
+
+      // 🎯 清理延迟处理定时器和文本片段记录
+      if (finalTextDelayTimerRef.current) {
+        clearTimeout(finalTextDelayTimerRef.current);
+        finalTextDelayTimerRef.current = null;
+        console.log("⏱️ 停止识别时清理延迟定时器");
+      }
+      pendingFinalTextRef.current = "";
+      pendingTextSegmentsRef.current.clear();
 
       setListening(false);
       setAudioAvailable(false);
@@ -344,10 +431,58 @@ export const InterviewUnderwayLoudspeaker: React.FC<
     }
   };
 
+  // 播放测试音频
+  const playTestAudio = () => {
+    if (testAudioRef.current && !isPlayingTestAudio) {
+      console.log("🎵 开始播放测试音频...");
+      testAudioRef.current.currentTime = 0;
+      testAudioRef.current.play()
+        .then(() => {
+          setIsPlayingTestAudio(true);
+          console.log("🎵 测试音频播放开始");
+        })
+        .catch((error) => {
+          console.error("❌ 播放测试音频失败:", error);
+          setIsPlayingTestAudio(false);
+        });
+    }
+  };
+
+  // 停止测试音频
+  const stopTestAudio = () => {
+    if (testAudioRef.current && isPlayingTestAudio) {
+      console.log("⏸️ 停止播放测试音频...");
+      testAudioRef.current.pause();
+      testAudioRef.current.currentTime = 0;
+      setIsPlayingTestAudio(false);
+    }
+  };
+
+  // 处理测试音频播放完成
+  const handleTestAudioEnded = () => {
+    console.log("🏁 测试音频播放完成");
+    setIsPlayingTestAudio(false);
+  };
+
   // 组件卸载时清理
   useEffect(() => {
     return () => {
       stopSpeechRecognition();
+      
+      // 🎯 清理延迟处理定时器和文本片段记录
+      if (finalTextDelayTimerRef.current) {
+        clearTimeout(finalTextDelayTimerRef.current);
+        finalTextDelayTimerRef.current = null;
+        console.log("⏱️ 组件卸载时清理延迟定时器");
+      }
+      pendingFinalTextRef.current = "";
+      pendingTextSegmentsRef.current.clear();
+      
+      // 清理测试音频
+      if (testAudioRef.current) {
+        testAudioRef.current.pause();
+        testAudioRef.current.currentTime = 0;
+      }
     };
   }, []);
 
@@ -361,11 +496,19 @@ export const InterviewUnderwayLoudspeaker: React.FC<
       <div className={styles.statusIndicator}>
         <div
           className={`${styles.indicatorDot} ${
-            listening ? styles.listening : styles.notListening
+            (syncEnabled && syncMode === SyncMode.RECEIVER) || listening
+              ? styles.listening
+              : styles.notListening
           }`}
         />
         <span className={styles.statusText}>
-          {listening ? "正在监听扬声器..." : isPaused ? "已暂停" : "未监听"}
+          {syncEnabled && syncMode === SyncMode.RECEIVER
+            ? "接收中"
+            : listening
+            ? "正在监听扬声器..."
+            : isPaused
+            ? "已暂停"
+            : "未监听"}
         </span>
 
         {/* 添加可点击提示气泡 */}
@@ -383,41 +526,65 @@ export const InterviewUnderwayLoudspeaker: React.FC<
 
         {/* 扬声器模式标识 */}
         <div className={styles.modeStatus}>
-          <span className={`${styles.identityIndicator} ${styles.interviewer}`}>
+          {/* <span className={`${styles.identityIndicator} ${styles.interviewer}`}>
             扬声器模式
           </span>
-          <span className={styles.audioSource}>音频源: 系统扬声器</span>
+          <span className={styles.audioSource}>音频源: 系统扬声器</span> */}
 
-          {/* WebSocket 同步状态 */}
+          {/* WebSocket 双端连接状态 */}
           {syncEnabled && (
-            <div className={styles.syncStatus}>
-              <span
-                className={`${styles.syncIndicator} ${
-                  webSocketSync.connectionStatus === "connected"
-                    ? styles.connected
+            <div className={styles.connectionStatusContainer}>
+              {/* 本端连接状态 */}
+              <div className={styles.connectionItem}>
+                <span
+                  className={`${styles.statusIndicator} ${
+                    webSocketSync.connectionStatus === "connected"
+                      ? styles.connected
+                      : webSocketSync.connectionStatus === "connecting"
+                      ? styles.connecting
+                      : styles.disconnected
+                  }`}
+                >
+                  {webSocketSync.connectionStatus === "connected"
+                    ? "🟢"
                     : webSocketSync.connectionStatus === "connecting"
-                    ? styles.connecting
-                    : styles.disconnected
-                }`}
-              >
-                {webSocketSync.connectionStatus === "connected"
-                  ? "🟢"
-                  : webSocketSync.connectionStatus === "connecting"
-                  ? "🟡"
-                  : "🔴"}
-              </span>
-              <span className={styles.syncText}>
-                {syncMode === SyncMode.SENDER ? "发送端" : "接收端"} -
-                {webSocketSync.connectionStatus === "connected"
-                  ? "已连接"
-                  : webSocketSync.connectionStatus === "connecting"
-                  ? "连接中"
-                  : "未连接"}
-              </span>
-              {webSocketSync.lastError && (
-                <span className={styles.syncError}>
-                  错误: {webSocketSync.lastError}
+                    ? "🟡"
+                    : "🔴"}
                 </span>
+                <span className={styles.connectionText}>
+                  【{syncMode === SyncMode.SENDER ? "监听端" : "接收端"}: {
+                    webSocketSync.connectionStatus === "connected"
+                      ? "连接"
+                      : webSocketSync.connectionStatus === "connecting"
+                      ? "连接中"
+                      : "未连接"
+                  }】
+                </span>
+              </div>
+              
+              {/* 对端连接状态 */}
+              <div className={styles.connectionItem}>
+                <span
+                  className={`${styles.statusIndicator} ${
+                    peerConnected ? styles.connected : styles.disconnected
+                  }`}
+                >
+                  {peerConnected ? "🟢" : "🔴"}
+                </span>
+                <span className={styles.connectionText}>
+                  【{syncMode === SyncMode.SENDER ? "接收端" : "监听端"}: {
+                    peerConnected ? "连接" : "未连接"
+                  }】
+                </span>
+              </div>
+              
+              {/* 错误信息显示 */}
+              {webSocketSync.lastError && (
+                <div className={styles.errorInfo}>
+                  <span className={styles.errorText}>
+                    错误: {webSocketSync.lastError}
+                  </span>
+                </div>
               )}
             </div>
           )}
@@ -488,6 +655,21 @@ export const InterviewUnderwayLoudspeaker: React.FC<
           </div>
         </div>
 
+        {/* 测试音频播放按钮 */}
+        <div className={styles.settingItem}>
+          <div className={styles.settingLabel}>音频测试：</div>
+          <div className={styles.settingControl}>
+            <button
+              onClick={isPlayingTestAudio ? stopTestAudio : playTestAudio}
+              className={`${styles.button} ${isPlayingTestAudio ? styles.pauseButton : styles.playButton}`}
+              disabled={!visible}
+            >
+              <span>{isPlayingTestAudio ? "⏸️ 停止播放" : "🎵 测试音频"}</span>
+            </button>
+            <span className={styles.settingStatus}>模拟面试官提问</span>
+          </div>
+        </div>
+
         {/* 暂停恢复按钮 */}
         <button
           onClick={togglePauseCommit}
@@ -513,6 +695,14 @@ export const InterviewUnderwayLoudspeaker: React.FC<
           <span>🗑️ 清空</span>
         </button>
       </div>
+
+      {/* 隐藏的测试音频元素 */}
+      <audio
+        ref={testAudioRef}
+        src="/mock_interviewer.mp3"
+        onEnded={handleTestAudioEnded}
+        style={{ display: 'none' }}
+      />
     </div>
   );
 };

@@ -147,6 +147,14 @@ export const InterviewLoudspeaker: React.FC = () => {
   const [syncEnabled, setSyncEnabled] = useState(false);
   const [syncMode, setSyncMode] = useState<SyncMode>(SyncMode.SENDER);
 
+  // 手机模式下默认设置
+  useEffect(() => {
+    if (isMobile) {
+      setSyncEnabled(true);
+      setSyncMode(SyncMode.RECEIVER);
+    }
+  }, [isMobile]);
+
   // 显示悬浮窗的处理函数
   const handleShowFromFloat = () => {
     setIsMinimized(false);

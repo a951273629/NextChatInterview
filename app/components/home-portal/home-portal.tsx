@@ -73,7 +73,7 @@ export function HomePortal() {
           {!isMobileScreen && (
             <nav className={styles.nav}>
               <a onClick={handlePortal} className={styles.navLink}>首页</a>
-              <a onClick={handlePortal} className={styles.navLink}>上传简历</a>
+              <a onClick={handeleUpload} className={styles.navLink}>上传简历</a>
               <a onClick={handleBuy} className={styles.navLink}>价格</a>
               <a onClick={handleAssistant} className={styles.navLink}>帮助文档</a>
             </nav>

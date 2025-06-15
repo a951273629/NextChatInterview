@@ -142,8 +142,9 @@ class WebSocketSyncServer {
       this.sendWelcomeMessage(client);
       this.messageHandler.sendRoomStatus(client);
 
-      // 广播房间状态更新
+      // 广播房间状态更新和对端状态
       this.messageHandler.broadcastRoomStatusUpdate(params.activationKey);
+      this.messageHandler.broadcastPeerStatus(params.activationKey);
 
       // 设置WebSocket事件监听
       ws.on('message', (message) => {
@@ -223,8 +224,9 @@ class WebSocketSyncServer {
       // 移除ws映射
       this.clientConnections.delete(client.ws);
 
-      // 广播房间状态更新
+      // 广播房间状态更新和对端状态
       this.messageHandler.broadcastRoomStatusUpdate(activationKey);
+      this.messageHandler.broadcastPeerStatus(activationKey);
 
     } catch (error) {
       console.error(formatLog('error', '处理客户端断开异常', {

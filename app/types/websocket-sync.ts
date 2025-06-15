@@ -16,7 +16,7 @@ export enum ConnectionStatus {
 
 // WebSocket 消息类型
 export interface WebSocketMessage {
-  type: "speech_recognition" | "ping" | "pong";
+  type: "speech_recognition" | "ping" | "pong" | "peer_status_update" | "room_status_update";
   timestamp: number;
   data: any;
 }
@@ -33,6 +33,31 @@ export interface SpeechRecognitionData {
 export interface SpeechRecognitionMessage extends WebSocketMessage {
   type: "speech_recognition";
   data: SpeechRecognitionData;
+}
+
+// 对端状态数据
+export interface PeerStatusData {
+  connected: boolean;
+  count: number;
+  mode: "sender" | "receiver";
+  clients: Array<{
+    id: string;
+    sessionId: string;
+    joinTime: number;
+  }>;
+}
+
+// 对端状态更新消息
+export interface PeerStatusUpdateMessage extends WebSocketMessage {
+  type: "peer_status_update";
+  data: {
+    peerStatus: PeerStatusData;
+    roomStats: {
+      total: number;
+      senders: number;
+      receivers: number;
+    };
+  };
 }
 
 // 同步配置
@@ -56,6 +81,7 @@ export interface UseWebSocketSyncReturn {
   connectionStatus: ConnectionStatus;
   connectedClients: number;
   lastError?: string;
+  peerStatus?: PeerStatusData;
 
   // 实时状态获取方法
   getConnectionStatus: () => ConnectionStatus;
@@ -69,6 +95,7 @@ export interface UseWebSocketSyncReturn {
 
   // 回调设置
   onSpeechRecognition?: (data: SpeechRecognitionData) => void;
+  onPeerStatusChange?: (peerStatus: PeerStatusData) => void;
 }
 
 // 常量

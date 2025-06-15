@@ -49,6 +49,13 @@ export class AzureSpeechRecognizer {
         SpeechSDK.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs,
         "2000",
       );
+      
+      // 🎯 关键修复：设置断句静默超时为2秒
+      // 这将确保在人声停止2秒后才进行断句处理
+      // this.speechConfig.setProperty(
+      //   SpeechSDK.PropertyId.Speech_SegmentationSilenceTimeoutMs,
+      //   "2500",
+      // );
 
 
       console.log("✅ Azure Speech 配置初始化成功");

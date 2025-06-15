@@ -11,7 +11,7 @@ COPY package.json yarn.lock ./
 # 设置环境变量跳过Husky安装
 ENV HUSKY=0
 RUN yarn config set registry 'https://registry.npmmirror.com/'
-RUN yarn install
+RUN yarn install --ignore-optional
 
 FROM base AS builder
 

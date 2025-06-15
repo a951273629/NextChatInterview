@@ -27,10 +27,7 @@
   "dependencies": {
     "@fortaine/fetch-event-source": "^3.0.6",
     "@hello-pangea/dnd": "^16.5.0",
-    "@mdx-js/loader": "^3.1.0",
-    "@mdx-js/react": "^3.1.0",
     "@modelcontextprotocol/sdk": "^1.0.4",
-    "@next/mdx": "^15.3.3",
     "@next/third-parties": "^14.1.0",
     "@svgr/webpack": "^6.5.1",
     "@tensorflow/tfjs": "^4.22.0",

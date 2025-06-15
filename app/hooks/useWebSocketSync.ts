@@ -6,6 +6,8 @@ import {
   WebSocketMessage,
   SpeechRecognitionData,
   SpeechRecognitionMessage,
+  PeerStatusData,
+  PeerStatusUpdateMessage,
   UseWebSocketSyncReturn,
   ACTIVATION_KEY_STRING,
   DEFAULT_WEBSOCKET_URL,
@@ -17,6 +19,7 @@ interface UseWebSocketSyncOptions {
   mode: SyncMode;
   enabled: boolean;
   onSpeechRecognition?: (data: SpeechRecognitionData) => void;
+  onPeerStatusChange?: (peerStatus: PeerStatusData) => void;
   serverUrl?: string;
 }
 
@@ -25,11 +28,13 @@ export const useWebSocketSync = ({
   mode,
   enabled,
   onSpeechRecognition,
+  onPeerStatusChange,
   serverUrl = DEFAULT_WEBSOCKET_URL,
 }: UseWebSocketSyncOptions): UseWebSocketSyncReturn => {
   // 状态管理
   const [connectedClients, setConnectedClients] = useState(0);
   const [lastError, setLastError] = useState<string | undefined>();
+  const [peerStatus, setPeerStatus] = useState<PeerStatusData | undefined>();
   const sessionIdRef = useRef<string>(nanoid());
 
   // WebSocket URL，包含激活密钥
@@ -81,6 +86,15 @@ export const useWebSocketSync = ({
             case "pong":
               // 收到心跳响应
               console.log("💓 收到心跳响应");
+              break;
+
+            case "peer_status_update":
+              const peerStatusMessage = message as PeerStatusUpdateMessage;
+              console.log("👥 收到对端状态更新:", peerStatusMessage.data);
+              setPeerStatus(peerStatusMessage.data.peerStatus);
+              if (onPeerStatusChange) {
+                onPeerStatusChange(peerStatusMessage.data.peerStatus);
+              }
               break;
 
             default:
@@ -200,6 +214,7 @@ export const useWebSocketSync = ({
     connectionStatus: getConnectionStatus(),
     connectedClients,
     lastError,
+    peerStatus,
 
     // 实时状态获取方法
     getConnectionStatus,
@@ -213,5 +228,6 @@ export const useWebSocketSync = ({
 
     // 回调
     onSpeechRecognition,
+    onPeerStatusChange,
   };
 };

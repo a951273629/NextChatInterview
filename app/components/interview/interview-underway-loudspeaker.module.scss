@@ -259,6 +259,14 @@
         background-color: rgba(0, 0, 0, 0.5);
       }
     }
+
+    &.playButton {
+      background-color: #4caf50;
+      
+      &:hover {
+        background-color: #45a049;
+      }
+    }
   }
 
   @media only screen and (max-width: 600px) {
@@ -313,6 +321,109 @@
   .matchScore {
     font-size: 0.8rem;
     color: #666;
+  }
+}
+
+// 双端连接状态容器样式
+.connectionStatusContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  
+  @media only screen and (max-width: 600px) {
+    padding: 6px 8px;
+    gap: 4px;
+    margin-top: 6px;
+  }
+}
+
+// 单个连接状态项样式
+.connectionItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  .statusIndicator {
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    
+    &.connected {
+      color: #4caf50;
+    }
+    
+    &.connecting {
+      color: #ffa726;
+    }
+    
+    &.disconnected {
+      color: #ff6b6b;
+    }
+  }
+  
+  .connectionText {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    
+    // 根据连接状态调整文字颜色
+    .connectionItem:has(.statusIndicator.connected) & {
+      color: #4caf50;
+    }
+    
+    .connectionItem:has(.statusIndicator.connecting) & {
+      color: #ffa726;
+    }
+    
+    .connectionItem:has(.statusIndicator.disconnected) & {
+      color: #ff6b6b;
+    }
+  }
+
+  @media only screen and (max-width: 600px) {
+    gap: 6px;
+    
+    .statusIndicator {
+      font-size: 0.8rem;
+      width: 14px;
+      height: 14px;
+    }
+    
+    .connectionText {
+      font-size: 0.8rem;
+    }
+  }
+}
+
+// 错误信息显示样式
+.errorInfo {
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  
+  .errorText {
+    font-size: 0.75rem;
+    color: #ff6b6b;
+    font-weight: 400;
+  }
+
+  @media only screen and (max-width: 600px) {
+    margin-top: 3px;
+    padding: 3px 6px;
+    
+    .errorText {
+      font-size: 0.7rem;
+    }
   }
 }
 
@@ -455,6 +566,24 @@
       .syncText,
       .syncError {
         display: none;
+      }
+      
+      // 在收窄模式下简化连接状态显示
+      .connectionStatusContainer {
+        padding: 4px 6px;
+        gap: 3px;
+        
+        .connectionItem {
+          gap: 4px;
+          
+          .connectionText {
+            display: none;
+          }
+        }
+        
+        .errorInfo {
+          display: none;
+        }
       }
     }
   }

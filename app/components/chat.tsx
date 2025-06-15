@@ -1139,7 +1139,7 @@ function _Chat() {
   }, []);
   // if user is typing, should auto scroll to bottom
   // if user is not typing, should auto scroll to bottom only if already at bottom
-  const { setAutoScroll, scrollDomToBottom } = useScrollToBottom(
+  const { autoScroll, setAutoScroll, scrollDomToBottom } = useScrollToBottom(
     scrollRef,
     (isScrolledToBottom || isAttachWithTop) && !isTyping,
     session.messages,
@@ -1149,6 +1149,9 @@ function _Chat() {
   const navigate = useNavigate();
   const [attachImages, setAttachImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+
+  // 定时器用于在生成期间保持滚动到底部
+  const scrollTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // prompt hints
   const promptStore = usePromptStore();
@@ -1523,6 +1526,35 @@ function _Chat() {
     );
     return renderMessages.slice(msgRenderIndex, endRenderIndex);
   }, [msgRenderIndex, renderMessages]);
+
+  // 检测是否有消息正在生成
+  const isGenerating = useMemo(() => {
+    return isLoading || renderMessages.some(msg => msg.streaming);
+  }, [isLoading, renderMessages]);
+
+  // 在模型生成期间定时滚动到底部，确保用户始终看到最新内容
+  useEffect(() => {
+    if (isGenerating && autoScroll) {
+      // 开始生成时启动定时器，每秒滚动一次
+      scrollTimerRef.current = setInterval(() => {
+        scrollDomToBottom();
+      }, 1000);
+    } else {
+      // 生成结束时清除定时器
+      if (scrollTimerRef.current) {
+        clearInterval(scrollTimerRef.current);
+        scrollTimerRef.current = null;
+      }
+    }
+
+    // 清理函数：组件卸载时清除定时器
+    return () => {
+      if (scrollTimerRef.current) {
+        clearInterval(scrollTimerRef.current);
+        scrollTimerRef.current = null;
+      }
+    };
+  }, [isGenerating, autoScroll, scrollDomToBottom]);
 
   const onChatBodyScroll = (e: HTMLElement) => {
     const bottomHeight = e.scrollTop + e.clientHeight;

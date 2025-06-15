@@ -118,30 +118,20 @@ export function getRemainingTime(): number {
 }
 
 /**
- * 格式化剩余时间为易读形式
+ * 格式化剩余时间为数字形式
  * @param remainingMs 剩余毫秒数
- * @returns 格式化后的时间字符串（例如：10天8小时）
+ * @returns 格式化后的时间数字（大于等于1分钟返回分钟数，小于1分钟返回秒数）
  */
 export function formatRemainingTime(remainingMs: number): string {
-  if (remainingMs <= 0) return "已过期";
+  if (remainingMs <= 0) return "0";
 
   const seconds = Math.floor(remainingMs / 1000);
   const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
 
-  if (days > 0) {
-    const remainingHours = hours % 24;
-    return `${days}天${remainingHours > 0 ? remainingHours + "小时" : ""}`;
-  } else if (hours > 0) {
-    const remainingMinutes = minutes % 60;
-    return `${hours}小时${
-      remainingMinutes > 0 ? remainingMinutes + "分钟" : ""
-    }`;
-  } else if (minutes > 0) {
-    return `${minutes}分钟`;
+  if (minutes >= 1) {
+    return minutes.toString();
   } else {
-    return `${seconds}秒`;
+    return seconds.toString();
   }
 }
 

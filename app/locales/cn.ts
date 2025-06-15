@@ -42,6 +42,7 @@ const cn = {
       },
     },
     Actions: {
+      Profile: "上传简历",
       ChatList: "查看消息列表",
       CompressedHistory: "查看压缩后的历史 Prompt",
       Export: "导出聊天记录",
@@ -152,9 +153,9 @@ const cn = {
     ResetConfirm: "确认清空历史摘要？",
   },
   Home: {
-    NewChat: "新的聊天",
-    DeleteChat: "确认删除选中的对话？",
-    DeleteToast: "已删除会话",
+    NewChat: "新的面试",
+    DeleteChat: "确认删除选中的面试？",
+    DeleteToast: "已删除面试记录",
     Revert: "撤销",
   },
   Settings: {
@@ -620,13 +621,13 @@ const cn = {
     },
   },
   Store: {
-    DefaultTopic: "新的聊天",
-    BotHello: "有什么可以帮你的吗",
+    DefaultTopic: "新的面试",
+    BotHello: "你好，我是面试羊AI助手，任何面试问题都可以问我",
     Error: "出错了，稍后重试吧",
     Prompt: {
       History: (content: string) => "这是历史聊天总结作为前情提要：" + content,
       Topic:
-        "使用四到五个字直接返回这句话的简要主题，不要解释、不要标点、不要语气词、不要多余文本，不要加粗，如果没有主题，请直接返回'闲聊'",
+        "使用四到五个字直接返回这句话的简要主题，不要解释、不要标点、不要语气词、不要多余文本，不要加粗，如果没有主题，请直接返回 '面试回话'",
       Summarize:
         "简要总结一下对话内容，用作后续的上下文提示 prompt，控制在 200 字以内",
     },

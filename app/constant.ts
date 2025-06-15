@@ -73,6 +73,7 @@ export interface Key {
 // 添加到现有的Path枚举中
 export enum Path {
   Home = "/",
+  HomePortal = "/portal",
   Chat = "/chat",
   Settings = "/settings",
   NewChat = "/new-chat",

@@ -77,10 +77,10 @@ Thumbs.db
 *.mov
 *.jpg
 *.jpeg
-*.png
+# *.png
 *.gif
 # *.svg
-*.ico
+# *.ico
 *.webp
 *.psd
 *.ai

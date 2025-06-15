@@ -9,7 +9,7 @@ import {
   LAST_SYNC_TIME,
   getRemainingTime,
 } from "./activation";
-import SettingsIcon from "../../icons/settings.svg";
+
 import KeyIcon from "../../icons/key.svg";
 import PauseIcon from "../../icons/pause.svg";
 import PlayIcon from "../../icons/play.svg";
@@ -295,7 +295,7 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
             position: "relative",
           }}
         >
-          <SettingsIcon style={{ height: "16px", width: "16px" }} />
+          <KeyIcon style={{ height: "16px", width: "16px" }} />
           {/* 剩余时间悬浮样式 */}
           <span
             style={{
@@ -303,7 +303,7 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
               top: "0.3rem",
               right: "5rem",
               // left: "0",
-              color: "rgba(255, 215, 0, 0.7)", // 半透明黄色字体
+              color: "rgba(252, 219, 32, 0.97)", // 半透明黄色字体
               padding: "2px 6px",
               borderRadius: "4px",
               fontSize: "1rem",
@@ -312,7 +312,7 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
               zIndex: 1000,
             }}
           >
-            剩余: {formatRemainingTime(remainingTime)}
+             {formatRemainingTime(remainingTime)}
           </span>
           <IconButton
             icon={<PauseIcon />}
@@ -339,7 +339,7 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
             gap: "6px",
           }}
         >
-          <SettingsIcon style={{ height: "16px", width: "16px" }} />
+          <KeyIcon style={{ height: "16px", width: "16px" }} />
           <span>已暂停</span>
           <IconButton
             icon={<PlayIcon />}

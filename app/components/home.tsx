@@ -104,6 +104,13 @@ const McpMarketPage = dynamic(
   },
 );
 
+const HomePortal = dynamic(
+  async () => (await import("./home-portal/home-portal")).HomePortal,
+  {
+    loading: () => <Loading noLogo />,
+  },
+);
+
 // const KeyGenerate = dynamic(
 //   async () => (await import("./KeyGenerate")).KeyGeneratePage,
 //   {
@@ -225,7 +232,7 @@ function Screen() {
   // 移动端默认路由重定向
   useEffect(() => {
     if (isMobileScreen && isHome) {
-      navigate(Path.Chat, { replace: true });
+      navigate(Path.HomePortal, { replace: true });
     }
   }, [isMobileScreen, isHome, navigate]);
 
@@ -251,10 +258,6 @@ function Screen() {
           {/* 只有登录时才可以路由到其他页面，相当于拦截器 */}
           {/* <AuthWrapper> */}
           <Routes>
-            <Route
-              path={Path.Home}
-              element={<Navigate to={Path.Chat} replace />}
-            />
             <Route path={Path.NewChat} element={<NewChat />} />
             <Route path={Path.Masks} element={<MaskPage />} />
             {/* 注释掉Plugin路由 - 用户不需要此功能 */}
@@ -342,7 +345,14 @@ export function Home() {
       <ActivationProvider>
         {/*  React Router在这里初始化 */}
         <Router>
-          <Screen />
+          <Routes>
+            <Route
+              path={Path.Home}
+              element={<Navigate to={Path.HomePortal} replace />}
+            />
+            <Route path={Path.HomePortal} element={<HomePortal />} />
+            <Route path="/*" element={<Screen />} />
+          </Routes>
           <NoticeManager />
         </Router>
       </ActivationProvider>

@@ -44,13 +44,14 @@ interface PreparationResumesUploadProps {
  */
 export function additionalResumeText(text: string) {
 
+  const selectLanguage =  localStorage.getItem("interviewLanguage") ==='auto-detect' ? "Chinese" : localStorage.getItem("interviewLanguage");
   const addtionText =
     `
     Interview Question:
       ${text}
 
     Promt:
-      You are now a super interview assistant. Answer all upcoming questions in ${typeof window !== 'undefined' ? localStorage.getItem("interviewLanguage") || "Chinese" : "Chinese"} language. Base every answer strictly on my résumé. Speak succinctly and positively.
+      You are now a super interview assistant. Answer all upcoming questions in ${typeof window !== 'undefined' ? selectLanguage || "Chinese" : "Chinese"} language. Base every answer strictly on my résumé. Speak succinctly and positively.
      When responding, think step-by-step using the STAR method before you speak, but reveal only the final polished answer.
      For behavioral questions, structure each reply as Situation → Action → Result and keep it under 2 minutes.
      Whenever possible, include one quantified metric (e.g., % improvement, $ savings) to demonstrate impact.

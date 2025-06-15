@@ -32,6 +32,7 @@ import PinIcon from "../icons/pin.svg";
 import ConfirmIcon from "../icons/confirm.svg";
 import CloseIcon from "../icons/close.svg";
 import CancelIcon from "../icons/cancel.svg";
+import ProfileIcon from "../icons/profile.svg";
 
 import BottomIcon from "../icons/bottom.svg";
 import StopIcon from "../icons/pause.svg";
@@ -124,6 +125,7 @@ import { getAvailableClientsCount, isMcpEnabled } from "../mcp/actions";
 import { useActivation } from "./valid-wrapper/ActivationWrapper";
 import ActivationStatus from "./valid-wrapper/ActivationStatus";
 import { additionalResumeText } from "./personal-set/preparation-resumes-upload";
+import PreparationResumesUpload from "./personal-set/preparation-resumes-upload";
 // import { useInterviewLanguage } from "@/app/hooks/useInterviewLanguage";
 
 const localStorage = safeLocalStorage();
@@ -840,13 +842,13 @@ export function ChatActions(props: {
             checkActivation(() => handleStartInterview());
           }} */}
           {/* 新增：TensorFlow 跳转按钮 */}
-          <ChatActionVoice
+          {/* <ChatActionVoice
             onClick={() => {
               navigate(Path.TensorFlow);
             }}
             text="声纹"
             icon={<BrainIcon />}
-          />
+          /> */}
           {/* {showPluginSelector && (
             <Selector
               multiple
@@ -1091,6 +1093,7 @@ function _Chat() {
   // const [, , isEnglish] = useInterviewLanguage();
 
   const [showExport, setShowExport] = useState(false);
+  const [showResumeUpload, setShowResumeUpload] = useState(false);
 
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -1858,7 +1861,7 @@ function _Chat() {
               <ActivationStatus className={styles["activation-status"]} />
             </div>
 
-            <div className="window-action-button">
+            {/* <div className="window-action-button">
               <IconButton
                 icon={<ReloadIcon />}
                 bordered
@@ -1868,8 +1871,8 @@ function _Chat() {
                   chatStore.summarizeSession(true, session);
                 }}
               />
-            </div>
-            {!isMobileScreen && (
+            </div> */}
+            {/* {!isMobileScreen && (
               <div className="window-action-button">
                 <IconButton
                   icon={<RenameIcon />}
@@ -1879,9 +1882,19 @@ function _Chat() {
                   onClick={() => setIsEditingMessage(true)}
                 />
               </div>
-            )}
-
+            )} */}
             <div className="window-action-button">
+              <IconButton
+                icon={<ProfileIcon />}
+                bordered
+                title={Locale.Chat.Actions.Profile}
+                onClick={() => {
+                  // 打开上传简历弹窗
+                  setShowResumeUpload(true);
+                }}
+              />
+            </div>
+            {/* <div className="window-action-button">
               <IconButton
                 icon={<ExportIcon />}
                 bordered
@@ -1890,9 +1903,9 @@ function _Chat() {
                   setShowExport(true);
                 }}
               />
-            </div>
+            </div> */}
 
-            {showMaxIcon && (
+            {/* {showMaxIcon && (
               <div className="window-action-button">
                 <IconButton
                   icon={config.tightBorder ? <MinIcon /> : <MaxIcon />}
@@ -1906,7 +1919,8 @@ function _Chat() {
                   }}
                 />
               </div>
-            )}
+            )} */}
+
           </div>
 
           <PromptToast
@@ -2362,6 +2376,12 @@ function _Chat() {
 
       {showShortcutKeyModal && (
         <ShortcutKeyModal onClose={() => setShowShortcutKeyModal(false)} />
+      )}
+
+      {showResumeUpload && (
+        <PreparationResumesUpload
+          onClose={() => setShowResumeUpload(false)}
+        />
       )}
 
       {/* {showOverlay && (

@@ -1223,7 +1223,7 @@ function _Chat() {
 
   const { checkActivation } = useActivation();
 
-  const doSubmit = (userInput: string) => {
+  const doSubmit = useCallback((userInput: string) => {
     console.log("发送消息");
 
     if (userInput.trim() === "" && isEmpty(attachImages)) return;
@@ -1247,7 +1247,7 @@ function _Chat() {
     setPromptHints([]);
     if (!isMobileScreen) inputRef.current?.focus();
     setAutoScroll(true);
-  };
+  }, [attachImages, chatStore, isMobileScreen, inputRef, setAttachImages, setIsLoading, setUserInput, setPromptHints, setAutoScroll]);
 
   const onPromptSelect = (prompt: RenderPrompt) => {
     setTimeout(() => {

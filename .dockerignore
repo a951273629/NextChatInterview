@@ -120,3 +120,38 @@ nginx/
 # 特定资源文件
 public/backgroud.png
 public/pdf.worker.min.js
+
+# 额外的开发文件（Docker 优化）
+**/*.md
+*.md
+.env.example
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.history/
+.cache/
+coverage/
+
+# Docker 相关文件（构建时不需要）
+docker-compose.*.yml
+Dockerfile.*
+.dockerignore
+
+# CI/CD 文件
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# 日志和临时文件
+*.log
+.npm
+.yarn-error.log
+.yarn-integrity
+
+# 备份文件
+*.backup
+*.bak
+*.orig

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import styles from "./ActivateKeyDialog.module.scss";
-import { setActivated } from "./activation";
+import { setActivated,clearActivation } from "./activation";
 import {
   activateKey,
   getDeviceInfo,
@@ -58,6 +58,9 @@ const ActivateKeyDialog: React.FC<ActivateKeyDialogProps> = ({
 
       // 获取设备信息
       const { ipAddress, hardwareName } = await getDeviceInfo();
+
+      // 清除本地存储的密钥相关状态
+      clearActivation();
 
       // 首先查询密钥状态
       const keyInfo = await getKeyByString(keyString.trim());

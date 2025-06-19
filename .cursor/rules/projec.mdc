@@ -1,6 +1,62 @@
 ---
 description: 
-globs: 
-alwaysApply: true
+globs: *.tsx,*.*
+alwaysApply: false
 ---
 anytime don't to try run "yarn dev" command.
+
+All generated code needs to be: "Minimal closures Minimal intrusiveness" 
+The specific rules are as follows:
+
+Minimal-Change-Closure Rule
+
+Size constraints:
+Prioritize generation or suggest XS/S/M level changes; split should be proposed if estimated line count > 200 or number of affected files > 10.
+
+Single Intent:
+
+Each change addresses only one bug, one feature point, or one refactoring; no mixing of “feature + formatting/deletion”, etc.
+
+Closed-loop self-contained:
+
+Generated changes must be: compilable, pass all existing tests, come with new tests and rollback scripts as necessary.
+
+Tagged Output:
+
+Attach Size: XS|S|M|L|XL to review suggestions or commit descriptions; if L/XL, automatically append “split suggestions”.
+
+Stacked-Diff Support:
+
+When a split is unavoidable, output the “parent-child” dependency order (e.g., CL-1 → CL-2) and reference the previous reviewed CL at each level.
+
+Reviewing SLAs:
+
+If AI needs to assign Reviewer, XS-M first response ≤ 4 h; L/XL first response ≤ 24 h with split plan.
+
+Violation Handling:
+
+If large unsplit changes are detected, generate a “Split Step + Pause Review” prompt instead of continuing the review.
+
+
+Output Example:
+# Minimal-Change-Closure Enforcement
+[Change_Estimate]
+  lines_added: <num>
+  lines_deleted: <num>
+  files_changed: <num>
+  size_label: <XS|S|M|L|XL>
+[Compliance_Check]
+  single_purpose: <yes|no>
+  build_passes: <yes|no>
+  tests_updated: <yes|no>
+  rollback_ready: <yes|no>
+[AI_Action]
+  - If size_label in {L, XL} OR single_purpose=no THEN
+      respond_with: "SPLIT_REQUIRED"
+      suggest_steps: [...]
+  - ELSE
+      respond_with: "REVIEW_OK"
+      next_steps: [...]
+
+
+

@@ -534,7 +534,7 @@ const openaiModels = [
   // "gpt-4-turbo",
   // "gpt-4-turbo-preview",
   "gpt-4.1",
-  "gpt-4.5-preview",
+  // "gpt-4.5-preview",
   // "gpt-4.1-2025-04-14",
   // "gpt-4.1-mini",
   // "gpt-4.1-mini-2025-04-14",
@@ -556,9 +556,9 @@ const openaiModels = [
   // "o1-mini",
   // "o1-preview",
   "o3-mini",
-  "o3",
-  "o4-mini",
-  "gemini-2.5-pro-preview-06-05",
+  // "o3",
+  // "o4-mini",
+  // "gemini-2.5-pro-preview-06-05",
   "deepseek-r1-250528",
 ];
 

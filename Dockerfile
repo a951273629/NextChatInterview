@@ -25,6 +25,7 @@ ENV CODE=""
 
 # 接收从 docker build 命令传入的构建参数
 ARG NEXT_PUBLIC_AZURE_SPEECH_KEY
+
 # 将构建参数设置为环境变量，以便 next build 命令可以访问
 ENV NEXT_PUBLIC_AZURE_SPEECH_KEY=$NEXT_PUBLIC_AZURE_SPEECH_KEY
 

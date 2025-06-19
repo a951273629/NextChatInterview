@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import styles from "./ActivateKeyDialog.module.scss";
-import { setActivated,clearActivation } from "./activation";
+import { setActivated, clearActivation } from "./activation";
 import {
   activateKey,
   getDeviceInfo,
@@ -102,40 +102,36 @@ const ActivateKeyDialog: React.FC<ActivateKeyDialogProps> = ({
         } else {
           throw new Error("暂停的密钥剩余时间已耗尽，无法恢复");
         }
-        
       } else if (keyInfo.status === KeyStatus.ACTIVE) {
         updatedKey = keyInfo;
       }
 
       if (updatedKey) {
         // 设置本地激活状态
-        if (updatedKey.expires_at) {
-          setActivated(
-            updatedKey.key_string,
-            updatedKey.expires_at,
-            ipAddress,
-            hardwareName,
-          );
 
-          // 显示成功消息
-          toast.success(`密钥${operationType}成功！`, {
-            duration: 3000,
-            style: {
-              border: "1px solid #4CAF50",
-              padding: "16px",
-              color: "#333",
-            },
-          });
+        setActivated(
+          updatedKey.key_string,
+          updatedKey.expires_at,
+          ipAddress,
+          hardwareName,
+        );
 
-          // 关闭弹窗
-          onClose();
+        // 显示成功消息
+        toast.success(`密钥${operationType}成功！`, {
+          duration: 3000,
+          style: {
+            border: "1px solid #4CAF50",
+            padding: "16px",
+            color: "#333",
+          },
+        });
 
-          // 如果有成功回调，执行它
-          if (onSuccess) {
-            onSuccess();
-          }
-        } else {
-          throw new Error(`${operationType}成功但未返回过期时间`);
+        // 关闭弹窗
+        onClose();
+
+        // 如果有成功回调，执行它
+        if (onSuccess) {
+          onSuccess();
         }
       }
     } catch (err) {

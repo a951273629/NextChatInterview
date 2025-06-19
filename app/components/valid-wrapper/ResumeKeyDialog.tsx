@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import styles from "./ActivateKeyDialog.module.scss"; // 复用现有样式
-import { ACTIVATION_KEY_STRING, ACTIVATION_KEY } from "./activation";
+import { ACTIVATION_KEY_STRING, ACTIVATION_KEY, clearActivation, setActivated } from "./activation";
 import { IconButton } from "../button";
 import CloseIcon from "../../icons/close.svg";
 import LoadingIcon from "../../icons/three-dots.svg";
@@ -53,13 +53,19 @@ const ResumeKeyDialog: React.FC<ResumeKeyDialogProps> = ({
       setIsLoading(true);
       setError(null);
 
+
       // 调用服务层恢复密钥
       const updatedKey = await resumeKey(keyString);
 
       if (updatedKey && updatedKey.expires_at) {
+        // 清除本地存储的密钥相关状态
+        clearActivation();
+
+
+        // 恢复秘钥立马更新一次 本地状态
+        setActivated(keyString, updatedKey.expires_at, updatedKey.ip_address, updatedKey.hardware_name);
         // 更新本地存储
-        localStorage.setItem("user_activation_expiry", updatedKey.expires_at.toString());
-        localStorage.setItem(ACTIVATION_KEY, "active");
+
 
         // 显示成功消息
         toast.success("密钥恢复成功！", {

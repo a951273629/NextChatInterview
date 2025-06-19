@@ -74,6 +74,75 @@ export function createKey(expiresHours: number = 2, notes?: string): Key {
 }
 
 /**
+ * 批量创建密钥
+ * @param count 创建数量
+ * @param expiresHours 密钥过期时间（小时），默认为2小时
+ * @param notes 备注信息
+ * @returns 创建的密钥对象数组
+ */
+export function createBatchKeys(count: number, expiresHours: number = 2, notes?: string): Key[] {
+  // 验证参数
+  if (count <= 0 || count > 1000) {
+    throw new Error("批量创建数量必须在1-1000之间");
+  }
+
+  try {
+    const createdKeys: Key[] = [];
+    const nowJs = Date.now();
+    const now = toSqliteTimestamp(nowJs);
+
+    // 准备批量插入语句
+    const stmt = db.prepare(`
+      INSERT INTO keys (key_string, status, created_at, expires_at, activated_at, activated_ip, hardware_name, duration_hours, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    // 使用事务进行批量插入
+    const transaction = db.transaction(() => {
+      for (let i = 0; i < count; i++) {
+        // 生成唯一密钥字符串
+        const keyString = generateKeyString();
+        
+        const info = stmt.run(
+          keyString,
+          KeyStatus.INACTIVE,
+          now,
+          null,
+          null,
+          null,
+          null,
+          expiresHours,
+          notes || null,
+        );
+
+        // 添加到结果数组
+        createdKeys.push({
+          id: info.lastInsertRowid as number,
+          key_string: keyString,
+          status: KeyStatus.INACTIVE,
+          created_at: nowJs,
+          expires_at: null,
+          activated_at: null,
+          activated_ip: null,
+          hardware_name: null,
+          duration_hours: expiresHours,
+          notes: notes || null,
+        });
+      }
+    });
+
+    // 执行事务
+    transaction();
+
+    console.log(`成功批量创建 ${count} 个密钥`);
+    return createdKeys;
+  } catch (error) {
+    console.error("批量创建密钥失败:", error);
+    throw new Error(`批量创建密钥失败: ${(error as Error).message}`);
+  }
+}
+
+/**
  * 通过密钥字符串查找密钥
  */
 export function getKeyByString(keyString: string): Key | undefined {

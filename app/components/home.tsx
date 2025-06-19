@@ -32,10 +32,11 @@ import { type ClientApi, getClientApi } from "../client/api";
 import { useAccessStore } from "../store";
 import clsx from "clsx";
 import { initializeMcpSystem, isMcpEnabled } from "../mcp/actions";
-import LoginPage from "../pages/login";
+import LoginPage from "./login/login";
 import TensorFlow from "./tensor-flow/TensorFlow";
 import { ActivationProvider } from "./valid-wrapper/ActivationWrapper";
 import { NoticeManager } from "./notice/notice-announcement";
+import { ProtectedRoute } from "./login/ProtectedRoute";
 
 export function Loading(props: { noLogo?: boolean }) {
   return (
@@ -111,19 +112,19 @@ const HomePortal = dynamic(
   },
 );
 
-// const KeyGenerate = dynamic(
-//   async () => (await import("./KeyGenerate")).KeyGeneratePage,
-//   {
-//     loading: () => <Loading noLogo />,
-//   },
-// );
+const KeyGenerate = dynamic(
+  async () => (await import("./key-generate/KeyGenerate")).KeyGeneratePage,
+  {
+    loading: () => <Loading noLogo />,
+  },
+);
 
-// const NoticeSet = dynamic(
-//   async () => (await import("./notice/notice-set")).NoticeSet,
-//   {
-//     loading: () => <Loading noLogo />,
-//   },
-// );
+const NoticeSet = dynamic(
+  async () => (await import("./notice/notice-set")).NoticeSet,
+  {
+    loading: () => <Loading noLogo />,
+  },
+);
 // const InterviewPage = dynamic(
 //   async ()=>(await import("./interview-overlay")).InterviewOverlay,{
 //     loading: ()=> <Loading noLogo/>
@@ -167,15 +168,18 @@ export function useMobileFullscreen() {
 
   const enterFullscreen = useCallback(() => {
     if (!isMobileScreen) return;
-    
+
     const element = document.documentElement;
     if (element.requestFullscreen) {
       element.requestFullscreen();
-    } else if ((element as any).webkitRequestFullscreen) { // Safari
+    } else if ((element as any).webkitRequestFullscreen) {
+      // Safari
       (element as any).webkitRequestFullscreen();
-    } else if ((element as any).mozRequestFullScreen) { // Firefox
+    } else if ((element as any).mozRequestFullScreen) {
+      // Firefox
       (element as any).mozRequestFullScreen();
-    } else if ((element as any).msRequestFullscreen) { // IE/Edge
+    } else if ((element as any).msRequestFullscreen) {
+      // IE/Edge
       (element as any).msRequestFullscreen();
     }
   }, [isMobileScreen]);
@@ -190,7 +194,7 @@ export function useMobileFullscreen() {
 
   const hideAddressBar = useCallback(() => {
     if (!isMobileScreen) return;
-    
+
     // 通过滚动隐藏地址栏
     setTimeout(() => {
       window.scrollTo(0, 1);
@@ -202,7 +206,10 @@ export function useMobileFullscreen() {
 
     const handleFullscreenChange = () => {
       setIsFullscreen(
-        !!(document.fullscreenElement || (document as any).webkitFullscreenElement)
+        !!(
+          document.fullscreenElement ||
+          (document as any).webkitFullscreenElement
+        ),
       );
     };
 
@@ -211,30 +218,33 @@ export function useMobileFullscreen() {
     };
 
     // 监听全屏状态变化
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+
     // 监听设备方向变化
-    window.addEventListener('orientationchange', handleOrientationChange);
-    window.addEventListener('load', hideAddressBar);
+    window.addEventListener("orientationchange", handleOrientationChange);
+    window.addEventListener("load", hideAddressBar);
 
     // 初始尝试隐藏地址栏
     hideAddressBar();
 
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      window.removeEventListener('orientationchange', handleOrientationChange);
-      window.removeEventListener('load', hideAddressBar);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener(
+        "webkitfullscreenchange",
+        handleFullscreenChange,
+      );
+      window.removeEventListener("orientationchange", handleOrientationChange);
+      window.removeEventListener("load", hideAddressBar);
     };
   }, [isMobileScreen, hideAddressBar]);
 
-  return { 
-    isFullscreen, 
-    enterFullscreen, 
-    exitFullscreen, 
+  return {
+    isFullscreen,
+    enterFullscreen,
+    exitFullscreen,
     hideAddressBar,
-    isMobileScreen 
+    isMobileScreen,
   };
 }
 
@@ -353,7 +363,7 @@ function Screen() {
             </Route>
             <Route path={Path.Settings} element={<Settings />} />
             <Route path={Path.McpMarket} element={<McpMarketPage />} />
-            <Route path={Path.Login} element={<LoginPage />} />
+
             <Route path={Path.TensorFlow} element={<TensorFlow />} />
           </Routes>
           {/* </AuthWrapper> */}
@@ -429,6 +439,23 @@ export function Home() {
               element={<Navigate to={Path.HomePortal} replace />}
             />
             <Route path={Path.HomePortal} element={<HomePortal />} />
+            <Route path={Path.Login} element={<LoginPage />} />
+            <Route
+              path={Path.SetNotice}
+              element={
+                <ProtectedRoute>
+                  <NoticeSet />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={Path.KeyGenerate}
+              element={
+                <ProtectedRoute>
+                  <KeyGenerate />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/*" element={<Screen />} />
           </Routes>
           <NoticeManager />

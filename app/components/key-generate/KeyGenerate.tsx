@@ -3,7 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { KeyStatus, Key } from "../constant";
+import { KeyStatus, Key } from "../../constant";
 import styles from "./KeyGenerate.module.scss";
 import { 
   pauseKey, 
@@ -14,7 +14,7 @@ import {
   activateKey, 
   revokeKey, 
   getDeviceInfo 
-} from "../services/keyService";
+} from "../../services/keyService";
 
 // 分页配置
 const PAGE_SIZE = 10;
@@ -43,6 +43,16 @@ export function KeyGeneratePage() {
     visible: boolean;
   }>({ message: "", type: "success", visible: false });
   const [noteInput, setNoteInput] = useState<string>("");
+  
+  // 批量生成相关状态
+  const [isBatchMode, setIsBatchMode] = useState<boolean>(false);
+  const [batchCount, setBatchCount] = useState<number>(10);
+  const [batchLoading, setBatchLoading] = useState<boolean>(false);
+  const [batchProgress, setBatchProgress] = useState<{
+    current: number;
+    total: number;
+    visible: boolean;
+  }>({ current: 0, total: 0, visible: false });
 
   // 加载所有密钥
   const loadKeys = async () => {
@@ -100,6 +110,71 @@ export function KeyGeneratePage() {
       showNotification(`创建密钥失败: ${(err as Error).message}`, "error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 批量创建密钥
+  const handleBatchCreateKeys = async () => {
+    if (batchCount <= 0 || batchCount > 1000) {
+      showNotification("批量生成数量必须在1-1000之间", "error");
+      return;
+    }
+
+    try {
+      setBatchLoading(true);
+      setBatchProgress({ current: 0, total: batchCount, visible: true });
+
+      // 调用批量创建API
+      const response = await fetch("/api/key-generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          count: batchCount,
+          expiresHours,
+          notes: noteInput,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // 更新进度到100%
+        setBatchProgress({ current: batchCount, total: batchCount, visible: true });
+        
+        // 添加新创建的密钥到列表前面
+        setKeys((prevKeys) => [...data.keys, ...prevKeys]);
+        setTotalPages(Math.ceil((keys.length + data.keys.length) / PAGE_SIZE));
+        
+        // 自动选中新生成的密钥
+        const newKeyStrings = data.keys.map((key: Key) => key.key_string) as string[];
+        const newSelectedKeys = new Set<string>(newKeyStrings);
+        setSelectedKeys(newSelectedKeys);
+        setIsAllSelected(false); // 因为只选中了新生成的密钥，不是全选状态
+        
+        // 清空表单
+        setNoteInput("");
+        setBatchCount(10);
+        
+        showNotification(`成功批量创建 ${data.count} 个密钥！即将自动导出...`, "success");
+        
+        // 自动触发导出
+        setTimeout(() => {
+          autoExportBatchKeys(data.keys);
+        }, 1000); // 延迟1秒确保用户看到通知
+      } else {
+        throw new Error(data.error || "批量创建失败");
+      }
+    } catch (err) {
+      setError(`批量创建密钥失败: ${(err as Error).message}`);
+      showNotification(`批量创建密钥失败: ${(err as Error).message}`, "error");
+    } finally {
+      setBatchLoading(false);
+      // 延迟隐藏进度条
+      setTimeout(() => {
+        setBatchProgress(prev => ({ ...prev, visible: false }));
+      }, 2000);
     }
   };
 
@@ -386,6 +461,43 @@ export function KeyGeneratePage() {
     setIsAllSelected(!isAllSelected);
   };
 
+  // 自动导出批量生成的密钥
+  const autoExportBatchKeys = (keysToExport: Key[]) => {
+    setExportLoading(true);
+
+    try {
+      let exportText = "批量生成密钥导出时间: " + new Date().toLocaleString() + "\n\n";
+
+      keysToExport.forEach((key, index) => {
+        exportText += `密钥 ${index + 1} `;
+        exportText += `密钥: ${key.key_string} `;
+        exportText += `有效时长: ${key.duration_hours || 2}小时`;
+        if (key.notes) {
+          exportText += ` 备注: ${key.notes}`;
+        }
+        exportText += "\n";
+      });
+
+      // 创建Blob和下载链接
+      const blob = new Blob([exportText], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `批量生成密钥_${new Date().toISOString().slice(0, 10)}.txt`;
+
+      // 触发下载
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showNotification(`成功导出 ${keysToExport.length} 个批量生成的密钥`, "success");
+    } catch (err) {
+      showNotification(`自动导出失败: ${(err as Error).message}`, "error");
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   // 导出选中的密钥为TXT
   const handleExportSelected = () => {
     if (selectedKeys.size === 0) {
@@ -634,7 +746,20 @@ export function KeyGeneratePage() {
 
       {/* 创建密钥区域 */}
       <div className={styles.card}>
-        <h2 className={styles.cardTitle}>创建新密钥</h2>
+        <div className={styles.cardHeader}>
+          <h2 className={styles.cardTitle}>创建新密钥</h2>
+          <div className={styles.modeToggle}>
+            <label className={styles.toggleContainer}>
+              <input
+                type="checkbox"
+                checked={isBatchMode}
+                onChange={(e) => setIsBatchMode(e.target.checked)}
+              />
+              <span className={styles.toggleSlider}></span>
+              <span className={styles.toggleLabel}>批量模式</span>
+            </label>
+          </div>
+        </div>
         <div className={styles.cardContent}>
           <div className={styles.formGroup}>
             <label htmlFor="expiresHours">有效期（小时）:</label>
@@ -647,6 +772,24 @@ export function KeyGeneratePage() {
               className={styles.input}
             />
           </div>
+          
+          {isBatchMode && (
+            <div className={styles.formGroup}>
+              <label htmlFor="batchCount">生成数量:</label>
+              <input
+                id="batchCount"
+                type="number"
+                min="1"
+                max="1000"
+                value={batchCount}
+                onChange={(e) => setBatchCount(parseInt(e.target.value) || 10)}
+                className={styles.input}
+                placeholder="1-1000"
+              />
+              <small className={styles.formHint}>最多可批量生成1000个密钥</small>
+            </div>
+          )}
+          
           <div className={styles.formGroup}>
             <label htmlFor="noteInput">备注信息:</label>
             <input
@@ -658,13 +801,41 @@ export function KeyGeneratePage() {
               placeholder="可选备注信息"
             />
           </div>
-          <button
-            className={styles.createButton}
-            onClick={handleCreateKey}
-            disabled={loading}
-          >
-            {loading ? "处理中..." : "创建密钥"}
-          </button>
+
+          {/* 批量生成进度条 */}
+          {batchProgress.visible && (
+            <div className={styles.progressContainer}>
+              <div className={styles.progressLabel}>
+                批量生成进度: {batchProgress.current} / {batchProgress.total}
+              </div>
+              <div className={styles.progressBar}>
+                <div 
+                  className={styles.progressFill}
+                  style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+
+          <div className={styles.buttonGroup}>
+            {isBatchMode ? (
+              <button
+                className={styles.batchCreateButton}
+                onClick={handleBatchCreateKeys}
+                disabled={batchLoading || loading}
+              >
+                {batchLoading ? `生成中... (${batchProgress.current}/${batchProgress.total})` : `批量创建 ${batchCount} 个密钥`}
+              </button>
+            ) : (
+              <button
+                className={styles.createButton}
+                onClick={handleCreateKey}
+                disabled={loading || batchLoading}
+              >
+                {loading ? "处理中..." : "创建密钥"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

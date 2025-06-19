@@ -3,10 +3,10 @@ description:
 globs: *.tsx,*.*
 alwaysApply: false
 ---
-anytime don't to try run "yarn dev" command.
+All generated code needs to be: [Minimal closures Minimal intrusiveness]
 
-All generated code needs to be: "Minimal closures Minimal intrusiveness" 
-The specific rules are as follows:
+The user can attach: [Minimal] to the message, then this protocol will be strictly enforced.
+The specific rules are as follows：
 
 Minimal-Change-Closure Rule
 

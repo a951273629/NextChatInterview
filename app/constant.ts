@@ -89,6 +89,8 @@ export enum Path {
   McpMarket = "/mcp-market",
   InterviewMicrophone = "/chat/interview-microphone",
   InterviewLoudspeaker = "/chat/interview-loudspeaker",
+  SetNotice = "/login/set-notice",
+  KeyGenerate = "/login/key-generate",
 }
 
 export enum ApiPath {

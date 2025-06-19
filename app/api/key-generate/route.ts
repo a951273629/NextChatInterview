@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   getAllKeys,
   createKey,
+  createBatchKeys,
   deleteKey,
   activateKey,
   getKeysByStatus,
@@ -64,14 +65,34 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// 创建新密钥
+// 创建新密钥（支持单个和批量创建）
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { expiresHours = 24, notes } = body;
+    const { expiresHours = 24, notes, count } = body;
 
-    const newKey = createKey(expiresHours, notes);
-    return NextResponse.json(newKey, { status: 201 });
+    // 如果提供了count参数，执行批量创建
+    if (count && count > 1) {
+      // 验证批量创建参数
+      if (typeof count !== 'number' || count <= 0 || count > 1000) {
+        return NextResponse.json(
+          { error: "批量创建数量必须在1-1000之间" },
+          { status: 400 },
+        );
+      }
+
+      const newKeys = createBatchKeys(count, expiresHours, notes);
+      return NextResponse.json({
+        success: true,
+        count: newKeys.length,
+        keys: newKeys,
+        message: `成功批量创建 ${newKeys.length} 个密钥`
+      }, { status: 201 });
+    } else {
+      // 单个创建
+      const newKey = createKey(expiresHours, notes);
+      return NextResponse.json(newKey, { status: 201 });
+    }
   } catch (error) {
     console.error("创建密钥失败:", error);
     return NextResponse.json(

@@ -57,7 +57,6 @@ import {
   useChatStore,
   // usePluginStore,
 } from "../store";
-
 import {
   autoGrowTextArea,
   copyToClipboard,
@@ -1855,6 +1854,7 @@ function _Chat() {
   return (
     <>
       <div className={styles.chat} key={session.id}>
+      {/* <TavilyTest /> */}
         {/* 聊天窗口头部 */}
         <div className="window-header" data-tauri-drag-region>
           {isMobileScreen && (

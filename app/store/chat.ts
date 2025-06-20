@@ -38,6 +38,63 @@ import { collectModelsWithDefaultModel } from "../utils/model";
 import { createEmptyMask, Mask } from "./mask";
 import { executeMcpAction, getAllTools, isMcpEnabled } from "../mcp/actions";
 import { extractMcpJson, isMcpJson } from "../mcp/utils";
+import { detectCommand, CommandMapping } from "../mcp/command-mapping";
+import { McpRequestMessage } from "../mcp/types";
+
+/**
+ * ========================= MCP-LLM 闭环工作流程说明 =========================
+ * 
+ * ## 概述
+ * 本文件实现了 MCP (Model Context Protocol) 工具与 LLM 的闭环集成，
+ * 工作流程：MCP工具执行 → 立即显示结果 → LLM分析 → 流式输出。
+ * 
+ * ## 工作流程
+ * 
+ * ### 1. 用户输入阶段
+ * - 用户输入："搜索一下最新的AI技术发展"
+ * - 系统检测到这是一个MCP指令（tavily-search）
+ * 
+ * ### 2. MCP工具执行阶段
+ * - 执行 tavily-search 工具获取搜索结果
+ * - **立即显示工具结果给用户**
+ * 
+ * ### 3. LLM分析阶段
+ * - 使用 resultTemplate 构造增强提示词
+ * - 将工具结果注入到LLM的上下文中
+ * - LLM基于工具结果生成智能回答
+ * 
+ * ### 4. 结果展示阶段
+ * - 用户先看到MCP工具的执行结果
+ * - 然后看到LLM基于工具结果的流式分析
+ * - 两个消息分别显示，清晰明了
+ * 
+ * ## 默认行为
+ * 
+ * - `shouldContinueToLLM` 默认为 true
+ * - 所有MCP工具都会继续传递给LLM进行分析
+ * - 提供最佳的用户体验：工具结果 + AI智能解读
+ * 
+ * ## 配置示例
+ * ```typescript
+ * {
+ *   keywords: ["搜索", "search"],
+ *   clientId: "tavily-mcp",
+ *   toolName: "tavily-search", 
+ *   continueToLLM: true, // 可省略，默认为true
+ *   resultTemplate: "基于以下搜索结果：{{mcpResult}}\\n\\n用户问题：{{originalQuery}}"
+ * }
+ * ```
+ */
+
+// ==================== MCP-LLM闭环类型定义 ====================
+interface McpCommandResult {
+  executed: boolean;           // 是否成功执行了MCP指令
+  result?: string;            // MCP工具的执行结果（原始数据）
+  shouldContinueToLLM: boolean; // 是否应该继续传递给LLM
+  originalIntent: string;     // 用户的原始意图/查询
+  enhancedPrompt?: string;    // 增强后的提示词（包含工具结果作为上下文）
+  command?: CommandMapping;   // 执行的命令配置信息
+}
 
 const localStorage = safeLocalStorage();
 
@@ -399,24 +456,85 @@ export const useChatStore = createPersistStore(
 
         get().updateStat(message, targetSession);
 
-        get().checkMcpJson(message);
+        // get().checkMcpJson(message);
         // TODO: 会报错，暂时注释
         // get().summarizeSession(false, targetSession);
       },
 
+      /**
+       * 处理用户输入的核心函数
+       * 
+       * @param content 用户输入的文本内容
+       * @param attachImages 附加的图片数组（可选）
+       * @param isMcpResponse 是否为MCP响应（用于处理MCP工具返回的结果）
+       * 
+       * 主要流程：
+       * 1. 获取当前会话和模型配置
+       * 2. MCP指令检测和执行（如果不是MCP响应）
+       * 3. 内容预处理（模板填充、图片处理）
+       * 4. 创建用户消息和机器人消息
+       * 5. 调用LLM API进行对话
+       * 6. 处理流式响应和工具调用
+       */
       async onUserInput(
         content: string,
         attachImages?: string[],
         isMcpResponse?: boolean,
       ) {
+        // ==================== 第一步：获取会话和配置 ====================
         const session = get().currentSession();
         const modelConfig = session.mask.modelConfig;
 
-        // MCP Response no need to fill template
-        let mContent: string | MultimodalContent[] = isMcpResponse
-          ? content
-          : fillTemplateWith(content, modelConfig);
+        // ==================== 第二步：MCP指令检测和执行 ====================
+        // 执行MCP工具，立即显示结果，然后继续LLM分析
+        let mcpCommandResult: McpCommandResult | null = null;
+        
+        if (!isMcpResponse) {
+          mcpCommandResult = await get().detectAndExecuteCommand(content);
+          
+          if (mcpCommandResult.executed && mcpCommandResult.shouldContinueToLLM) {
+            // 立即显示MCP工具执行结果
+            const userMessage: ChatMessage = createMessage({
+              role: "user",
+              content: content,
+            });
 
+            const mcpBotMessage: ChatMessage = createMessage({
+              role: "assistant", 
+              content: mcpCommandResult.result || "MCP工具执行完成",
+              model: modelConfig.model,
+            });
+
+            // 保存用户消息和MCP结果消息
+            get().updateTargetSession(session, (session) => {
+              session.messages = session.messages.concat([userMessage, mcpBotMessage]);
+              session.lastUpdate = Date.now();
+            });
+
+            get().updateStat(userMessage, session);
+            get().updateStat(mcpBotMessage, session);
+            
+            // 继续执行LLM分析流程...
+          }
+        }
+
+        // ==================== 第三步：内容预处理 ====================
+        // 处理MCP闭环：如果有MCP结果需要传递给LLM，使用增强提示词
+        let mContent: string | MultimodalContent[] = content;
+        
+        if (isMcpResponse) {
+          // MCP响应不需要模板填充，直接使用原始内容
+          mContent = content;
+        } else if (mcpCommandResult?.shouldContinueToLLM && mcpCommandResult.enhancedPrompt) {
+          // MCP-LLM闭环：使用包含工具结果的增强提示词
+          mContent = fillTemplateWith(mcpCommandResult.enhancedPrompt, modelConfig);
+          console.debug("[MCP-LLM Workflow] Using enhanced prompt:", mcpCommandResult.enhancedPrompt);
+        } else {
+          // 正常情况：使用常规模板填充
+          mContent = fillTemplateWith(content, modelConfig);
+        }
+
+        // 处理附加图片：将文本和图片组合成多模态内容
         if (!isMcpResponse && attachImages && attachImages.length > 0) {
           mContent = [
             ...(content ? [{ type: "text" as const, text: content }] : []),
@@ -427,24 +545,26 @@ export const useChatStore = createPersistStore(
           ];
         }
 
+        // ==================== 第四步：创建消息对象 ====================
         let userMessage: ChatMessage = createMessage({
           role: "user",
           content: mContent,
-          isMcpResponse,
+          isMcpResponse, // 标记是否为MCP响应
         });
 
         const botMessage: ChatMessage = createMessage({
           role: "assistant",
-          streaming: true,
+          streaming: true, // 启用流式响应
           model: modelConfig.model,
         });
 
-        // get recent messages
+        // ==================== 第五步：准备发送给LLM的消息 ====================
+        // 获取包含记忆的最近消息
         const recentMessages = await get().getMessagesWithMemory();
         const sendMessages = recentMessages.concat(userMessage);
         const messageIndex = session.messages.length + 1;
 
-        // save user's and bot's message
+        // 保存用户消息和初始机器人消息到会话中
         get().updateTargetSession(session, (session) => {
           const savedUserMessage = {
             ...userMessage,
@@ -456,11 +576,15 @@ export const useChatStore = createPersistStore(
           ]);
         });
 
+        // ==================== 第六步：调用LLM API ====================
         const api: ClientApi = getClientApi(modelConfig.providerName);
-        // make request
+        
+        // 发起LLM聊天请求
         api.llm.chat({
           messages: sendMessages,
-          config: { ...modelConfig, stream: true }, // stream 被硬编码为 true
+          config: { ...modelConfig, stream: true }, // 强制启用流式响应
+          
+          // 流式更新回调：实时显示LLM生成的内容
           onUpdate(message) {
             botMessage.streaming = true;
             if (message) {
@@ -470,21 +594,27 @@ export const useChatStore = createPersistStore(
               session.messages = session.messages.concat();
             });
           },
+          
+          // 完成回调：LLM生成完成后的处理
           async onFinish(message) {
             botMessage.streaming = false;
             if (message) {
               botMessage.content = message;
               botMessage.date = new Date().toLocaleString();
-              get().onNewMessage(botMessage, session);
+              get().onNewMessage(botMessage, session); // 触发新消息处理，包括MCP JSON检测
             }
             ChatControllerPool.remove(session.id, botMessage.id);
           },
+          
+          // 工具调用前回调：LLM决定调用工具时
           onBeforeTool(tool: ChatMessageTool) {
             (botMessage.tools = botMessage?.tools || []).push(tool);
             get().updateTargetSession(session, (session) => {
               session.messages = session.messages.concat();
             });
           },
+          
+          // 工具调用后回调：工具执行完成后
           onAfterTool(tool: ChatMessageTool) {
             botMessage?.tools?.forEach((t, i, tools) => {
               if (tool.id == t.id) {
@@ -495,6 +625,8 @@ export const useChatStore = createPersistStore(
               session.messages = session.messages.concat();
             });
           },
+          
+          // 错误处理回调
           onError(error) {
             const isAborted = error.message?.includes?.("aborted");
             botMessage.content +=
@@ -516,8 +648,9 @@ export const useChatStore = createPersistStore(
 
             console.error("[Chat] failed ", error);
           },
+          
+          // 控制器回调：用于停止/重试功能
           onController(controller) {
-            // collect controller for stop/retry
             ChatControllerPool.addController(
               session.id,
               botMessage.id ?? messageIndex,
@@ -835,7 +968,7 @@ export const useChatStore = createPersistStore(
               console.debug("[MCP Request]", mcpRequest);
 
               executeMcpAction(mcpRequest.clientId, mcpRequest.mcp)
-                .then((result) => {
+                .then((result: any) => {
                   console.log("[MCP Response]", result);
                   const mcpResponse =
                     typeof result === "object"
@@ -847,11 +980,138 @@ export const useChatStore = createPersistStore(
                     true,
                   );
                 })
-                .catch((error) => showToast("MCP execution failed", error));
+                .catch((error: any) => showToast("MCP execution failed", error));
             }
           } catch (error) {
             console.error("[Check MCP JSON]", error);
           }
+        }
+      },
+
+      /** 
+       * 检测并执行直接指令
+       * 
+       * @param userInput 用户输入的原始文本
+       * @returns McpCommandResult 包含执行结果和继续处理信息的对象
+       */
+      async detectAndExecuteCommand(userInput: string): Promise<McpCommandResult> {
+        const mcpEnabled = await isMcpEnabled();
+        
+        // 如果MCP未启用，返回未执行状态
+        if (!mcpEnabled) {
+          return {
+            executed: false,
+            shouldContinueToLLM: false,
+            originalIntent: userInput
+          };
+        }
+
+        const command = detectCommand(userInput);
+        
+        // 如果没有检测到指令，返回未执行状态
+        if (!command) {
+          return {
+            executed: false,
+            shouldContinueToLLM: false,
+            originalIntent: userInput
+          };
+        }
+
+        try {
+          console.debug("[Direct MCP Command]", command);
+          console.debug("[Direct MCP Command] Client ID:", command.clientId);
+          console.debug("[Direct MCP Command] Tool Name:", command.toolName);
+
+          const args = command.buildArgs ? command.buildArgs(userInput) : {};
+          console.debug("[Direct MCP Command] Built Args:", args);
+          
+          // 验证参数中是否包含错误信息
+          if ('error' in args && args.error) {
+            const errorResult = `❌ **${command.description}** 参数错误\n\n${args.error}`;
+            return {
+              executed: true,
+              result: errorResult,
+              shouldContinueToLLM: false, // 参数错误直接返回，不继续LLM
+              originalIntent: userInput,
+              command,
+            };
+          }
+          
+          // 构造MCP请求
+          const mcpRequest: McpRequestMessage = {
+            jsonrpc: "2.0" as const,
+            id: Date.now(),
+            method: "tools/call" as const,
+            params: {
+              name: command.toolName,
+              arguments: args
+            }
+          };
+          
+          console.debug("[Direct MCP Command] Full Request:", mcpRequest);
+
+          // 执行MCP请求
+          const result = await executeMcpAction(command.clientId, mcpRequest);
+          console.log("[Direct MCP Response]", result);
+
+          const resultText = typeof result === "object" 
+            ? JSON.stringify(result, null, 2) 
+            : String(result);
+          
+          // 根据命令配置决定处理方式 - 默认继续到LLM
+          const shouldContinue = command.continueToLLM ?? true;
+          
+          let enhancedPrompt: string | undefined;
+          
+          // 如果需要继续传递给LLM，构造增强提示词
+          if (shouldContinue && command.resultTemplate) {
+            enhancedPrompt = command.resultTemplate
+              .replace('{{mcpResult}}', resultText)
+              .replace('{{originalQuery}}', userInput);
+          }
+          
+          const directDisplayResult = `🤖 **${command.description}**\n\n${resultText}`;
+          
+          return {
+            executed: true,
+            result: directDisplayResult,
+            shouldContinueToLLM: shouldContinue,
+            originalIntent: userInput,
+            enhancedPrompt,
+            command,
+          };
+          
+        } catch (error: any) {
+          // 详细错误日志记录
+          console.error("[Direct MCP Command Error] Full Error Object:", error);
+          console.error("[Direct MCP Command Error] Error Name:", error?.name);
+          console.error("[Direct MCP Command Error] Error Message:", error?.message);
+          console.error("[Direct MCP Command Error] Error Stack:", error?.stack);
+          
+          // 如果是网络错误，尝试获取更多信息
+          if (error?.response) {
+            console.error("[Direct MCP Command Error] Response Status:", error.response.status);
+            console.error("[Direct MCP Command Error] Response Data:", error.response.data);
+            console.error("[Direct MCP Command Error] Response Headers:", error.response.headers);
+          }
+          
+          // 如果是 MCP 协议错误
+          if (error?.code) {
+            console.error("[Direct MCP Command Error] MCP Error Code:", error.code);
+          }
+
+          const errorMessage = error?.message || String(error);
+          showToast("MCP指令执行失败: " + errorMessage);
+          
+          const errorResult = `❌ **${command.description}** 执行失败\n\n**错误详情:**\n- 错误类型: ${error?.name || 'Unknown'}\n- 错误消息: ${errorMessage}\n- 客户端: ${command.clientId}\n- 工具: ${command.toolName}\n\n💡 **调试提示:** 请查看浏览器控制台获取详细错误信息`;
+          
+          return {
+            executed: true,
+            result: errorResult,
+            shouldContinueToLLM: false, // 错误情况下不继续
+            originalIntent: userInput,
+            command,
+          };
         }
       },
     };

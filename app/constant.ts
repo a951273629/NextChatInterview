@@ -447,6 +447,10 @@ You are an AI assistant with access to system tools. Your role is to help users 
    
 `;
 
+// MCP 直接指令相关配置
+export const MCP_COMMAND_MAPPINGS_KEY = "mcp-command-mappings";
+export const MCP_DIRECT_COMMAND_ENABLED_KEY = "mcp-direct-command-enabled";
+
 export const SUMMARIZE_MODEL = "gpt-4o-mini";
 export const GEMINI_SUMMARIZE_MODEL = "gemini-pro";
 export const DEEPSEEK_SUMMARIZE_MODEL = "deepseek-chat";

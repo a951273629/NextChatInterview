@@ -71,7 +71,7 @@ export function additionalResumeText(text: string) {
       ${typeof window !== 'undefined' ? localStorage.getItem(USER_RESUMES_STORAGE_KEY) : ''}
     `;
     
-  return addtionText;
+  return text;
 }
 
 const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({

@@ -337,13 +337,25 @@ export async function restartAllClients() {
 export async function executeMcpAction(
   clientId: string,
   request: McpRequestMessage,
+  retryAttempted = false, // 添加重试标志，避免无限循环
 ) {
   try {
     const client = clientsMap.get(clientId);
     if (!client?.client) {
-      throw new Error(`Client ${clientId} not found`);
+      // 如果客户端不存在且尚未尝试重启，则尝试重启所有客户端
+      if (!retryAttempted) {
+        logger.warn(`Client ${clientId} not found, attempting to restart all clients...`);
+        await restartAllClients();
+        logger.info(`All clients restarted, retrying request for [${clientId}]`);
+        
+        // 重试执行请求，设置 retryAttempted 为 true 避免无限循环
+        return await executeMcpAction(clientId, request, true);
+      } else {
+        // 重试后仍然找不到客户端，抛出错误
+        throw new Error(`Client ${clientId} not found after restart attempt`);
+      }
     }
-    logger.info(`Executing request for [${clientId}]`);
+    logger.info(`Executing request for [${clientId}] [${JSON.stringify(request, null, 2)}]`);
     return await executeRequest(client.client, request);
   } catch (error) {
     logger.error(`Failed to execute request for [${clientId}]: ${error}`);

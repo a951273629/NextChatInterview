@@ -29,6 +29,7 @@ function extractUrlsFromText(text: string): string[] {
 }
 
 export const COMMAND_MAPPINGS: CommandMapping[] = [
+  //Sequential Thinking工具
   {
     keywords: ["思考一下", "想想", "分析一下", "考虑", "思考", "分析", "想一想"],
     clientId: "sequential-thinking",
@@ -61,16 +62,14 @@ export const COMMAND_MAPPINGS: CommandMapping[] = [
     continueToLLM: true,  // 启用闭环：搜索结果将传递给LLM进行智能分析
     resultTemplate: `基于以下网络搜索结果，请为用户提供准确、全面和有用的回答：
 
-搜索结果：
-{{mcpResult}}
+          搜索结果：
+          {{mcpResult}}
 
-用户的原始问题：{{originalQuery}}
+          用户的原始问题：{{originalQuery}}
 
-请基于搜索结果提供：
-1. 直接回答用户的问题
-2. 相关的补充信息和背景
-3. 如果需要，提供不同观点或最新发展
-4. 引用具体的信息源（如果搜索结果中包含）`,
+          请基于搜索结果提供：
+          1. 直接回答用户的问题
+          2. 引用具体的信息源（如果搜索结果中包含）`,
     buildArgs: (input) => {
       let cleanInput = input;
       const keywords = ["搜索", "查找", "找一下", "search", "搜一下", "查询"];
@@ -223,6 +222,30 @@ export const COMMAND_MAPPINGS: CommandMapping[] = [
         allow_external: false
       };
     }
+  },
+  
+  // ==================== Sequential Thinking工具：深度思考分析 ====================
+  {
+    keywords: ["思考", "分析", "考虑", "think", "analyze"],
+    clientId: "sequential-thinking",
+    toolName: "sequentialthinking", 
+    description: "深度思考分析工具",
+    buildArgs: (userInput: string) => {
+      const cleanInput = userInput.replace(/^(思考|分析|考虑|think|analyze)\s*/, "").trim();
+      
+      if (!cleanInput) {
+        return { error: "请提供需要思考的问题或主题" };
+      }
+      
+      return {
+        thought: cleanInput || "需要仔细思考这个问题",
+        nextThoughtNeeded: true,
+        thoughtNumber: 1,
+        totalThoughts: 5
+      };
+    },
+    continueToLLM: true,
+    resultTemplate: "基于以下深度思考结果：{{mcpResult}}\n\n原始问题：{{originalQuery}}\n\n请为用户提供基于深度思考的综合分析和建议："
   }
 ];
 

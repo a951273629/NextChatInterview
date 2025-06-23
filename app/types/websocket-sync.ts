@@ -16,7 +16,7 @@ export enum ConnectionStatus {
 
 // WebSocket 消息类型
 export interface WebSocketMessage {
-  type: "speech_recognition" | "ping" | "pong" | "peer_status_update" | "room_status_update";
+  type: "speech_recognition" | "ping" | "pong" | "peer_status_update" | "room_status_update" | "data_sync";
   timestamp: number;
   data: any;
 }
@@ -75,6 +75,31 @@ export interface WebSocketSyncState {
   lastMessageTime?: number;
 }
 
+// 数据同步消息数据
+export interface DataSyncData {
+  // 基础信息
+  activationKey: string;
+  resumeContent?: string;
+  resumeFileName?: string;
+  
+  // 扩展字段，保持向后兼容性
+  additionalData?: {
+    openId?: string;
+    userId?: string;
+    [key: string]: any; // 允许未来扩展其他字段
+  };
+  
+  // 元数据
+  syncType: "full" | "partial"; // 同步类型：完整或部分
+  sessionId: string;
+}
+
+// 数据同步消息
+export interface DataSyncMessage extends WebSocketMessage {
+  type: "data_sync";
+  data: DataSyncData;
+}
+
 // WebSocket Hook 返回类型
 export interface UseWebSocketSyncReturn {
   // 状态
@@ -92,10 +117,12 @@ export interface UseWebSocketSyncReturn {
   disconnect: () => void;
   sendMessage: (message: WebSocketMessage) => void;
   sendSpeechRecognition: (data: SpeechRecognitionData) => void;
+  sendDataSync: (data: DataSyncData) => void;
 
   // 回调设置
   onSpeechRecognition?: (data: SpeechRecognitionData) => void;
   onPeerStatusChange?: (peerStatus: PeerStatusData) => void;
+  onDataSync?: (data: DataSyncData) => void;
 }
 
 // 常量

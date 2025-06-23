@@ -1,20 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
 import styles from "./interview-loudspeaker.module.scss";
 import { InterviewUnderwayLoudspeaker } from "./interview-underway-loudspeaker";
-import { Toaster } from "react-hot-toast";
+import { toast, Toaster } from "react-hot-toast";
 import { MiniFloatWindow } from "./mini-float-window";
-import { SyncMode, ACTIVATION_KEY_STRING } from "@/app/types/websocket-sync";
+import { SyncMode, ACTIVATION_KEY_STRING, DataSyncData } from "@/app/types/websocket-sync";
 import RecorderIcon from "@/app/icons/record_light.svg";
 import { useOutletContext } from "react-router-dom";
 import { useInterviewLanguage, LANGUAGE_OPTIONS, RecognitionLanguage } from "@/app/hooks/useInterviewLanguage";
 import { useAppConfig } from "@/app/store";
-import { NARROW_SIDEBAR_WIDTH } from "@/app/constant";
+import { NARROW_SIDEBAR_WIDTH, USER_RESUMES_STORAGE_KEY, USER_RESUMES_NAME_STORAGE_KEY } from "@/app/constant";
 import clsx from "clsx";
 
 import WIFI from "@/app/icons/wifi.svg";
 import SpeakerIcon from "@/app/icons/speaker.svg";
 import { useWebSocketSync } from "@/app/hooks/useWebSocketSync";
-import { nanoid } from "nanoid";
 
 // 宽度管理常量
 const DEFAULT_INTERVIEW_WIDTH_VW = 20;
@@ -153,9 +152,9 @@ export const InterviewLoudspeaker: React.FC = () => {
   const [peerConnected, setPeerConnected] = useState(false);
   const [peerMode, setPeerMode] = useState<SyncMode | null>(null);
 
-  // WebSocket 同步功能 - 移到这里
+  // WebSocket 同步功能 - 移到这里  
   const webSocketSync = useWebSocketSync({
-    activationKey: activationKey || "default_key",
+    activationKey: (activationKey && activationKey.trim()) || "default_key",
     mode: syncMode,
     enabled: syncEnabled,
     onSpeechRecognition: (data) => {
@@ -173,6 +172,14 @@ export const InterviewLoudspeaker: React.FC = () => {
       console.log("👥 对端状态更新:", peerStatus);
       setPeerConnected(peerStatus.connected);
       setPeerMode(peerStatus.mode === "sender" ? SyncMode.SENDER : SyncMode.RECEIVER);
+    },
+    onDataSync: (data) => {
+      console.log(`收到了回调:${syncMode}`);    
+      // 接收端处理数据同步
+      if (syncMode === SyncMode.RECEIVER) {
+        console.log("📥 接收到数据同步:", data);
+        handleDataSyncReceived(data);
+      }
     },
   });
 
@@ -586,6 +593,164 @@ export const InterviewLoudspeaker: React.FC = () => {
         return { text: "未获取录屏权限(监听端需要录屏权限)", color: "#ffa726", progress: 0 };
     }
   };
+
+  // 处理数据同步接收
+  const handleDataSyncReceived = async (data: DataSyncData) => {
+    try {
+      let syncItems: string[] = [];
+      
+      // 执行同步操作
+      if (data.resumeContent) {
+        localStorage.setItem(USER_RESUMES_STORAGE_KEY, data.resumeContent);
+        syncItems.push("简历内容");
+        console.log("📝 已同步简历内容到本地存储");
+      }
+      
+      if (data.resumeFileName) {
+        localStorage.setItem(USER_RESUMES_NAME_STORAGE_KEY, data.resumeFileName);
+        syncItems.push("简历文件名");
+        console.log("📄 已同步简历文件名到本地存储");
+      }
+      
+      // 激活密钥处理
+      if (data.activationKey && data.activationKey !== activationKey) {
+        localStorage.setItem(ACTIVATION_KEY_STRING, data.activationKey);
+        setActivationKey(data.activationKey);
+        syncItems.push("激活密钥");
+        console.log("🔑 已同步激活密钥到本地存储");
+        
+        // 激活密钥变更的特别提醒
+        toast("🔑 激活密钥已更新！请确认新密钥有效。", {
+          duration: 6000,
+          position: "top-center",
+          style: {
+            background: "#FF9800",
+            color: "white",
+            fontWeight: "bold",
+          },
+        });
+      }
+      
+      // 处理扩展数据
+      if (data.additionalData) {
+        Object.entries(data.additionalData).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            const storageKey = `sync_${key}`;
+            localStorage.setItem(storageKey, String(value));
+            syncItems.push(key);
+            console.log(`🔗 已同步${key}到本地存储:`, value);
+          }
+        });
+      }
+      
+      // 显示成功提示
+      if (syncItems.length > 0) {
+        toast.success(`🎉 数据同步成功！已同步：${syncItems.join("、")}`, {
+          duration: 5000,
+          position: "top-center",
+          style: {
+            background: "#4CAF50",
+            color: "white",
+            fontWeight: "bold",
+          },
+        });
+      } else {
+        // 没有数据需要同步的情况
+        toast("📭 接收到同步请求，但没有新数据需要更新", {
+          duration: 3000,
+          position: "top-center",
+          style: {
+            background: "#2196F3",
+            color: "white",
+          },
+        });
+      }
+      
+    } catch (error) {
+      console.error("❌ 数据同步失败:", error);
+      toast.error(`❌ 数据同步失败: ${error instanceof Error ? error.message : '未知错误'}`, {
+        duration: 5000,
+        position: "top-center",
+        style: {
+          background: "#F44336",
+          color: "white",
+          fontWeight: "bold",
+        },
+      });
+    }
+  };
+
+  // 发送数据同步
+  const sendDataSync = () => {
+    if (syncMode !== SyncMode.SENDER || !webSocketSync.isConnected()) {
+      console.log("⚠️ 无法发送数据同步：模式或连接状态不符合条件");
+      return;
+    }
+
+    // 从localStorage获取当前数据
+    const resumeContent = localStorage.getItem(USER_RESUMES_STORAGE_KEY);
+    const resumeFileName = localStorage.getItem(USER_RESUMES_NAME_STORAGE_KEY);
+    const currentActivationKey = localStorage.getItem(ACTIVATION_KEY_STRING);
+
+    // 获取有效的activationKey，确保不为空
+    const validActivationKey = (currentActivationKey && currentActivationKey.trim()) || 
+                               (activationKey && activationKey.trim()) || 
+                               "default_key";
+
+    // console.log("🔑 数据同步使用的密钥:", {
+    //   fromLocalStorage: currentActivationKey,
+    //   fromState: activationKey,
+    //   finalKey: validActivationKey
+    // });
+
+    // 构建数据同步消息
+    const dataSyncData: DataSyncData = {
+      activationKey: validActivationKey,
+      syncType: "full",
+      sessionId: "", // 将由Hook自动填充
+    };
+
+    // 添加简历相关数据
+    if (resumeContent) {
+      dataSyncData.resumeContent = resumeContent;
+    }
+    if (resumeFileName) {
+      dataSyncData.resumeFileName = resumeFileName;
+    }
+
+    // 可以在此添加其他扩展数据
+    // dataSyncData.additionalData = {
+    //   openId: localStorage.getItem('openId'),
+    //   userId: localStorage.getItem('userId'),
+    // };
+
+    console.log("📤 发送数据同步到接收端:", {
+      hasResumeContent: !!dataSyncData.resumeContent,
+      resumeFileName: dataSyncData.resumeFileName,
+      activationKey: dataSyncData.activationKey,
+    });
+
+    webSocketSync.sendDataSync(dataSyncData);
+  };
+
+  // 监听对端连接状态变化，当接收端连接成功时发送数据同步
+  useEffect(() => {
+    if (
+      syncEnabled &&
+      syncMode === SyncMode.SENDER &&
+      peerConnected &&
+      peerMode === SyncMode.RECEIVER &&
+      webSocketSync.connectionStatus === "connected"
+    ) {
+      console.log("🔄 检测到接收端连接，准备发送数据同步");
+      // 延迟一秒发送，确保连接稳定
+      const timeoutId = setTimeout(() => {
+        sendDataSync();
+      }, 1000);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [syncEnabled, syncMode, peerConnected, peerMode, webSocketSync.connectionStatus]);
 
   // 面试准备UI组件
   const InterviewPreparationUI = () => {
@@ -1044,3 +1209,4 @@ export const InterviewLoudspeaker: React.FC = () => {
     </>
   );
 };
+

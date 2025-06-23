@@ -6,6 +6,8 @@ import {
   WebSocketMessage,
   SpeechRecognitionData,
   SpeechRecognitionMessage,
+  DataSyncData,
+  DataSyncMessage,
   PeerStatusData,
   PeerStatusUpdateMessage,
   UseWebSocketSyncReturn,
@@ -20,6 +22,7 @@ interface UseWebSocketSyncOptions {
   enabled: boolean;
   onSpeechRecognition?: (data: SpeechRecognitionData) => void;
   onPeerStatusChange?: (peerStatus: PeerStatusData) => void;
+  onDataSync?: (data: DataSyncData) => void;
   serverUrl?: string;
 }
 
@@ -29,6 +32,7 @@ export const useWebSocketSync = ({
   enabled,
   onSpeechRecognition,
   onPeerStatusChange,
+  onDataSync,
   serverUrl = DEFAULT_WEBSOCKET_URL,
 }: UseWebSocketSyncOptions): UseWebSocketSyncReturn => {
   // 状态管理
@@ -70,6 +74,14 @@ export const useWebSocketSync = ({
               if (mode === SyncMode.RECEIVER && onSpeechRecognition) {
                 console.log("🎯 接收端处理语音识别消息:", speechMessage.data);
                 onSpeechRecognition(speechMessage.data);
+              }
+              break;
+
+            case "data_sync":
+              const dataSyncMessage = message as DataSyncMessage;
+              if (mode === SyncMode.RECEIVER && onDataSync) {
+                console.log("📥 接收端处理数据同步消息:", dataSyncMessage.data);
+                onDataSync(dataSyncMessage.data);
               }
               break;
 
@@ -176,6 +188,42 @@ export const useWebSocketSync = ({
     [mode, sendMessage, isConnected, getWebSocket],
   );
 
+  // 发送数据同步消息
+  const sendDataSync = useCallback(
+    (data: DataSyncData) => {
+      console.log("📤 sendDataSync调用状态:", {
+        mode,
+        actualWebSocketState: getWebSocket()?.readyState,
+        isConnected: isConnected(),
+      });
+
+      if (mode !== SyncMode.SENDER) {
+        console.warn("⚠️ 非发送端模式，无法发送数据同步消息");
+        return;
+      }
+
+      if (!isConnected()) {
+        console.warn("⚠️ WebSocket未连接，无法发送数据同步消息", {
+          actualState: getWebSocket()?.readyState,
+        });
+        return;
+      }
+
+      const message: DataSyncMessage = {
+        type: "data_sync",
+        timestamp: Date.now(),
+        data: {
+          ...data,
+          sessionId: sessionIdRef.current,
+        },
+      };
+
+      console.log("📤 发送数据同步消息:", message);
+      sendMessage(JSON.stringify(message));
+    },
+    [mode, sendMessage, isConnected, getWebSocket],
+  );
+
   // 通用消息发送
   const sendMessageWrapper = useCallback(
     (message: WebSocketMessage) => {
@@ -225,9 +273,11 @@ export const useWebSocketSync = ({
     disconnect,
     sendMessage: sendMessageWrapper,
     sendSpeechRecognition,
+    sendDataSync,
 
     // 回调
     onSpeechRecognition,
     onPeerStatusChange,
+    onDataSync,
   };
 };

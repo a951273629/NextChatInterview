@@ -42,6 +42,10 @@ export class MessageHandler {
         this.handleSpeechRecognition(client, message);
         break;
       
+      case 'data_sync':
+        this.handleDataSync(client, message);
+        break;
+      
       case 'ping':
         this.handlePing(client, message);
         break;
@@ -90,6 +94,46 @@ export class MessageHandler {
       text: data.text.substring(0, 50), // 只记录前50字符
       isFinal: data.isFinal,
       language: data.language
+    }));
+
+    // 转发消息给同房间的所有接收端
+    this.forwardToReceivers(activationKey, message, client.id);
+  }
+
+  /**
+   * 处理数据同步消息
+   * @param {Object} client - 客户端对象
+   * @param {Object} message - 数据同步消息
+   */
+  handleDataSync(client, message) {
+    // 只有发送端可以发送数据同步消息
+    if (client.mode !== 'sender') {
+      console.warn(formatLog('warn', '非发送端尝试发送数据同步消息', {
+        clientId: client.id,
+        mode: client.mode
+      }));
+      
+      this.sendErrorMessage(client, '只有发送端可以发送数据同步消息');
+      return;
+    }
+
+    const { activationKey } = client;
+    const { data } = message;
+
+    // console.warn("date"+JSON.stringify(data));
+    
+    // 验证数据同步数据
+    if (!this.validateDataSyncData(data)) {
+      this.sendErrorMessage(client, '数据同步数据格式错误');
+      return;
+    }
+
+    console.log(formatLog('info', '处理数据同步消息', {
+      clientId: client.id,
+      activationKey,
+      syncType: data.syncType,
+      hasResumeContent: !!data.resumeContent,
+      resumeFileName: data.resumeFileName,
     }));
 
     // 转发消息给同房间的所有接收端
@@ -213,6 +257,52 @@ export class MessageHandler {
     if (data.text.length > 1000) {
       console.warn(formatLog('warn', '语音识别文本过长', {
         textLength: data.text.length
+      }));
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * 验证数据同步数据
+   * @param {Object} data - 数据同步数据
+   * @returns {boolean} 是否有效
+   */
+  validateDataSyncData(data) {
+    if (!data) return false;
+    
+    // // 检查必需字段
+    // if (!data.activationKey || typeof data.activationKey !== 'string') {
+    //   return false;
+    // }
+    
+    // if (!data.syncType || !['full', 'partial'].includes(data.syncType)) {
+    //   return false;
+    // }
+    
+    // if (!data.sessionId || typeof data.sessionId !== 'string') {
+    //   return false;
+    // }
+
+    // // 检查可选字段的类型
+    // if (data.resumeContent && typeof data.resumeContent !== 'string') {
+    //   return false;
+    // }
+    
+    // if (data.resumeFileName && typeof data.resumeFileName !== 'string') {
+    //   return false;
+    // }
+
+    // // 检查扩展数据
+    // if (data.additionalData && typeof data.additionalData !== 'object') {
+    //   return false;
+    // }
+
+    // 检查简历内容长度限制
+    if (data.resumeContent && data.resumeContent.length > 100000) { // 100KB限制
+      console.warn(formatLog('warn', '数据同步简历内容过长', {
+        resumeLength: data.resumeContent.length
       }));
       return false;
     }

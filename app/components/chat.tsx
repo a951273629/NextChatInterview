@@ -828,10 +828,11 @@ export function ChatActions(props: {
           {/* 从扬声器开始面试 */}
           <ChatActionVoice
             onClick={() => {
-              checkActivation(() => {
-                navigate(Path.InterviewLoudspeaker);
-                // props.setShowInterviewLoudspeaker(true);
-              });
+              navigate(Path.InterviewLoudspeaker);
+              // checkActivation(() => {
+                
+              
+              // });
               // contronlShow = !contronlShow;
             }}
             text="从扬声器"

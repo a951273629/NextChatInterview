@@ -5,11 +5,12 @@ import { toast, Toaster } from "react-hot-toast";
 import { MiniFloatWindow } from "./mini-float-window";
 import { SyncMode, ACTIVATION_KEY_STRING, DataSyncData } from "@/app/types/websocket-sync";
 import RecorderIcon from "@/app/icons/record_light.svg";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 import { useInterviewLanguage, LANGUAGE_OPTIONS, RecognitionLanguage } from "@/app/hooks/useInterviewLanguage";
 import { useAppConfig } from "@/app/store";
 import { NARROW_SIDEBAR_WIDTH, USER_RESUMES_STORAGE_KEY, USER_RESUMES_NAME_STORAGE_KEY } from "@/app/constant";
 import clsx from "clsx";
+import QRCode from "@/app/components/qr-code/qrcode";
 
 import WIFI from "@/app/icons/wifi.svg";
 import SpeakerIcon from "@/app/icons/speaker.svg";
@@ -79,6 +80,7 @@ export const InterviewLoudspeaker: React.FC = () => {
   // 从父路由获取context
   const { onClose, onTextUpdate, submitMessage } =
     useOutletContext<ChatOutletContext>();
+  const [searchParams] = useSearchParams();
 
   // 获取应用配置用于控制侧边栏宽度
   const config = useAppConfig();
@@ -752,6 +754,22 @@ export const InterviewLoudspeaker: React.FC = () => {
     }
   }, [syncEnabled, syncMode, peerConnected, peerMode, webSocketSync.connectionStatus]);
 
+  useEffect(() => {
+    const wsKey = searchParams.get("wsKey");
+    const wsMode = searchParams.get("wsMode");
+
+    if (wsMode === 'receiver' && wsKey) {
+      console.log("从URL参数中找到wsKey，设置激活密钥:", wsKey);
+      setActivationKey(wsKey);
+      localStorage.setItem(ACTIVATION_KEY_STRING, wsKey);
+
+      console.log("从URL参数中找到wsMode=receiver，自动设置为接收端模式");
+      setSyncEnabled(true);
+      setSyncMode(SyncMode.RECEIVER);
+      
+    }
+  }, [searchParams]);
+
   // 面试准备UI组件
   const InterviewPreparationUI = () => {
     const speakerInfo = getSpeakerStatusInfo();
@@ -768,10 +786,10 @@ export const InterviewLoudspeaker: React.FC = () => {
         }
       )}
       >
-        <div className={styles.header}>
+        {/* <div className={styles.header}>
           <h2 className={styles.title}>面试准备就绪</h2>
           <div className={styles.subtitle}>请确认以下设置后开始面试</div>
-        </div>
+        </div> */}
 
         {/* 同步功能设置 */}
         <div className={styles["setting-item"]}>
@@ -836,6 +854,26 @@ export const InterviewLoudspeaker: React.FC = () => {
                 <span className={styles.keyDescription}>
                   &nbsp;&nbsp;&nbsp;&nbsp;【监听端】和【接收端】需使用相同密钥
                 </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 扫码连接 */}
+ 
+        {syncEnabled && syncMode === SyncMode.SENDER && (
+          <div className={styles["setting-item"]}>
+            <div className={styles["setting-label"]}>扫码连接</div>
+            <div className={styles["setting-control"]}>
+              <div style={{ background: 'white', padding: '10px', borderRadius: '8px', width: 'fit-content' }}>
+                                 <QRCode 
+                   text={`${window.location.origin}#/chat/interview-loudspeaker?wsKey=${activationKey}&wsMode=receiver`}
+                   size={80}
+                   alt="扫码连接接收端"
+                 />
+              </div>
+              <div className={styles["mode-description"]}>
+               打开微信,扫一扫,连接【接收端】
               </div>
             </div>
           </div>

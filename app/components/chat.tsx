@@ -2392,6 +2392,7 @@ function _Chat() {
             onClose: () => navigate(Path.Chat),
             onTextUpdate: handleTextUpdate,
             submitMessage: toastShowDebounce,
+            scrollToBottom: scrollToBottom,
           }}
         />
       </div>

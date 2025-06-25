@@ -7,7 +7,7 @@ import {
   getAzureSpeechConfig,
   isAzureSpeechAvailable,
 } from "@/app/components/interview/azureSpeech";
-import { SyncMode } from "@/app/types/websocket-sync";
+import { SyncMode, LLMResponseData } from "@/app/types/websocket-sync";
 import { nanoid } from "nanoid";
 
 // 消息类型接口
@@ -53,9 +53,9 @@ interface InterviewUnderwayLoudspeakerProps {
   // 是否窄屏
   shouldNarrow: boolean;
 
-  // 新增：WebSocket回调函数
-  onSpeechRecognition?: (data: SpeechRecognitionData) => void;
-  sendSpeechRecognition?: (data: SpeechRecognitionData) => void;
+  // WebSocket相关（接收端用）
+  onSpeechRecognition?: (data: SpeechRecognitionData) => void;  // 保留语音识别回调
+  // onLLMResponse?: (data: LLMResponseData) => void;              // 新增LLM回答接收回调
   syncEnabled?: boolean;
   syncMode?: SyncMode;
 }
@@ -76,9 +76,8 @@ export const InterviewUnderwayLoudspeaker: React.FC<
   messages = [],
   onAddMessage,
   shouldNarrow,
-  // 新增的WebSocket回调props
+  // WebSocket回调props（接收端用）
   onSpeechRecognition,
-  sendSpeechRecognition,
   syncEnabled = false,
   syncMode = SyncMode.SENDER,
 }) => {
@@ -223,18 +222,8 @@ export const InterviewUnderwayLoudspeaker: React.FC<
                 lastSubmittedTextRef.current = finalText;
                 resetTranscript();
 
-                // 使用传入的回调发送WebSocket消息
-                if (syncEnabled && syncMode === SyncMode.SENDER && sendSpeechRecognition) {
-                  console.log("📤 发送端模式：通过WebSocket发送语音识别结果");
-                  sendSpeechRecognition({
-                    text: finalText,
-                    isFinal: true,
-                    language: recognitionLanguage,
-                    sessionId: nanoid(),
-                  });
-                  console.log("📤 发送端模式：语音已通过WebSocket发送，跳过本地提交");
-                } else if (isAutoSubmit) {
-                  // 普通模式或接收端模式下的本地自动提交
+                // 自动提交逻辑：语音识别结果提交给LLM，LLM输出会通过chat.ts自动发送到WebSocket
+                if (isAutoSubmit) {
                   console.log("🚀 延迟处理完成，自动提交拼接的语音:", finalText);
                   submitMessage(finalText);
                 }

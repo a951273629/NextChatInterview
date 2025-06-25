@@ -6,6 +6,8 @@ import {
   WebSocketMessage,
   SpeechRecognitionData,
   SpeechRecognitionMessage,
+  LLMResponseData,
+  LLMResponseMessage,
   DataSyncData,
   DataSyncMessage,
   PeerStatusData,
@@ -21,6 +23,7 @@ interface UseWebSocketSyncOptions {
   mode: SyncMode;
   enabled: boolean;
   onSpeechRecognition?: (data: SpeechRecognitionData) => void;
+  onLLMResponse?: (data: LLMResponseData) => void;          // 新增：LLM回答回调
   onPeerStatusChange?: (peerStatus: PeerStatusData) => void;
   onDataSync?: (data: DataSyncData) => void;
   serverUrl?: string;
@@ -31,6 +34,7 @@ export const useWebSocketSync = ({
   mode,
   enabled,
   onSpeechRecognition,
+  onLLMResponse,
   onPeerStatusChange,
   onDataSync,
   serverUrl = DEFAULT_WEBSOCKET_URL,
@@ -66,8 +70,8 @@ export const useWebSocketSync = ({
       onMessage: (event: MessageEvent) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
-          console.log("📨 收到WebSocket消息:", message);
-
+          console.log("📨 收到WebSocket消息 Type:", message.type);
+          // console.log("收到WebSocket消息 Type:", message.type);
           switch (message.type) {
             case "speech_recognition":
               const speechMessage = message as SpeechRecognitionMessage;
@@ -77,10 +81,19 @@ export const useWebSocketSync = ({
               }
               break;
 
+            case "llm_response":
+              // console.log("🤖 接收端处理LLM回答消息 llm_response:", message.data);
+              const llmMessage = message as LLMResponseMessage;
+              if (mode === SyncMode.RECEIVER && onLLMResponse) {
+                console.log("🤖 接收端处理LLM回答消息:", llmMessage.data);
+                onLLMResponse(llmMessage.data);
+              }
+              break;
+
             case "data_sync":
               const dataSyncMessage = message as DataSyncMessage;
               if (mode === SyncMode.RECEIVER && onDataSync) {
-                console.log("📥 接收端处理数据同步消息:", dataSyncMessage.data);
+                // console.log("📥 接收端处理数据同步消息:", dataSyncMessage.data);
                 onDataSync(dataSyncMessage.data);
               }
               break;
@@ -102,7 +115,7 @@ export const useWebSocketSync = ({
 
             case "peer_status_update":
               const peerStatusMessage = message as PeerStatusUpdateMessage;
-              console.log("👥 收到对端状态更新:", peerStatusMessage.data);
+              // console.log("👥 收到对端状态更新:", peerStatusMessage.data);
               setPeerStatus(peerStatusMessage.data.peerStatus);
               if (onPeerStatusChange) {
                 onPeerStatusChange(peerStatusMessage.data.peerStatus);
@@ -183,6 +196,42 @@ export const useWebSocketSync = ({
       };
 
       console.log("📤 发送语音识别消息:", message);
+      sendMessage(JSON.stringify(message));
+    },
+    [mode, sendMessage, isConnected, getWebSocket],
+  );
+
+  // 发送LLM回答消息
+  const sendLLMResponse = useCallback(
+    (data: LLMResponseData) => {
+      console.log("🤖 sendLLMResponse调用状态:", {
+        mode,
+        actualWebSocketState: getWebSocket()?.readyState,
+        isConnected: isConnected(),
+      });
+
+      if (mode !== SyncMode.SENDER) {
+        console.warn("⚠️ 非发送端模式，无法发送LLM回答消息");
+        return;
+      }
+
+      if (!isConnected()) {
+        console.warn("⚠️ WebSocket未连接，无法发送LLM回答消息", {
+          actualState: getWebSocket()?.readyState,
+        });
+        return;
+      }
+
+      const message: LLMResponseMessage = {
+        type: "llm_response",
+        timestamp: Date.now(),
+        data: {
+          ...data,
+          sessionId: sessionIdRef.current,
+        },
+      };
+
+      console.log("📤 发送LLM回答消息:", message);
       sendMessage(JSON.stringify(message));
     },
     [mode, sendMessage, isConnected, getWebSocket],
@@ -273,10 +322,12 @@ export const useWebSocketSync = ({
     disconnect,
     sendMessage: sendMessageWrapper,
     sendSpeechRecognition,
+    sendLLMResponse,                // 新增：发送LLM回答方法
     sendDataSync,
 
     // 回调
     onSpeechRecognition,
+    onLLMResponse,                  // 新增：LLM回答回调
     onPeerStatusChange,
     onDataSync,
   };

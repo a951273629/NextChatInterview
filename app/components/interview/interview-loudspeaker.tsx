@@ -8,45 +8,42 @@ import RecorderIcon from "@/app/icons/record_light.svg";
 import { useOutletContext, useSearchParams } from "react-router-dom";
 import { useInterviewLanguage, LANGUAGE_OPTIONS, RecognitionLanguage } from "@/app/hooks/useInterviewLanguage";
 import { useAppConfig } from "@/app/store";
-import { NARROW_SIDEBAR_WIDTH, USER_RESUMES_STORAGE_KEY, USER_RESUMES_NAME_STORAGE_KEY } from "@/app/constant";
+import { NARROW_SIDEBAR_WIDTH, USER_RESUMES_STORAGE_KEY, USER_RESUMES_NAME_STORAGE_KEY,  } from "@/app/constant";
 import clsx from "clsx";
 import QRCode from "@/app/components/qr-code/qrcode";
 
 import WIFI from "@/app/icons/wifi.svg";
 import SpeakerIcon from "@/app/icons/speaker.svg";
 import { useWebSocketSync } from "@/app/hooks/useWebSocketSync";
+import { useChatStore, ChatMessage } from "@/app/store";
+import { useInterviewChat } from "./chatStoreInterview";
+import { 
+  LoudspeakerService, 
+  DeviceStatus, 
+  NetworkStatus, 
+  ScreenCaptureStatus, 
+  SpeakerDevice,
+  LoudspeakerServiceCallbacks,
+  LoudspeakerServiceRefs,
+  LoudspeakerServiceProps,
+  Message
+} from "./loudspeaker-service";
 
 // 宽度管理常量
 const DEFAULT_INTERVIEW_WIDTH_VW = 20;
 const NARROW_INTERVIEW_WIDTH_VW = 10;
 const MIN_INTERVIEW_WIDTH_VW = 14;
 
-// 消息类型接口
-interface Message {
-  id: string;
-  text: string;
-  isInterviewer: boolean;
-  timestamp: number;
-}
 
-// 扬声器设备接口
-interface SpeakerDevice {
-  deviceId: string;
-  label: string;
-}
 
 // 定义Context类型
 interface ChatOutletContext {
   onClose: () => void;
   onTextUpdate: (text: string) => void;
   submitMessage: (text: string) => void;
+  scrollToBottom: () => void;
 }
 
-interface InterviewLoudspeakerProps {
-  onClose: () => void;
-  onTextUpdate: (text: string) => void;
-  submitMessage: (text: string) => void;
-}
 
 // 手机模式检测Hook
 const useIsMobile = () => {
@@ -67,23 +64,20 @@ const useIsMobile = () => {
   return isMobile;
 };
 
-// 设备状态类型
-type DeviceStatus = "ready" | "error" | "unavailable" | "unauthorized";
 
-// 网络状态类型
-type NetworkStatus = "good" | "average" | "poor";
-
-// 录屏权限状态类型
-type ScreenCaptureStatus = "pending" | "granted" | "denied" | "unavailable";
 
 export const InterviewLoudspeaker: React.FC = () => {
   // 从父路由获取context
-  const { onClose, onTextUpdate, submitMessage } =
+  const { onClose, onTextUpdate, submitMessage, scrollToBottom } =
     useOutletContext<ChatOutletContext>();
   const [searchParams] = useSearchParams();
 
   // 获取应用配置用于控制侧边栏宽度
   const config = useAppConfig();
+  // 获取聊天store用于注册WebSocket回调
+  const chatStore = useChatStore();
+  // 获取面试专用功能
+  const interviewChat = useInterviewChat();
 
   const [visible, setVisible] = useState(true);
   const [width, setWidth] = useState(DEFAULT_INTERVIEW_WIDTH_VW);
@@ -153,7 +147,8 @@ export const InterviewLoudspeaker: React.FC = () => {
   // 对端连接状态管理
   const [peerConnected, setPeerConnected] = useState(false);
   const [peerMode, setPeerMode] = useState<SyncMode | null>(null);
-
+  // 使用面试专用功能获取会话
+  // const targetSession = interviewChat.getCurrentInterviewSession();
   // WebSocket 同步功能 - 移到这里  
   const webSocketSync = useWebSocketSync({
     activationKey: (activationKey && activationKey.trim()) || "default_key",
@@ -166,7 +161,17 @@ export const InterviewLoudspeaker: React.FC = () => {
         // 直接提交消息，不经过本地识别流程
         submitMessage(data.text);
         // 也添加到消息历史
-        handleAddMessage(data.text);
+        loudspeakerService.handleAddMessage(data.text);
+      }
+    },
+    onLLMResponse: (data) => {
+      // 接收端处理LLM回答
+      if (syncMode === SyncMode.RECEIVER) {
+        console.log("🤖 接收到同步的LLM输出结果:", data);
+        // 使用面试专用功能处理 LLM 响应
+        interviewChat.handleLLMResponse(data);
+        // 处理完LLM响应后滚动到底部
+        scrollToBottom();
       }
     },
     onPeerStatusChange: (peerStatus) => {
@@ -180,7 +185,7 @@ export const InterviewLoudspeaker: React.FC = () => {
       // 接收端处理数据同步
       if (syncMode === SyncMode.RECEIVER) {
         console.log("📥 接收到数据同步:", data);
-        handleDataSyncReceived(data);
+        loudspeakerService.handleDataSyncReceived(data);
       }
     },
   });
@@ -201,6 +206,19 @@ export const InterviewLoudspeaker: React.FC = () => {
     }
   }, [webSocketSync.peerStatus]);
 
+  // 注册WebSocket回调到chatStore，用于发送LLM输出到接收端
+  useEffect(() => {
+    if (syncEnabled && syncMode === SyncMode.SENDER) {
+      // 在监听端模式下，注册WebSocket发送回调到chat store
+      chatStore.setWebSocketCallback(webSocketSync.sendLLMResponse, syncMode);
+    } 
+
+    // 组件卸载时清除回调
+    return () => {
+      chatStore.setWebSocketCallback(null, null);
+    };
+  }, [syncEnabled, syncMode, webSocketSync.sendLLMResponse]);
+
   // 手机模式下默认设置
   useEffect(() => {
     if (isMobile) {
@@ -209,31 +227,7 @@ export const InterviewLoudspeaker: React.FC = () => {
     }
   }, [isMobile]);
 
-  // 显示悬浮窗的处理函数
-  const handleShowFromFloat = () => {
-    setIsMinimized(false);
-  };
 
-  // 添加最小化处理函数
-  const handleMinimize = () => {
-    if (isMobile) {
-      setIsMinimized(true);
-    }
-  };
-
-  // 添加消息处理函数
-  const handleAddMessage = (text: string) => {
-    if (!text || text.trim() === "") return;
-
-    const newMessage: Message = {
-      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      text: text.trim(),
-      isInterviewer: true, // 扬声器模式默认为面试官
-      timestamp: Date.now(),
-    };
-
-    setMessages((prev) => [...prev, newMessage]);
-  };
 
   // 处理点击外部关闭下拉框
   useEffect(() => {
@@ -255,232 +249,6 @@ export const InterviewLoudspeaker: React.FC = () => {
     };
   }, [showSpeakerDropdown]);
 
-  // 检查扬声器状态
-  const checkSpeakerStatus = async () => {
-    try {
-      // 获取音频输出设备列表
-      await getAudioOutputDevices();
-
-      // 创建测试音频元素
-      const audio = new Audio();
-      audioElementRef.current = audio;
-
-      // 创建一个短暂的静音音频进行测试
-      const audioContext = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
-      testAudioContextRef.current = audioContext;
-
-      // 创建一个1秒的静音缓冲区用于测试
-      const buffer = audioContext.createBuffer(
-        1,
-        audioContext.sampleRate * 0.1,
-        audioContext.sampleRate,
-      );
-      const source = audioContext.createBufferSource();
-      source.buffer = buffer;
-      source.connect(audioContext.destination);
-
-      // 播放测试音频
-      source.start();
-
-      setSpeakerStatus("ready");
-      console.log("扬声器检查通过");
-    } catch (error: any) {
-      console.error("扬声器检测失败:", error);
-      setSpeakerStatus("error");
-    }
-  };
-
-  // 获取音频输出设备列表
-  const getAudioOutputDevices = async () => {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const audioOutputs = devices
-        .filter((device) => device.kind === "audiooutput")
-        .map((device) => ({
-          deviceId: device.deviceId,
-          label: device.label || `扬声器 ${device.deviceId.slice(0, 5)}`,
-        }));
-
-      // 添加默认设备选项
-      const defaultDevice: SpeakerDevice = {
-        deviceId: "system-default",
-        label: "默认扬声器",
-      };
-
-      setSpeakerDevices([defaultDevice, ...audioOutputs]);
-      console.log("找到扬声器设备:", audioOutputs.length + 1);
-    } catch (error) {
-      console.error("获取扬声器设备失败:", error);
-      // 如果获取失败，至少提供默认选项
-      setSpeakerDevices([{ deviceId: "system-default", label: "默认扬声器" }]);
-    }
-  };
-
-
-  // 选择扬声器设备
-  const selectSpeakerDevice = async (deviceId: string) => {
-    try {
-      setSelectedSpeakerId(deviceId);
-      setShowSpeakerDropdown(false);
-
-      // 如果有音频元素，尝试设置输出设备
-      if (audioElementRef.current && 'setSinkId' in audioElementRef.current) {
-        await (audioElementRef.current as any).setSinkId(
-          deviceId === "system-default" ? "" : deviceId,
-        );
-        console.log("已切换到扬声器:", deviceId);
-      }
-    } catch (error) {
-      console.error("切换扬声器设备失败:", error);
-    }
-  };
-
-  // 检测网络状态
-  const checkNetworkStatus = () => {
-    const connection = (navigator as any).connection;
-    if (connection) {
-      const speed = connection.downlink;
-      if (speed >= 10) {
-        setNetworkStatus("good");
-      } else if (speed >= 1.5) {
-        setNetworkStatus("average");
-      } else {
-        setNetworkStatus("poor");
-      }
-    } else {
-      setNetworkStatus("good");
-    }
-  };
-
-  // 获取录屏权限
-  const requestScreenCapture = async () => {
-    try {
-      setScreenCaptureStatus("pending");
-      console.log("开始请求录屏权限...");
-
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: true,
-      });
-
-      mediaStreamRef.current = stream;
-
-      setScreenCaptureStatus("granted");
-      setHasScreenPermission(true);
-      console.log("录屏权限获取成功");
-
-      // 重置重试计数（成功获取权限时）
-      setRetryCount(0);
-
-      // 简化的音频轨道事件监听
-      stream.getAudioTracks().forEach((track, index) => {
-        console.log(`🎵 监听音频轨道 ${index}: ${track.label}`);
-        
-        track.onended = () => {
-          console.log(`🔇 音频轨道已结束: ${track.label}`);
-          
-          // 自动重试逻辑
-          if (retryCount < maxRetries) {
-            const currentRetry = retryCount + 1;
-            setRetryCount(currentRetry);
-            console.log(`🔄 自动重试获取屏幕共享权限 (${currentRetry}/${maxRetries})...`);
-            
-            // 延迟1秒后重试
-            setTimeout(() => {
-              requestScreenCapture().catch((error) => {
-                console.error(`❌ 重试 ${currentRetry} 失败:`, error);
-              });
-            }, 1000);
-          } else {
-            console.log("❌ 已达到最大重试次数，停止屏幕共享");
-            stopScreenCapture();
-          }
-        };
-      });
-
-    } catch (error: any) {
-      console.error("获取录屏权限失败:", error);
-      setScreenCaptureStatus("denied");
-      setHasScreenPermission(false);
-
-      if (error.name === "NotAllowedError") {
-        alert("需要允许屏幕共享权限以捕获系统音频。请重新尝试并允许权限。");
-      } else if (error.name === "NotSupportedError") {
-        alert("您的浏览器不支持系统音频捕获功能。");
-        setScreenCaptureStatus("unavailable");
-      } else {
-        alert("无法访问系统音频，请检查权限设置。");
-      }
-      
-      throw error;
-    }
-  };
-
-  // 停止录屏捕获
-  const stopScreenCapture = () => {
-    try {
-      // 停止媒体流
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-        mediaStreamRef.current = null;
-      }
-
-      setHasScreenPermission(false);
-      setScreenCaptureStatus("pending");
-      setRetryCount(0); // 重置重试计数
-      console.log("录屏捕获已停止");
-    } catch (error) {
-      console.error("停止录屏捕获失败:", error);
-    }
-  };
-
-  // 音量调节处理
-  // const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   const volume = parseInt(e.target.value);
-  //   setAudioVolume(volume);
-  //   if (audioElementRef.current) {
-  //     audioElementRef.current.volume = volume / 100;
-  //   }
-  // };
-
-  // 初始化时检测设备状态
-  useEffect(() => {
-    checkSpeakerStatus();
-    checkNetworkStatus();
-
-    return () => {
-      // 清理音频资源
-      if (testAudioContextRef.current) {
-        testAudioContextRef.current.close().catch(console.error);
-      }
-      // 清理录屏资源
-      stopScreenCapture();
-    };
-  }, []);
-
-  // 开始面试
-  const startInterview = () => {
-    // 进入面试时将侧边栏宽度调整到最小
-    config.update((config) => {
-      config.sidebarWidth = NARROW_SIDEBAR_WIDTH;
-    });
-    setIsStarted(true);
-  };
-
-  // 停止面试处理
-  const handleStopInterview = () => {
-    setIsStarted(false);
-    // 停止录屏捕获
-    stopScreenCapture();
-  };
-
-  // 语言选择处理
-  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const language = e.target.value;
-    setRecognitionLanguage(language as RecognitionLanguage);
-  };
-
   // 切换宽度的函数
   const toggleWidth = () => {
     setWidth((prevWidth) => {
@@ -492,248 +260,73 @@ export const InterviewLoudspeaker: React.FC = () => {
     });
   };
 
-  // 拖拽相关处理函数
-  const handleDragStart = (e: React.MouseEvent) => {
-    if (isMobile) return;
-
-    setIsDragging(true);
-    isDraggingRef.current = true;
-    dragStartXRef.current = e.clientX;
-    initialWidthRef.current = width;
-    dragStartTimeRef.current = Date.now();
-
-    document.addEventListener("mousemove", handleDragMove);
-    document.addEventListener("mouseup", handleDragEnd);
+  // 创建服务回调
+  const serviceCallbacks: LoudspeakerServiceCallbacks = {
+    setSpeakerStatus,
+    setSpeakerDevices,
+    setSelectedSpeakerId,
+    setShowSpeakerDropdown,
+    setNetworkStatus,
+    setScreenCaptureStatus,
+    setHasScreenPermission,
+    setRetryCount,
+    setIsDragging,
+    setWidth,
+    toggleWidth,
+    setMessages,
+    setIsMinimized,
+    setIsStarted,
+    setRecognitionLanguage,
+    setActivationKey,
   };
 
-  const handleDragMove = (e: MouseEvent) => {
-    if (!isDraggingRef.current) return;
-
-    const deltaX = e.clientX - dragStartXRef.current;
-    const newWidth = Math.max(
-      NARROW_INTERVIEW_WIDTH_VW,
-      Math.min(
-        80,
-        initialWidthRef.current - (deltaX / window.innerWidth) * 100,
-      ),
-    );
-    
-    // 当宽度小于最小值时，吸附到收缩宽度
-    if (newWidth < MIN_INTERVIEW_WIDTH_VW) {
-      setWidth(NARROW_INTERVIEW_WIDTH_VW);
-    } else {
-      setWidth(newWidth);
-    }
+  // 创建服务引用
+  const serviceRefs: LoudspeakerServiceRefs = {
+    audioElementRef,
+    testAudioContextRef,
+    mediaStreamRef,
+    isDraggingRef,
+    dragStartXRef,
+    initialWidthRef,
+    dragStartTimeRef,
   };
 
-  const handleDragEnd = () => {
-    setIsDragging(false);
-    isDraggingRef.current = false;
+  // 创建服务实例
+  const loudspeakerService = new LoudspeakerService({
+    callbacks: serviceCallbacks,
+    refs: serviceRefs,
+    retryCount,
+    maxRetries,
+    isMobile,
+    width,
+    webSocketSync,
+    syncMode,
+    activationKey,
+  });
 
-    document.removeEventListener("mousemove", handleDragMove);
-    document.removeEventListener("mouseup", handleDragEnd);
-    
-    // 如果用户点击拖拽手柄，应该切换宽度
-    const shouldFireClick = Date.now() - dragStartTimeRef.current < 300;
-    if (shouldFireClick) {
-      toggleWidth();
-    }
-  };
+  // 更新服务状态
+  loudspeakerService.updateProps({ retryCount, isMobile, width, webSocketSync, syncMode, activationKey });
 
-  // 获取扬声器状态信息
-  const getSpeakerStatusInfo = () => {
-    switch (speakerStatus) {
-      case "ready":
-        return { text: "扬声器已连接", color: "#4caf50", progress: 100 };
-      case "error":
-        return { text: "扬声器检测失败", color: "#ff6b6b", progress: 0 };
-      case "unavailable":
-        return { text: "未检测到扬声器", color: "#ffa726", progress: 0 };
-      case "unauthorized":
-        return { text: "扬声器权限被拒绝", color: "#ff6b6b", progress: 0 };
-      default:
-        return { text: "检测中...", color: "#ffa726", progress: 50 };
-    }
-  };
+  // 初始化时检测设备状态
+  useEffect(() => {
+    loudspeakerService.checkSpeakerStatus();
+    loudspeakerService.checkNetworkStatus();
 
-  // 获取网络状态信息
-  const getNetworkStatusInfo = () => {
-    switch (networkStatus) {
-      case "good":
-        return { text: "网络连接良好", color: "#4caf50", progress: 100 };
-      case "average":
-        return { text: "网络连接一般", color: "#ffa726", progress: 70 };
-      case "poor":
-        return { text: "网络连接较差", color: "#ff6b6b", progress: 30 };
-      default:
-        return { text: "检测中...", color: "#ffa726", progress: 50 };
-    }
-  };
-
-  // 获取录屏权限状态信息
-  const getScreenCaptureStatusInfo = () => {
-    // 如果是接收端模式，不需要录屏权限
-    if (syncMode === SyncMode.RECEIVER) {
-      return { text: "接收端无需录屏权限", color: "#4caf50", progress: 100 };
-    }
-
-    switch (screenCaptureStatus) {
-      case "granted":
-        return { 
-          text: retryCount > 0 
-            ? `录屏权限已获取 (重试${retryCount}次后成功)` 
-            : "录屏权限已获取", 
-          color: "#4caf50", 
-          progress: 100 
-        };
-      case "denied":
-        return { text: "录屏权限被拒绝", color: "#ff6b6b", progress: 0 };
-      case "unavailable":
-        return { text: "不支持录屏功能", color: "#ff6b6b", progress: 0 };
-      case "pending":
-      default:
-        return { text: "未获取录屏权限(监听端需要录屏权限)", color: "#ffa726", progress: 0 };
-    }
-  };
-
-  // 处理数据同步接收
-  const handleDataSyncReceived = async (data: DataSyncData) => {
-    try {
-      let syncItems: string[] = [];
-      
-      // 执行同步操作
-      if (data.resumeContent) {
-        localStorage.setItem(USER_RESUMES_STORAGE_KEY, data.resumeContent);
-        syncItems.push("简历内容");
-        console.log("📝 已同步简历内容到本地存储");
-      }
-      
-      if (data.resumeFileName) {
-        localStorage.setItem(USER_RESUMES_NAME_STORAGE_KEY, data.resumeFileName);
-        syncItems.push("简历文件名");
-        console.log("📄 已同步简历文件名到本地存储");
-      }
-      
-      // 激活密钥处理
-      if (data.activationKey && data.activationKey !== activationKey) {
-        localStorage.setItem(ACTIVATION_KEY_STRING, data.activationKey);
-        setActivationKey(data.activationKey);
-        syncItems.push("激活密钥");
-        console.log("🔑 已同步激活密钥到本地存储");
-        
-        // 激活密钥变更的特别提醒
-        toast("🔑 激活密钥已更新！请确认新密钥有效。", {
-          duration: 6000,
-          position: "top-center",
-          style: {
-            background: "#FF9800",
-            color: "white",
-            fontWeight: "bold",
-          },
-        });
-      }
-      
-      // 处理扩展数据
-      if (data.additionalData) {
-        Object.entries(data.additionalData).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            const storageKey = `sync_${key}`;
-            localStorage.setItem(storageKey, String(value));
-            syncItems.push(key);
-            console.log(`🔗 已同步${key}到本地存储:`, value);
-          }
-        });
-      }
-      
-      // 显示成功提示
-      if (syncItems.length > 0) {
-        toast.success(`🎉 数据同步成功！已同步：${syncItems.join("、")}`, {
-          duration: 5000,
-          position: "top-center",
-          style: {
-            background: "#4CAF50",
-            color: "white",
-            fontWeight: "bold",
-          },
-        });
-      } else {
-        // 没有数据需要同步的情况
-        toast("📭 接收到同步请求，但没有新数据需要更新", {
-          duration: 3000,
-          position: "top-center",
-          style: {
-            background: "#2196F3",
-            color: "white",
-          },
-        });
-      }
-      
-    } catch (error) {
-      console.error("❌ 数据同步失败:", error);
-      toast.error(`❌ 数据同步失败: ${error instanceof Error ? error.message : '未知错误'}`, {
-        duration: 5000,
-        position: "top-center",
-        style: {
-          background: "#F44336",
-          color: "white",
-          fontWeight: "bold",
-        },
-      });
-    }
-  };
-
-  // 发送数据同步
-  const sendDataSync = () => {
-    if (syncMode !== SyncMode.SENDER || !webSocketSync.isConnected()) {
-      console.log("⚠️ 无法发送数据同步：模式或连接状态不符合条件");
-      return;
-    }
-
-    // 从localStorage获取当前数据
-    const resumeContent = localStorage.getItem(USER_RESUMES_STORAGE_KEY);
-    const resumeFileName = localStorage.getItem(USER_RESUMES_NAME_STORAGE_KEY);
-    const currentActivationKey = localStorage.getItem(ACTIVATION_KEY_STRING);
-
-    // 获取有效的activationKey，确保不为空
-    const validActivationKey = (currentActivationKey && currentActivationKey.trim()) || 
-                               (activationKey && activationKey.trim()) || 
-                               "default_key";
-
-    // console.log("🔑 数据同步使用的密钥:", {
-    //   fromLocalStorage: currentActivationKey,
-    //   fromState: activationKey,
-    //   finalKey: validActivationKey
-    // });
-
-    // 构建数据同步消息
-    const dataSyncData: DataSyncData = {
-      activationKey: validActivationKey,
-      syncType: "full",
-      sessionId: "", // 将由Hook自动填充
+    return () => {
+      loudspeakerService.cleanup();
     };
+  }, []);
 
-    // 添加简历相关数据
-    if (resumeContent) {
-      dataSyncData.resumeContent = resumeContent;
-    }
-    if (resumeFileName) {
-      dataSyncData.resumeFileName = resumeFileName;
-    }
-
-    // 可以在此添加其他扩展数据
-    // dataSyncData.additionalData = {
-    //   openId: localStorage.getItem('openId'),
-    //   userId: localStorage.getItem('userId'),
-    // };
-
-    console.log("📤 发送数据同步到接收端:", {
-      hasResumeContent: !!dataSyncData.resumeContent,
-      resumeFileName: dataSyncData.resumeFileName,
-      activationKey: dataSyncData.activationKey,
+  // 开始面试
+  const startInterview = () => {
+    // 进入面试时将侧边栏宽度调整到最小
+    config.update((config) => {
+      config.sidebarWidth = NARROW_SIDEBAR_WIDTH;
     });
-
-    webSocketSync.sendDataSync(dataSyncData);
+    loudspeakerService.startInterview();
   };
+
+
 
   // 监听对端连接状态变化，当接收端连接成功时发送数据同步
   useEffect(() => {
@@ -747,12 +340,31 @@ export const InterviewLoudspeaker: React.FC = () => {
       console.log("🔄 检测到接收端连接，准备发送数据同步");
       // 延迟一秒发送，确保连接稳定
       const timeoutId = setTimeout(() => {
-        sendDataSync();
+        loudspeakerService.sendDataSync();
       }, 1000);
       
       return () => clearTimeout(timeoutId);
     }
   }, [syncEnabled, syncMode, peerConnected, peerMode, webSocketSync.connectionStatus]);
+
+  useEffect(() => {
+    if (syncMode === SyncMode.RECEIVER) {
+      // 接收端模式下自动应用缩窄模式
+      // 1. 设置面试组件的宽度
+      setWidth(NARROW_INTERVIEW_WIDTH_VW);
+      // 2. 同时缩窄主侧边栏
+      config.update((config) => {
+        config.sidebarWidth = NARROW_SIDEBAR_WIDTH;
+      });
+    }else{
+      // 监听端模式下自动应用默认宽度
+      setWidth(DEFAULT_INTERVIEW_WIDTH_VW);
+      // 同时恢复主侧边栏的默认宽度
+      config.update((config) => {
+        config.sidebarWidth = DEFAULT_INTERVIEW_WIDTH_VW;
+      });
+    }
+  }, [syncMode]);
 
   useEffect(() => {
     const wsKey = searchParams.get("wsKey");
@@ -772,9 +384,9 @@ export const InterviewLoudspeaker: React.FC = () => {
 
   // 面试准备UI组件
   const InterviewPreparationUI = () => {
-    const speakerInfo = getSpeakerStatusInfo();
-    const networkInfo = getNetworkStatusInfo();
-    const screenCaptureInfo = getScreenCaptureStatusInfo();
+    const speakerInfo = loudspeakerService.getSpeakerStatusInfo(speakerStatus);
+    const networkInfo = loudspeakerService.getNetworkStatusInfo(networkStatus);
+    const screenCaptureInfo = loudspeakerService.getScreenCaptureStatusInfo(screenCaptureStatus, syncMode, retryCount);
 
     return (
       <div 
@@ -972,7 +584,7 @@ export const InterviewLoudspeaker: React.FC = () => {
                 ) : !hasScreenPermission ? (
                   <button
                     className={styles.permissionButton}
-                    onClick={requestScreenCapture}
+                    onClick={() => loudspeakerService.requestScreenCapture()}
                     // disabled={screenCaptureStatus === "pending"}
                   >
                     {screenCaptureStatus === "pending" ? "点击选择录屏权限" : "获取录屏权限"}
@@ -982,7 +594,7 @@ export const InterviewLoudspeaker: React.FC = () => {
                     <span>✅ 录屏权限已获取</span>
                     <button
                       className={styles.revokeButton}
-                      onClick={stopScreenCapture}
+                      onClick={() => loudspeakerService.stopScreenCapture()}
                     >
                       重新获取
                     </button>
@@ -1041,7 +653,7 @@ export const InterviewLoudspeaker: React.FC = () => {
                               ? styles.dropdownItemSelected
                               : ""
                           }`}
-                          onClick={() => selectSpeakerDevice(device.deviceId)}
+                          onClick={() => loudspeakerService.selectSpeakerDevice(device.deviceId)}
                         >
                           {device.label}
                         </div>
@@ -1106,7 +718,7 @@ export const InterviewLoudspeaker: React.FC = () => {
             <div className={styles.settingControl}>
               <select
                 value={recognitionLanguage}
-                onChange={handleLanguageChange}
+                onChange={loudspeakerService.handleLanguageChange}
                 className={styles.languageSelect}
               >
                 {LANGUAGE_OPTIONS.map((option) => (
@@ -1127,7 +739,8 @@ export const InterviewLoudspeaker: React.FC = () => {
             disabled={
               speakerStatus !== "ready" ||
               (syncMode === SyncMode.SENDER && !hasScreenPermission) ||
-              (syncEnabled && webSocketSync.connectionStatus !== "connected")
+              (syncEnabled && webSocketSync.connectionStatus !== "connected") ||
+              (syncMode === SyncMode.RECEIVER)
             }
           >
             {speakerStatus !== "ready"
@@ -1136,6 +749,8 @@ export const InterviewLoudspeaker: React.FC = () => {
               ? "请先获取录屏权限"
               : syncEnabled && webSocketSync.connectionStatus !== "connected"
               ? "等待WebSocket连接..."
+              : syncMode === SyncMode.RECEIVER
+              ? "接收端不用点击"
               : "开始面试"}
           </button>
         </div>
@@ -1150,7 +765,7 @@ export const InterviewLoudspeaker: React.FC = () => {
       {/* 手机模式悬浮窗 */}
       {isMobile && (isMinimized || (syncMode === SyncMode.RECEIVER && isStarted)) && (
         <MiniFloatWindow 
-          onShow={handleShowFromFloat} 
+          onShow={loudspeakerService.handleShowFromFloat} 
           isVisible={true}
           text={syncMode === SyncMode.RECEIVER ? "正在接收" : "点击返回"}
           // icon={syncMode === SyncMode.RECEIVER ? "📡" : "🔊"}
@@ -1174,7 +789,7 @@ export const InterviewLoudspeaker: React.FC = () => {
         >
           {/* 拖拽边缘 */}
           {!isMobile && (
-            <div className={styles.dragEdge} onMouseDown={handleDragStart} />
+            <div className={styles.dragEdge} onMouseDown={loudspeakerService.handleDragStart} />
           )}
 
           {/* 关闭按钮 */}
@@ -1186,7 +801,7 @@ export const InterviewLoudspeaker: React.FC = () => {
           {isMobile && (
             <button
               className={styles.minimizeButton}
-              onClick={handleMinimize}
+              onClick={loudspeakerService.handleMinimize}
             >
              -
             </button>
@@ -1205,7 +820,7 @@ export const InterviewLoudspeaker: React.FC = () => {
                       padding: "5px",
                     }}
                   >
-                    当前是监听端，请打开接收端获取答案。(监听端无法获取答案)
+                    当前是监听端，请打开接收端获取答案。
                   </div>
                 )}
                 <InterviewUnderwayLoudspeaker
@@ -1213,29 +828,24 @@ export const InterviewLoudspeaker: React.FC = () => {
                   recognitionLanguage={recognitionLanguage}
                   onTextUpdate={onTextUpdate}
                   submitMessage={submitMessage}
-                  onStop={handleStopInterview}
+                  onStop={loudspeakerService.handleStopInterview}
                   defaultAutoSubmit={true}
                   mediaStream={mediaStreamRef.current}
-                  onRequestPermission={requestScreenCapture}
-                  onMinimize={handleMinimize}
+                  onRequestPermission={() => loudspeakerService.requestScreenCapture()}
+                  onMinimize={loudspeakerService.handleMinimize}
                   isMobile={isMobile}
                   messages={messages}
-                  onAddMessage={handleAddMessage}
+                  onAddMessage={loudspeakerService.handleAddMessage}
                   shouldNarrow={shouldNarrow}
-                  // 传递WebSocket相关回调
+                  // WebSocket接收回调（仅接收端使用）
                   onSpeechRecognition={(data) => {
                     if (syncMode === SyncMode.RECEIVER) {
                       console.log("🎯 接收到同步的语音识别结果:", data);
                       submitMessage(data.text);
-                      handleAddMessage(data.text);
+                      loudspeakerService.handleAddMessage(data.text);
                     }
                   }}
-                  sendSpeechRecognition={(data) => {
-                    if (syncEnabled && syncMode === SyncMode.SENDER) {
-                      console.log("📤 发送端模式：通过WebSocket发送语音识别结果");
-                      webSocketSync.sendSpeechRecognition(data);
-                    }
-                  }}
+                  //  onLLMResponse={undefined}
                   syncEnabled={syncEnabled}
                   syncMode={syncMode}
                 />

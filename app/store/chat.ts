@@ -41,6 +41,7 @@ import { extractMcpJson, isMcpJson } from "../mcp/utils";
 import { detectCommand, CommandMapping } from "../mcp/command-mapping";
 import { McpRequestMessage } from "../mcp/types";
 import { MultiCommandResult, multiCommandExecutor } from "../mcp/multi-command";
+import { LLMResponseData, SyncMode } from "../types/websocket-sync";
 
 /**
  * ========================= MCP-LLM 闭环工作流程说明 =========================
@@ -281,10 +282,16 @@ async function getMcpSystemPrompt(): Promise<string> {
   return MCP_SYSTEM_TEMPLATE.replace("{{ MCP_TOOLS }}", toolsStr);
 }
 
+// WebSocket回调函数类型定义
+type WebSocketSendCallback = (data: LLMResponseData) => void;
+
 const DEFAULT_CHAT_STATE = {
   sessions: [createEmptySession()],
   currentSessionIndex: 0,
   lastInput: "",
+  // WebSocket相关配置
+  webSocketCallback: null as WebSocketSendCallback | null,
+  webSocketMode: null as SyncMode | null,
 };
 
 export const useChatStore = createPersistStore(
@@ -463,87 +470,125 @@ export const useChatStore = createPersistStore(
       },
 
       /**
-       * 处理用户输入的核心函数 - 优化版本
+       * ==================== LLM对话核心处理函数 ====================
+       * 
+       * 这是整个聊天应用的核心函数，处理用户输入并管理完整的对话工作流程
+       * 
+       * 🔄 **完整工作流程：**
+       * 1. 消息预处理：创建用户消息和bot消息对象
+       * 2. MCP指令检测：检测并执行工具指令（如搜索、计算等）
+       * 3. LLM分析：调用语言模型进行智能分析
+       * 4. 流式输出：实时显示生成内容
+       * 5. 状态管理：更新会话状态和UI
+       * 
+       * 🔧 **MCP闭环设计：**
+       * - 工具执行 → 立即显示结果 → LLM分析 → 流式输出最终回答
+       * - 提供最佳用户体验：既看到工具数据，又获得AI智能解读
+       * 
+       * 📊 **流式输出机制：**
+       * - 创建统一的botMessage对象，设置streaming: true
+       * - 通过streamContent函数模拟MCP工具的流式显示
+       * - 通过LLM API的onUpdate回调实现真实的流式输出
+       * - 统一的UI更新机制保证流畅的用户体验
        * 
        * @param content 用户输入的文本内容
        * @param attachImages 附加的图片数组（可选）
        * @param isMcpResponse 是否为MCP响应（用于处理MCP工具返回的结果）
-       * 
-       * 主要流程：
-       * 1. 获取当前会话和模型配置
-       * 2. 创建用户消息和统一的流式bot消息
-       * 3. MCP指令检测和流式执行
-       * 4. LLM分析流式追加到同一消息
        */
       async onUserInput(
         content: string,
         attachImages?: string[],
         isMcpResponse?: boolean,
       ) {
-        // ==================== 第一步：获取会话和配置 ====================
+        // ==================== 第一步：会话和配置获取 ====================
+        // 获取当前活跃的聊天会话和模型配置
         const session = get().currentSession();
         const modelConfig = session.mask.modelConfig;
 
-        // ==================== 第二步：创建统一的消息对象 ====================
+        // ==================== 第二步：多模态内容处理 ====================
         let mContent: string | MultimodalContent[] = content;
         
-        // 处理附加图片：将文本和图片组合成多模态内容
+        // 处理附加图片：将文本和图片组合成多模态内容数组
+        // 这里支持Vision模型（如GPT-4V）处理图片+文本的组合输入
         if (!isMcpResponse && attachImages && attachImages.length > 0) {
           mContent = [
+            // 如果有文本内容，添加文本对象
             ...(content ? [{ type: "text" as const, text: content }] : []),
+            // 将所有图片转换为image_url对象
             ...attachImages.map((url) => ({
               type: "image_url" as const,
               image_url: { url },
             })),
           ];
         } else if (!isMcpResponse) {
-          // 正常情况：使用常规模板填充
+          // 普通文本输入：使用模板系统填充提示词
+          // fillTemplateWith会添加系统提示词、时间戳、模型信息等上下文
           mContent = fillTemplateWith(content, modelConfig);
         }
 
-        // 创建用户消息
+        // ==================== 第三步：消息对象创建 ====================
+        // 创建用户消息对象，包含完整的输入内容
         const userMessage: ChatMessage = createMessage({
           role: "user",
           content: mContent,
-          isMcpResponse,
+          isMcpResponse, // 标记是否为MCP工具的响应
         });
 
-        // 创建统一的流式bot消息
+        // 创建机器人回复消息对象，初始为空，设置为流式状态
+        // 这个对象将被后续的流式输出过程不断更新
         const botMessage: ChatMessage = createMessage({
           role: "assistant",
-          streaming: true,
+          streaming: true, // 🔴 关键：启用流式状态
           model: modelConfig.model,
         });
 
-        // 统一的流式内容追加函数
+        // ==================== 第四步：统一流式内容追加函数 ====================
+        /**
+         * 用于模拟流式输出的工具函数
+         * 主要用于MCP工具执行过程的可视化显示
+         * 
+         * @param text 要追加的文本内容
+         * @param delay 延迟时间（毫秒），制造打字机效果
+         */
         const streamContent = async (text: string, delay: number = 50): Promise<void> => {
           return new Promise((resolve) => {
             setTimeout(() => {
+              // 直接修改botMessage的content属性
               botMessage.content += text;
+              
+              // 🔴 关键：触发状态更新，通知React重新渲染UI
               get().updateTargetSession(session, (session) => {
-                session.messages = session.messages.concat();
+                session.messages = session.messages.concat(); // 创建新数组触发更新
               });
+              
               resolve();
             }, delay);
           });
         };
 
-        // 保存用户消息和初始bot消息到会话中
+        // ==================== 第五步：保存消息到会话 ====================
+        // 计算消息在数组中的索引，用于后续的控制器管理
         const messageIndex = session.messages.length + 1;
+        
+        // 同时保存用户消息和初始的空bot消息到会话中
         get().updateTargetSession(session, (session) => {
           session.messages = session.messages.concat([userMessage, botMessage]);
         });
+        
+        // 更新会话统计信息（字符数等）
         get().updateStat(userMessage, session);
 
-        // ==================== 第三步：MCP指令检测和流式执行 ====================
+        // ==================== 第六步：MCP指令检测和执行 ====================
+        // 如果不是MCP响应（即用户的直接输入），则进行指令检测
         if (!isMcpResponse) {
-          // 首先检测是否为复合指令
+          // 🔧 复合指令检测：支持一次执行多个工具
           const multiCommandResult = await multiCommandExecutor.executeCommandChain(content);
           
           if (multiCommandResult.executed) {
-            // 流式显示复合指令执行过程
+            // 流式显示复合指令的执行过程
             await streamContent("🔧 **多工具执行模式**\n\n", 100);
             
+            // 逐个显示每个工具的执行结果
             for (let i = 0; i < multiCommandResult.results.length; i++) {
               const result = multiCommandResult.results[i];
               const toolName = result.command?.description || `工具${i + 1}`;
@@ -553,57 +598,77 @@ export const useChatStore = createPersistStore(
               await streamContent(`${result.result || "执行完成"}\n\n---\n\n`, 300);
             }
             
-            // 如果需要继续到LLM分析
+            // 如果需要继续到LLM进行智能分析
             if (multiCommandResult.shouldContinueToLLM && multiCommandResult.enhancedPrompt) {
               await streamContent("### 🤖 AI综合分析\n\n", 200);
               await streamContent("分析中...\n\n", 300);
               
-              // 继续LLM分析流程
+              // 🔄 进入LLM分析流程
               const enhancedContent = fillTemplateWith(multiCommandResult.enhancedPrompt, modelConfig);
               await this.executeLLMAnalysis(enhancedContent, botMessage, session, messageIndex);
             } else {
-              // 多命令执行完成
+              // 多命令执行完成，结束流式状态
               botMessage.streaming = false;
               botMessage.date = new Date().toLocaleString();
               get().updateStat(botMessage, session);
             }
-            return;
+            return; // 结束处理
           } else {
-            // 尝试单指令检测
+            // 🔧 单指令检测：检测单个MCP工具调用
             const mcpCommandResult = await get().detectAndExecuteCommand(content);
             
             if (mcpCommandResult.executed) {
-              // 流式显示单指令执行过程
+              // 流式显示单指令的执行过程
               const toolName = mcpCommandResult.command?.description || "MCP工具";
               await streamContent(`### 🔨 ${toolName}\n\n`, 100);
               await streamContent("执行中...\n\n", 200);
               await streamContent(`${mcpCommandResult.result || "执行完成"}\n\n`, 300);
               
-              // 如果需要继续到LLM分析
+              // 如果需要继续到LLM进行智能分析
               if (mcpCommandResult.shouldContinueToLLM && mcpCommandResult.enhancedPrompt) {
                 await streamContent("---\n\n### 🤖 AI分析\n\n", 200);
                 await streamContent("分析中...\n\n", 300);
                 
-                // 继续LLM分析流程
+                // 🔄 进入LLM分析流程
                 const enhancedContent = fillTemplateWith(mcpCommandResult.enhancedPrompt, modelConfig);
                 await this.executeLLMAnalysis(enhancedContent, botMessage, session, messageIndex);
               } else {
-                // 单指令执行完成
+                // 单指令执行完成，结束流式状态
                 botMessage.streaming = false;
                 botMessage.date = new Date().toLocaleString();
                 get().updateStat(botMessage, session);
               }
-              return;
+              return; // 结束处理
             }
           }
         }
 
-        // ==================== 第四步：常规LLM对话流程 ====================
+        // ==================== 第七步：常规LLM对话流程 ====================
+        // 如果不是MCP指令，或者是普通的对话输入，则直接进行LLM分析
         await this.executeLLMAnalysis(mContent, botMessage, session, messageIndex);
       },
 
       /**
-       * 执行LLM分析的辅助函数
+       * ==================== LLM分析执行函数 ====================
+       * 
+       * 这个函数负责执行真正的LLM API调用和流式输出处理
+       * 
+       * 🔄 **流式输出核心机制：**
+       * 1. 准备上下文：获取带记忆的历史消息
+       * 2. API调用：启用stream模式调用LLM API
+       * 3. 实时更新：通过onUpdate回调实时更新UI
+       * 4. 错误处理：完整的错误处理和恢复机制
+       * 5. 控制管理：支持用户随时停止生成
+       * 
+       * 📊 **状态管理：**
+       * - 通过updateTargetSession触发React重渲染
+       * - 维护streaming状态控制UI显示
+       * - 支持工具调用的状态跟踪
+       * 
+       * @param messageContent 要发送给LLM的消息内容
+       * @param botMessage 要更新的机器人消息对象
+       * @param session 当前会话对象
+       * @param messageIndex 消息在数组中的索引
        */
       async executeLLMAnalysis(
         messageContent: string | MultimodalContent[],
@@ -611,58 +676,106 @@ export const useChatStore = createPersistStore(
         session: ChatSession,
         messageIndex: number,
       ) {
+        // ==================== 第一步：配置和API准备 ====================
         const modelConfig = session.mask.modelConfig;
         
-        // 创建用于LLM的消息
+        // 创建用于LLM的临时消息对象（不会保存到会话中）
         const llmUserMessage: ChatMessage = createMessage({
           role: "user",
           content: messageContent,
         });
 
-        // 获取包含记忆的最近消息
+        // ==================== 第二步：上下文准备 ====================
+        // 🧠 获取包含记忆系统的完整上下文
+        // 这包括：系统提示词、长期记忆、短期记忆、上下文提示词等
         const recentMessages = await get().getMessagesWithMemory();
-        const sendMessages = recentMessages.slice(0, -1).concat(llmUserMessage); // 替换最后一条消息
+        
+        // 替换最后一条消息为当前要处理的消息
+        // 这样可以确保上下文的连续性，同时处理新的用户输入
+        const sendMessages = recentMessages.slice(0, -1).concat(llmUserMessage);
 
+        // ==================== 第三步：API客户端获取 ====================
+        // 根据配置的提供商获取对应的API客户端（OpenAI、Anthropic等）
         const api: ClientApi = getClientApi(modelConfig.providerName);
         
-        // 发起LLM聊天请求
+        // ==================== 第四步：流式LLM调用 ====================
+        // 🚀 发起流式LLM聊天请求
         api.llm.chat({
-          messages: sendMessages,
-          config: { ...modelConfig, stream: true },
+          messages: sendMessages,           // 发送的完整消息上下文
+          config: { ...modelConfig, stream: true }, // 🔴 关键：启用流式输出
           
-          // 流式更新回调：追加LLM生成的内容
+          // ==================== 流式更新回调 ====================
+          /**
+           * 📡 实时流式更新回调函数
+           * 每当LLM生成新的内容片段时，这个函数就会被调用
+           * 这是流式输出的核心机制
+           * 
+           * @param message 本次更新的内容片段
+           */
           onUpdate(message) {
             if (message) {
-              // 确保botMessage.content是字符串类型
+              // 🔄 处理内容更新逻辑
+              // 确保botMessage.content是字符串类型（类型安全）
               const currentContent = typeof botMessage.content === 'string' ? botMessage.content : '';
               
-              // 如果是第一次更新，清除"分析中..."的占位文本
+              // 🧹 清理占位文本：如果是第一次更新，清除"分析中..."的占位文本
               if (currentContent.endsWith("分析中...\n\n")) {
                 botMessage.content = currentContent.replace(/分析中\.\.\.\n\n$/, "");
               }
               
-              // 找到最后一个LLM回答的起始位置
+              // 🎯 智能内容插入：找到最后一个LLM回答的起始位置
               const lastAnalysisIndex = currentContent.lastIndexOf("### 🤖");
               if (lastAnalysisIndex !== -1) {
+                // 如果存在分析标题，则在该位置之后更新内容
                 const beforeAnalysis = currentContent.substring(0, lastAnalysisIndex);
                 botMessage.content = beforeAnalysis + "### 🤖 AI分析\n\n" + message;
               } else {
+                // 如果是纯LLM对话（没有MCP工具），直接更新内容
                 botMessage.content = message;
               }
+              
+              // 🌐 WebSocket实时传输：在【监听端】模式下发送LLM输出到【接收端】
+              const state = get();
+              if (state.webSocketCallback && state.webSocketMode === SyncMode.SENDER) {
+                try {
+                  const llmData: LLMResponseData = {
+                    content: message,
+                    isComplete: false, // 流式输出中间状态
+                    messageId: botMessage.id || "",
+                    sessionId: session.id,
+                    timestamp: Date.now(),
+                    modelName: session.mask.modelConfig.model,
+                  };
+                  state.webSocketCallback(llmData);
+                } catch (error) {
+                  console.warn("[WebSocket] Failed to send LLM output:", error);
+                }
+              }
             }
+            
+            // 🔴 关键：触发状态更新，通知React重新渲染
+            // 这里使用concat()创建新数组，确保React能检测到状态变化
             get().updateTargetSession(session, (session) => {
+              
               session.messages = session.messages.concat();
             });
           },
           
-          // 完成回调
+          // ==================== 完成回调 ====================
+          /**
+           * ✅ 流式输出完成回调函数
+           * 当LLM完成所有内容生成时调用
+           * 
+           * @param message 最终的完整消息内容
+           */
           async onFinish(message) {
+            // 🏁 结束流式状态
             botMessage.streaming = false;
+            
             if (message) {
-              // 确保botMessage.content是字符串类型
+              // 🔄 确保最终内容正确设置（与onUpdate逻辑一致）
               const currentContent = typeof botMessage.content === 'string' ? botMessage.content : '';
               
-              // 确保最终内容正确设置
               const lastAnalysisIndex = currentContent.lastIndexOf("### 🤖");
               if (lastAnalysisIndex !== -1) {
                 const beforeAnalysis = currentContent.substring(0, lastAnalysisIndex);
@@ -670,55 +783,128 @@ export const useChatStore = createPersistStore(
               } else {
                 botMessage.content = message;
               }
+              
+              // 🌐 WebSocket结束标记：发送最终完成消息
+              const state = get();
+              if (state.webSocketCallback && state.webSocketMode === SyncMode.SENDER) {
+                try {
+                  const finalLlmData: LLMResponseData = {
+                    content: message,
+                    isComplete: true, // 标记为最终完成状态
+                    messageId: botMessage.id || "",
+                    sessionId: session.id,
+                    timestamp: Date.now(),
+                    modelName: session.mask.modelConfig.model,
+                  };
+                  state.webSocketCallback(finalLlmData);
+                } catch (error) {
+                  console.warn("[WebSocket] Failed to send final LLM output:", error);
+                }
+              }
+              
+              // 📅 设置消息时间戳
               botMessage.date = new Date().toLocaleString();
+              
+              // 📝 触发新消息事件（用于摘要、统计等）
               get().onNewMessage(botMessage, session);
             }
+            
+            // 📊 更新会话统计信息
             get().updateStat(botMessage, session);
+            
+            // 🧹 清理控制器：从控制池中移除已完成的请求
             ChatControllerPool.remove(session.id, botMessage.id);
           },
           
-          // 工具调用处理
+          // ==================== 工具调用处理 ====================
+          /**
+           * 🔧 工具调用开始前的回调
+           * 当LLM决定调用工具时触发（如function calling）
+           * 
+           * @param tool 工具调用信息
+           */
           onBeforeTool(tool: ChatMessageTool) {
+            // 📝 将工具信息添加到消息的tools数组中
             (botMessage.tools = botMessage?.tools || []).push(tool);
+            
+            // 🔄 立即更新UI显示工具调用状态
             get().updateTargetSession(session, (session) => {
               session.messages = session.messages.concat();
             });
           },
           
+          /**
+           * 🔧 工具调用完成后的回调
+           * 当工具执行完成并返回结果时触发
+           * 
+           * @param tool 更新后的工具信息（包含结果）
+           */
           onAfterTool(tool: ChatMessageTool) {
+            // 🔄 更新对应工具的状态和结果
             botMessage?.tools?.forEach((t, i, tools) => {
               if (tool.id == t.id) {
-                tools[i] = { ...tool };
+                tools[i] = { ...tool }; // 替换为更新后的工具信息
               }
             });
+            
+            // 🔄 更新UI显示工具执行结果
             get().updateTargetSession(session, (session) => {
               session.messages = session.messages.concat();
             });
           },
           
-          // 错误处理
+          // ==================== 错误处理 ====================
+          /**
+           * ❌ 错误处理回调
+           * 当API调用出现错误时触发
+           * 
+           * @param error 错误对象
+           */
           onError(error) {
+            // 🔍 检查是否为用户主动取消（abort）
             const isAborted = error.message?.includes?.("aborted");
+            
+            // 📝 在消息中显示错误信息
             botMessage.content += "\n\n❌ **发生错误**\n\n" + prettyObject({
               error: true,
               message: error.message,
             });
+            
+            // 🛑 结束流式状态
             botMessage.streaming = false;
+            
+            // 🚨 设置错误状态（但用户取消不算错误）
             botMessage.isError = !isAborted;
+            
+            // 🔄 更新UI显示错误信息
             get().updateTargetSession(session, (session) => {
               session.messages = session.messages.concat();
             });
+            
+            // 📊 更新统计信息
             get().updateStat(botMessage, session);
+            
+            // 🧹 清理控制器
             ChatControllerPool.remove(session.id, botMessage.id ?? messageIndex);
+            
+            // 📝 记录错误日志
             console.error("[Chat] failed ", error);
           },
           
-          // 控制器处理
+          // ==================== 控制器注册 ====================
+          /**
+           * 🎮 控制器注册回调
+           * 用于注册abort控制器，支持用户随时停止生成
+           * 
+           * @param controller AbortController实例
+           */
           onController(controller) {
+            // 📝 将控制器注册到全局控制池中
+            // 这样用户就可以通过UI停止按钮来中断生成过程
             ChatControllerPool.addController(
-              session.id,
-              botMessage.id ?? messageIndex,
-              controller,
+              session.id,           // 会话ID
+              botMessage.id ?? messageIndex, // 消息ID
+              controller,           // 控制器实例
             );
           },
         });
@@ -1017,6 +1203,17 @@ export const useChatStore = createPersistStore(
       setLastInput(lastInput: string) {
         set({
           lastInput,
+        });
+      },
+
+      /** 
+       * 设置WebSocket回调函数和模式
+       * 用于在【监听端】模式下发送LLM输出到【接收端】
+       */
+      setWebSocketCallback(callback: WebSocketSendCallback | null, mode: SyncMode | null) {
+        set({
+          webSocketCallback: callback,
+          webSocketMode: mode,
         });
       },
 

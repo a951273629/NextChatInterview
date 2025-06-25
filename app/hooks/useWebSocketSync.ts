@@ -4,12 +4,10 @@ import {
   ConnectionStatus,
   SyncMode,
   WebSocketMessage,
-  SpeechRecognitionData,
-  SpeechRecognitionMessage,
+
   LLMResponseData,
   LLMResponseMessage,
-  DataSyncData,
-  DataSyncMessage,
+
   PeerStatusData,
   PeerStatusUpdateMessage,
   UseWebSocketSyncReturn,
@@ -22,10 +20,8 @@ interface UseWebSocketSyncOptions {
   activationKey?: string;
   mode: SyncMode;
   enabled: boolean;
-  onSpeechRecognition?: (data: SpeechRecognitionData) => void;
   onLLMResponse?: (data: LLMResponseData) => void;          // 新增：LLM回答回调
   onPeerStatusChange?: (peerStatus: PeerStatusData) => void;
-  onDataSync?: (data: DataSyncData) => void;
   serverUrl?: string;
 }
 
@@ -33,10 +29,8 @@ export const useWebSocketSync = ({
   activationKey = localStorage.getItem(ACTIVATION_KEY_STRING) || "",
   mode,
   enabled,
-  onSpeechRecognition,
   onLLMResponse,
   onPeerStatusChange,
-  onDataSync,
   serverUrl = DEFAULT_WEBSOCKET_URL,
 }: UseWebSocketSyncOptions): UseWebSocketSyncReturn => {
   // 状态管理
@@ -73,30 +67,18 @@ export const useWebSocketSync = ({
           console.log("📨 收到WebSocket消息 Type:", message.type);
           // console.log("收到WebSocket消息 Type:", message.type);
           switch (message.type) {
-            case "speech_recognition":
-              const speechMessage = message as SpeechRecognitionMessage;
-              if (mode === SyncMode.RECEIVER && onSpeechRecognition) {
-                console.log("🎯 接收端处理语音识别消息:", speechMessage.data);
-                onSpeechRecognition(speechMessage.data);
-              }
-              break;
+
 
             case "llm_response":
               // console.log("🤖 接收端处理LLM回答消息 llm_response:", message.data);
               const llmMessage = message as LLMResponseMessage;
               if (mode === SyncMode.RECEIVER && onLLMResponse) {
-                console.log("🤖 接收端处理LLM回答消息:", llmMessage.data);
+                // console.log("🤖 接收端处理LLM回答消息:", llmMessage.data);
                 onLLMResponse(llmMessage.data);
               }
               break;
 
-            case "data_sync":
-              const dataSyncMessage = message as DataSyncMessage;
-              if (mode === SyncMode.RECEIVER && onDataSync) {
-                // console.log("📥 接收端处理数据同步消息:", dataSyncMessage.data);
-                onDataSync(dataSyncMessage.data);
-              }
-              break;
+
 
             case "ping":
               // 响应心跳
@@ -165,41 +147,7 @@ export const useWebSocketSync = ({
     return ws?.readyState === WebSocket.OPEN;
   }, [getWebSocket]);
 
-  // 发送语音识别消息
-  const sendSpeechRecognition = useCallback(
-    (data: SpeechRecognitionData) => {
-      console.log("🎤 sendSpeechRecognition调用状态:", {
-        mode,
-        actualWebSocketState: getWebSocket()?.readyState,
-        isConnected: isConnected(),
-      });
 
-      if (mode !== SyncMode.SENDER) {
-        console.warn("⚠️ 非发送端模式，无法发送语音识别消息");
-        return;
-      }
-
-      if (!isConnected()) {
-        console.warn("⚠️ WebSocket未连接，无法发送消息", {
-          actualState: getWebSocket()?.readyState,
-        });
-        return;
-      }
-
-      const message: SpeechRecognitionMessage = {
-        type: "speech_recognition",
-        timestamp: Date.now(),
-        data: {
-          ...data,
-          sessionId: sessionIdRef.current,
-        },
-      };
-
-      console.log("📤 发送语音识别消息:", message);
-      sendMessage(JSON.stringify(message));
-    },
-    [mode, sendMessage, isConnected, getWebSocket],
-  );
 
   // 发送LLM回答消息
   const sendLLMResponse = useCallback(
@@ -237,41 +185,7 @@ export const useWebSocketSync = ({
     [mode, sendMessage, isConnected, getWebSocket],
   );
 
-  // 发送数据同步消息
-  const sendDataSync = useCallback(
-    (data: DataSyncData) => {
-      console.log("📤 sendDataSync调用状态:", {
-        mode,
-        actualWebSocketState: getWebSocket()?.readyState,
-        isConnected: isConnected(),
-      });
 
-      if (mode !== SyncMode.SENDER) {
-        console.warn("⚠️ 非发送端模式，无法发送数据同步消息");
-        return;
-      }
-
-      if (!isConnected()) {
-        console.warn("⚠️ WebSocket未连接，无法发送数据同步消息", {
-          actualState: getWebSocket()?.readyState,
-        });
-        return;
-      }
-
-      const message: DataSyncMessage = {
-        type: "data_sync",
-        timestamp: Date.now(),
-        data: {
-          ...data,
-          sessionId: sessionIdRef.current,
-        },
-      };
-
-      console.log("📤 发送数据同步消息:", message);
-      sendMessage(JSON.stringify(message));
-    },
-    [mode, sendMessage, isConnected, getWebSocket],
-  );
 
   // 通用消息发送
   const sendMessageWrapper = useCallback(
@@ -321,14 +235,10 @@ export const useWebSocketSync = ({
     connect,
     disconnect,
     sendMessage: sendMessageWrapper,
-    sendSpeechRecognition,
     sendLLMResponse,                // 新增：发送LLM回答方法
-    sendDataSync,
 
     // 回调
-    onSpeechRecognition,
     onLLMResponse,                  // 新增：LLM回答回调
     onPeerStatusChange,
-    onDataSync,
   };
 };

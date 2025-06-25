@@ -17,13 +17,7 @@ interface Message {
   timestamp: number;
 }
 
-// 添加语音识别数据类型
-interface SpeechRecognitionData {
-  text: string;
-  isFinal: boolean;
-  language: string;
-  sessionId: string;
-}
+
 
 interface InterviewUnderwayLoudspeakerProps {
   // 控制状态
@@ -54,7 +48,6 @@ interface InterviewUnderwayLoudspeakerProps {
   shouldNarrow: boolean;
 
   // WebSocket相关（接收端用）
-  onSpeechRecognition?: (data: SpeechRecognitionData) => void;  // 保留语音识别回调
   // onLLMResponse?: (data: LLMResponseData) => void;              // 新增LLM回答接收回调
   syncEnabled?: boolean;
   syncMode?: SyncMode;
@@ -77,7 +70,6 @@ export const InterviewUnderwayLoudspeaker: React.FC<
   onAddMessage,
   shouldNarrow,
   // WebSocket回调props（接收端用）
-  onSpeechRecognition,
   syncEnabled = false,
   syncMode = SyncMode.SENDER,
 }) => {

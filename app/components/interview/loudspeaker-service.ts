@@ -1,5 +1,5 @@
 import React from "react";
-import { SyncMode, DataSyncData, ACTIVATION_KEY_STRING } from "@/app/types/websocket-sync";
+import { SyncMode, ACTIVATION_KEY_STRING } from "@/app/types/websocket-sync";
 import { toast } from "react-hot-toast";
 import { RecognitionLanguage } from "@/app/hooks/useInterviewLanguage";
 import { USER_RESUMES_STORAGE_KEY, USER_RESUMES_NAME_STORAGE_KEY } from "@/app/constant";
@@ -440,132 +440,9 @@ export class LoudspeakerService {
     this.callbacks.setRecognitionLanguage(language as RecognitionLanguage);
   };
 
-  // 数据同步处理方法
-  handleDataSyncReceived = async (data: DataSyncData): Promise<void> => {
-    try {
-      let syncItems: string[] = [];
-      
-      // 执行同步操作
-      if (data.resumeContent) {
-        localStorage.setItem(USER_RESUMES_STORAGE_KEY, data.resumeContent);
-        syncItems.push("简历内容");
-        console.log("📝 已同步简历内容到本地存储");
-      }
-      
-      if (data.resumeFileName) {
-        localStorage.setItem(USER_RESUMES_NAME_STORAGE_KEY, data.resumeFileName);
-        syncItems.push("简历文件名");
-        console.log("📄 已同步简历文件名到本地存储");
-      }
-      
-      // 激活密钥处理
-      if (data.activationKey && data.activationKey !== this.activationKey) {
-        localStorage.setItem(ACTIVATION_KEY_STRING, data.activationKey);
-        this.callbacks.setActivationKey(data.activationKey);
-        syncItems.push("激活密钥");
-        console.log("🔑 已同步激活密钥到本地存储");
-        
-        // 激活密钥变更的特别提醒
-        toast("🔑 激活密钥已更新！请确认新密钥有效。", {
-          duration: 6000,
-          position: "top-center",
-          style: {
-            background: "#FF9800",
-            color: "white",
-            fontWeight: "bold",
-          },
-        });
-      }
-      
-      // 处理扩展数据
-      if (data.additionalData) {
-        Object.entries(data.additionalData).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
-            const storageKey = `sync_${key}`;
-            localStorage.setItem(storageKey, String(value));
-            syncItems.push(key);
-            console.log(`🔗 已同步${key}到本地存储:`, value);
-          }
-        });
-      }
-      
-      // 显示成功提示
-      if (syncItems.length > 0) {
-        toast.success(`🎉 数据同步成功！已同步：${syncItems.join("、")}`, {
-          duration: 5000,
-          position: "top-center",
-          style: {
-            background: "#4CAF50",
-            color: "white",
-            fontWeight: "bold",
-          },
-        });
-      } else {
-        // 没有数据需要同步的情况
-        toast("📭 接收到同步请求，但没有新数据需要更新", {
-          duration: 3000,
-          position: "top-center",
-          style: {
-            background: "#2196F3",
-            color: "white",
-          },
-        });
-      }
-      
-    } catch (error) {
-      console.error("❌ 数据同步失败:", error);
-      toast.error(`❌ 数据同步失败: ${error instanceof Error ? error.message : '未知错误'}`, {
-        duration: 5000,
-        position: "top-center",
-        style: {
-          background: "#F44336",
-          color: "white",
-          fontWeight: "bold",
-        },
-      });
-    }
-  };
 
-  // 发送数据同步
-  sendDataSync = (): void => {
-    if (this.syncMode !== SyncMode.SENDER || !this.webSocketSync?.isConnected()) {
-      console.log("⚠️ 无法发送数据同步：模式或连接状态不符合条件");
-      return;
-    }
 
-    // 从localStorage获取当前数据
-    const resumeContent = localStorage.getItem(USER_RESUMES_STORAGE_KEY);
-    const resumeFileName = localStorage.getItem(USER_RESUMES_NAME_STORAGE_KEY);
-    const currentActivationKey = localStorage.getItem(ACTIVATION_KEY_STRING);
 
-    // 获取有效的activationKey，确保不为空
-    const validActivationKey = (currentActivationKey && currentActivationKey.trim()) || 
-                               (this.activationKey && this.activationKey.trim()) || 
-                               "default_key";
-
-    // 构建数据同步消息
-    const dataSyncData: DataSyncData = {
-      activationKey: validActivationKey,
-      syncType: "full",
-      sessionId: "", // 将由Hook自动填充
-    };
-
-    // 添加简历相关数据
-    if (resumeContent) {
-      dataSyncData.resumeContent = resumeContent;
-    }
-    if (resumeFileName) {
-      dataSyncData.resumeFileName = resumeFileName;
-    }
-
-    console.log("📤 发送数据同步到接收端:", {
-      hasResumeContent: !!dataSyncData.resumeContent,
-      resumeFileName: dataSyncData.resumeFileName,
-      activationKey: dataSyncData.activationKey,
-    });
-
-    this.webSocketSync.sendDataSync(dataSyncData);
-  };
 
   // 清理资源
   cleanup(): void {

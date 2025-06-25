@@ -3,7 +3,7 @@ import styles from "./interview-loudspeaker.module.scss";
 import { InterviewUnderwayLoudspeaker } from "./interview-underway-loudspeaker";
 import { toast, Toaster } from "react-hot-toast";
 import { MiniFloatWindow } from "./mini-float-window";
-import { SyncMode, ACTIVATION_KEY_STRING, DataSyncData } from "@/app/types/websocket-sync";
+import { SyncMode, ACTIVATION_KEY_STRING } from "@/app/types/websocket-sync";
 import RecorderIcon from "@/app/icons/record_light.svg";
 import { useOutletContext, useSearchParams } from "react-router-dom";
 import { useInterviewLanguage, LANGUAGE_OPTIONS, RecognitionLanguage } from "@/app/hooks/useInterviewLanguage";
@@ -154,16 +154,7 @@ export const InterviewLoudspeaker: React.FC = () => {
     activationKey: (activationKey && activationKey.trim()) || "default_key",
     mode: syncMode,
     enabled: syncEnabled,
-    onSpeechRecognition: (data) => {
-      // 接收端处理逻辑：自动提交接收到的语音识别结果
-      if (syncMode === SyncMode.RECEIVER) {
-        console.log("🎯 接收到同步的语音识别结果:", data);
-        // 直接提交消息，不经过本地识别流程
-        submitMessage(data.text);
-        // 也添加到消息历史
-        loudspeakerService.handleAddMessage(data.text);
-      }
-    },
+
     onLLMResponse: (data) => {
       // 接收端处理LLM回答
       if (syncMode === SyncMode.RECEIVER) {
@@ -180,14 +171,7 @@ export const InterviewLoudspeaker: React.FC = () => {
       setPeerConnected(peerStatus.connected);
       setPeerMode(peerStatus.mode === "sender" ? SyncMode.SENDER : SyncMode.RECEIVER);
     },
-    onDataSync: (data) => {
-      console.log(`收到了回调:${syncMode}`);    
-      // 接收端处理数据同步
-      if (syncMode === SyncMode.RECEIVER) {
-        console.log("📥 接收到数据同步:", data);
-        loudspeakerService.handleDataSyncReceived(data);
-      }
-    },
+
   });
 
   // 监听WebSocket连接状态变化，重置对端连接状态
@@ -328,24 +312,7 @@ export const InterviewLoudspeaker: React.FC = () => {
 
 
 
-  // 监听对端连接状态变化，当接收端连接成功时发送数据同步
-  useEffect(() => {
-    if (
-      syncEnabled &&
-      syncMode === SyncMode.SENDER &&
-      peerConnected &&
-      peerMode === SyncMode.RECEIVER &&
-      webSocketSync.connectionStatus === "connected"
-    ) {
-      console.log("🔄 检测到接收端连接，准备发送数据同步");
-      // 延迟一秒发送，确保连接稳定
-      const timeoutId = setTimeout(() => {
-        loudspeakerService.sendDataSync();
-      }, 1000);
-      
-      return () => clearTimeout(timeoutId);
-    }
-  }, [syncEnabled, syncMode, peerConnected, peerMode, webSocketSync.connectionStatus]);
+
 
   useEffect(() => {
     if (syncMode === SyncMode.RECEIVER) {
@@ -837,14 +804,7 @@ export const InterviewLoudspeaker: React.FC = () => {
                   messages={messages}
                   onAddMessage={loudspeakerService.handleAddMessage}
                   shouldNarrow={shouldNarrow}
-                  // WebSocket接收回调（仅接收端使用）
-                  onSpeechRecognition={(data) => {
-                    if (syncMode === SyncMode.RECEIVER) {
-                      console.log("🎯 接收到同步的语音识别结果:", data);
-                      submitMessage(data.text);
-                      loudspeakerService.handleAddMessage(data.text);
-                    }
-                  }}
+
                   //  onLLMResponse={undefined}
                   syncEnabled={syncEnabled}
                   syncMode={syncMode}

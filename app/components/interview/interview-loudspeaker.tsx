@@ -28,6 +28,7 @@ import {
   LoudspeakerServiceProps,
   Message
 } from "./loudspeaker-service";
+import { checkAzureSpeechUsage } from "./azureSpeech";
 
 // 宽度管理常量
 const DEFAULT_INTERVIEW_WIDTH_VW = 20;
@@ -173,7 +174,13 @@ export const InterviewLoudspeaker: React.FC = () => {
     },
 
   });
-
+  useEffect(()=>{
+    checkAzureSpeechUsage().then((res)=>{
+      console.log("🔍 检查 Azure Speech 使用量:", JSON.stringify(res, null, 2) );
+    }).catch((err)=>{
+      console.error("❌ 检查 Azure Speech 使用量失败:", err);
+    });
+  },[])
   // 监听WebSocket连接状态变化，重置对端连接状态
   useEffect(() => {
     if (webSocketSync.connectionStatus !== "connected") {

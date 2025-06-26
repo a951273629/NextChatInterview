@@ -33,18 +33,19 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // 从服务器获取密钥的真实状态
-  const fetchKeyStatus = async (keyString: string) => {
-    try {
-      const response = await fetch(`/api/key-generate?key=${keyString}`);
-      if (response.ok) {
-        const key = await response.json();
-        return key;
-      }
-    } catch (error) {
-      console.error("获取密钥状态失败:", error);
-    }
-    return null;
-  };
+  // const fetchKeyStatus = async (keyString: string) => {
+  //   try {
+  //     const response = await fetch(`/api/key-generate?key=${keyString}`);
+  //     console.log(" fetchKeyStatus was called", keyString);
+  //     if (response.ok) {
+  //       const key = await response.json();
+  //       return key;
+  //     }
+  //   } catch (error) {
+  //     console.error("获取密钥状态失败:", error);
+  //   }
+  //   return null;
+  // };
 
   // 每秒更新一次激活状态和剩余时间
   useEffect(() => {
@@ -62,7 +63,7 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
         
         if (status === "active" || status === "paused" && keyString) {
           // 从服务器获取真实状态
-          const keyData = await fetchKeyStatus(keyString as string);
+          const keyData = await getKeyByString(keyString as string);
           
           if (keyData) {
             if (keyData.status === "paused") {
@@ -106,8 +107,8 @@ const ActivationStatus: React.FC<ActivationStatusProps> = ({ className }) => {
     // 立即更新一次
     updateStatus();
 
-    // 设置定时器每秒更新
-    const timer = setInterval(updateStatus, 1000);
+    // 设置定时器分钟更新
+    const timer = setInterval(updateStatus, 1000*60*2);
 
     return () => {
       clearInterval(timer);

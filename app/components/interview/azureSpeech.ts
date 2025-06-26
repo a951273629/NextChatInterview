@@ -1,5 +1,5 @@
 import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
-
+let index = 0;
 // Azure Speech 配置接口
 export interface AzureSpeechConfig {
   subscriptionKey: string;
@@ -14,6 +14,41 @@ export type SpeechRecognitionCallback = (
 ) => void;
 export type SpeechErrorCallback = (error: string) => void;
 export type SpeechEndCallback = () => void;
+
+// Azure Speech API 使用量检查相关类型
+export interface AzureSpeechUsageInfo {
+  success: boolean;
+  message?: string;
+  serviceInfo?: {
+    region: string;
+    endpoint: string;
+    availableVoices: number;
+    keyStatus: string;
+  };
+  quotaInfo?: {
+    freeQuota: {
+      speechToText: string;
+      textToSpeech: string;
+    };
+    standardQuota: {
+      speechToText: string;
+      textToSpeech: string;
+    };
+  };
+  usageNotes?: string[];
+  checkTime?: string;
+  error?: string;
+  details?: any;
+}
+
+export interface AzureSpeechDetailedUsageRequest {
+  includeMetrics?: boolean;
+}
+
+export interface AzureSpeechDetailedUsageInfo extends AzureSpeechUsageInfo {
+  detailedMetrics?: any;
+  recommendations?: string[];
+}
 
 // 简化的 Azure Speech 识别器类
 export class AzureSpeechRecognizer {
@@ -159,7 +194,7 @@ export class AzureSpeechRecognizer {
           console.log("✅ 最终识别结果:", e.result.text);
           onResult(e.result.text, true);
         } else {
-          console.log("ℹ️ 识别结果为空或无效:", e.result);
+          // console.log("ℹ️ 识别结果为空或无效:", e.result);
         }
       };
 
@@ -299,31 +334,30 @@ export class AzureSpeechRecognizer {
 
 // 工具函数：从环境变量获取 Azure 配置
 export function getAzureSpeechConfig(): AzureSpeechConfig {
-  const subscriptionKey = process.env.NEXT_PUBLIC_AZURE_SPEECH_KEY;
-  const region = process.env.NEXT_PUBLIC_AZURE_SPEECH_REGION || "eastus2";
-  const language = localStorage.getItem("interviewLanguage") || "auto-detect"; // 默认中英混合
 
-  console.log("🔧 获取 Azure Speech 配置:", {
-    hasKey: !!subscriptionKey,
-    keyPrefix: subscriptionKey
-      ? subscriptionKey.substring(0, 8) + "..."
-      : "未设置",
-    region: region || "未设置",
-    language,
-  });
+    function getNextKeyRegion():AzureSpeechConfig {
+    
+    const { getAzureSpeechEnvironmentConfig } = require("@/app/api/azure/config");
+     const envConfig = getAzureSpeechEnvironmentConfig();
+     const language = localStorage.getItem("interviewLanguage") || "auto-detect"; // 默认中英混合
+     
+     // 🛡️ 边界检查
+     if (!envConfig.key || envConfig.key.length === 0) {
+       throw new Error("Azure Speech Keys 配置为空");
+     }
+     
+     // 🔄 修正索引逻辑 - 确保从0开始循环
+     index = (index + 1) % envConfig.key.length;
 
-  if (!subscriptionKey || !region) {
-    const errorMsg =
-      "Azure Speech 配置缺失。请设置 NEXT_PUBLIC_AZURE_SPEECH_KEY 和 NEXT_PUBLIC_AZURE_SPEECH_REGION 环境变量。";
-    console.error("❌", errorMsg);
-    throw new Error(errorMsg);
-  }
 
-  return {
-    subscriptionKey,
-    region,
-    language,
-  };
+     return {
+       subscriptionKey: envConfig.key[index] || envConfig.key[0],
+       region: envConfig.region[index] || envConfig.region[0],
+       language,
+     }
+   }
+
+  return getNextKeyRegion();
 }
 
 // 检查 Azure Speech SDK 是否可用
@@ -331,7 +365,10 @@ export function isAzureSpeechAvailable(): boolean {
   try {
     const hasSDK = typeof SpeechSDK !== "undefined";
     const hasWindow = typeof window !== "undefined";
-    const hasConfig = !!getAzureSpeechConfig();
+    
+    // 使用新的环境配置检查方法
+    const { isAzureSpeechEnvironmentConfigAvailable } = require("@/app/api/azure/config");
+    const hasConfig = isAzureSpeechEnvironmentConfigAvailable();
 
     console.log("🔍 检查 Azure Speech 可用性:", {
       hasSDK,
@@ -344,5 +381,123 @@ export function isAzureSpeechAvailable(): boolean {
   } catch (error) {
     console.error("❌ Azure Speech 不可用:", error);
     return false;
+  }
+}
+
+// ==========================================
+// Azure Speech API 调用方法
+// ==========================================
+
+/**
+ * 检查 Azure Speech 使用量 - 基础检查
+ * 调用 GET /api/azure 端点
+ */
+export async function checkAzureSpeechUsage(): Promise<AzureSpeechUsageInfo> {
+  try {
+    console.log("🔍 开始检查 Azure Speech 使用量...");
+
+    const response = await fetch('/api/azure', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const data: AzureSpeechUsageInfo = await response.json();
+
+    if (!response.ok) {
+      console.error("❌ Azure Speech 使用量检查失败:", data.error);
+      return {
+        success: false,
+        error: data.error || `HTTP ${response.status}: ${response.statusText}`,
+        details: data.details,
+      };
+    }
+
+    console.log("✅ Azure Speech 使用量检查成功:", data);
+    return data;
+
+  } catch (error) {
+    console.error("❌ Azure Speech 使用量检查网络错误:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "网络请求失败",
+      details: { timestamp: new Date().toISOString() },
+    };
+  }
+}
+
+/**
+ * 获取 Azure Speech 详细使用量信息
+ * 调用 POST /api/azure 端点
+ */
+export async function getAzureSpeechDetailedUsage(
+  request: AzureSpeechDetailedUsageRequest = {}
+): Promise<AzureSpeechDetailedUsageInfo> {
+  try {
+    console.log("🔍 获取 Azure Speech 详细使用量信息...", request);
+
+    const response = await fetch('/api/azure', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    const data: AzureSpeechDetailedUsageInfo = await response.json();
+
+    if (!response.ok) {
+      console.error("❌ Azure Speech 详细使用量获取失败:", data.error);
+      return {
+        success: false,
+        error: data.error || `HTTP ${response.status}: ${response.statusText}`,
+        details: data.details,
+      };
+    }
+
+    console.log("✅ Azure Speech 详细使用量获取成功:", data);
+    return data;
+
+  } catch (error) {
+    console.error("❌ Azure Speech 详细使用量获取网络错误:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "网络请求失败",
+      details: { timestamp: new Date().toISOString() },
+    };
+  }
+}
+
+/**
+ * 便捷方法：快速检查 Azure Speech 服务状态
+ * 只返回基本的连接状态信息
+ */
+export async function checkAzureSpeechServiceStatus(): Promise<{
+  available: boolean;
+  region?: string;
+  keyValid?: boolean;
+  error?: string;
+}> {
+  try {
+    const usageInfo = await checkAzureSpeechUsage();
+    
+    if (usageInfo.success && usageInfo.serviceInfo) {
+      return {
+        available: true,
+        region: usageInfo.serviceInfo.region,
+        keyValid: usageInfo.serviceInfo.keyStatus === "有效",
+      };
+    } else {
+      return {
+        available: false,
+        error: usageInfo.error,
+      };
+    }
+  } catch (error) {
+    return {
+      available: false,
+      error: error instanceof Error ? error.message : "检查失败",
+    };
   }
 }

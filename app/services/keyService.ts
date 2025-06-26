@@ -72,6 +72,8 @@ export async function deleteKey(keyString: string): Promise<any> {
  * @throws Error 当API调用失败时抛出错误
  */
 export async function getKeyByString(keyString: string): Promise<any> {
+  console.log(" getKeyByString was called", keyString);
+  
   const response = await fetch(`/api/key-generate?key=${keyString}`);
   
   if (!response.ok) {

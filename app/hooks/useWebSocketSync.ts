@@ -152,11 +152,11 @@ export const useWebSocketSync = ({
   // 发送LLM回答消息
   const sendLLMResponse = useCallback(
     (data: LLMResponseData) => {
-      console.log("🤖 sendLLMResponse调用状态:", {
-        mode,
-        actualWebSocketState: getWebSocket()?.readyState,
-        isConnected: isConnected(),
-      });
+      // console.log("🤖 sendLLMResponse调用状态:", {
+      //   mode,
+      //   actualWebSocketState: getWebSocket()?.readyState,
+      //   isConnected: isConnected(),
+      // });
 
       if (mode !== SyncMode.SENDER) {
         console.warn("⚠️ 非发送端模式，无法发送LLM回答消息");
@@ -179,7 +179,7 @@ export const useWebSocketSync = ({
         },
       };
 
-      console.log("📤 发送LLM回答消息:", message);
+      // console.log("📤 发送LLM回答消息:", message);
       sendMessage(JSON.stringify(message));
     },
     [mode, sendMessage, isConnected, getWebSocket],

@@ -218,6 +218,44 @@ export const usePluginStore = createPersistStore(
         selected.reduce((s, i) => Object.assign(s, i.funcs), {}),
       ];
     },
+    
+    /** 
+     * 获取包含MCP工具的完整工具列表
+     * 这是支持MCP集成的新API，异步版本
+     */
+    async getAsToolsWithMcp(ids: string[]) {
+      // console.log("getAsToolsWithMcp", JSON.stringify(ids));
+      
+       // 首先获取Plugin工具
+       const [pluginTools, pluginFuncs] = this.getAsTools(ids);
+       const pluginToolsArray = Array.isArray(pluginTools) ? pluginTools : [];
+       const pluginFuncsObj = pluginFuncs && typeof pluginFuncs === 'object' ? pluginFuncs as Record<string, Function> : {};
+      
+              // 🔧 获取MCP工具并集成
+        let allTools: any[] = pluginToolsArray;
+        let allFuncs: Record<string, Function> = pluginFuncsObj;
+        
+        try {
+          // 动态导入以避免循环依赖
+          const { isMcpEnabled } = await import("../mcp/actions");
+          const mcpEnabled = await isMcpEnabled();
+          
+          if (mcpEnabled) {
+            const { convertMcpToolsToFunctionTools, createMcpFunctionMapping } = await import("../mcp/function-tools");
+            const mcpTools = await convertMcpToolsToFunctionTools();
+            const mcpFuncs = await createMcpFunctionMapping();
+            
+            allTools = [...pluginToolsArray, ...mcpTools];
+            allFuncs = { ...pluginFuncsObj, ...mcpFuncs };
+            
+            console.log(`[Plugin Store] Integrated ${pluginToolsArray.length} plugin tools + ${mcpTools.length} MCP tools = ${allTools.length} total tools`);
+          }
+        } catch (error) {
+          console.warn("[Plugin Store] Failed to integrate MCP tools:", error);
+        }
+        
+        return [allTools, allFuncs];
+    },
     get(id?: string) {
       return get().plugins[id ?? 1145141919810];
     },

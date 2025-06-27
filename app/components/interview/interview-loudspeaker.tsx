@@ -176,7 +176,7 @@ export const InterviewLoudspeaker: React.FC = () => {
   });
   useEffect(()=>{
     checkAzureSpeechUsage().then((res)=>{
-      console.log("🔍 检查 Azure Speech 使用量:", JSON.stringify(res, null, 2) );
+      // console.log("🔍 检查 Azure Speech 使用量:", JSON.stringify(res, null, 2) );
     }).catch((err)=>{
       console.error("❌ 检查 Azure Speech 使用量失败:", err);
     });

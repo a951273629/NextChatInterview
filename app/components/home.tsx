@@ -99,7 +99,7 @@ const Sd = dynamic(async () => (await import("./sd")).Sd, {
 });
 
 const McpMarketPage = dynamic(
-  async () => (await import("./mcp-market")).McpMarketPage,
+  async () => (await import("./mcp-list/mcp-list")).McpList,
   {
     loading: () => <Loading noLogo />,
   },

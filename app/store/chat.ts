@@ -489,29 +489,6 @@ export const useChatStore = createPersistStore(
           model: modelConfig.model,
         });
 
-        // ==================== 第四步：统一流式内容追加函数 ====================
-        /**
-         * 用于模拟流式输出的工具函数
-         * 主要用于MCP工具执行过程的可视化显示
-         * 
-         * @param text 要追加的文本内容
-         * @param delay 延迟时间（毫秒），制造打字机效果
-         */
-        const streamContent = async (text: string, delay: number = 50): Promise<void> => {
-          return new Promise((resolve) => {
-            setTimeout(() => {
-              // 直接修改botMessage的content属性
-              botMessage.content += text;
-              
-              // 🔴 关键：触发状态更新，通知React重新渲染UI
-              get().updateTargetSession(session, (session) => {
-                session.messages = session.messages.concat(); // 创建新数组触发更新
-              });
-              
-              resolve();
-            }, delay);
-          });
-        };
 
         // ==================== 第五步：保存消息到会话 ====================
         // 计算消息在数组中的索引，用于后续的控制器管理
@@ -525,9 +502,6 @@ export const useChatStore = createPersistStore(
         // 更新会话统计信息（字符数等）
         get().updateStat(userMessage, session);
 
-
-        // ==================== 第七步：常规LLM对话流程 ====================
-        // 如果不是MCP指令，或者是普通的对话输入，则直接进行LLM分析
         await this.executeLLMAnalysis(mContent, botMessage, session, messageIndex);
       },
 
@@ -697,6 +671,24 @@ export const useChatStore = createPersistStore(
             // 📝 将工具信息添加到消息的tools数组中
             (botMessage.tools = botMessage?.tools || []).push(tool);
             
+            // 🔧 检测是否为MCP工具并显示执行信息
+            if (tool.function?.name && tool.function.name.includes('_')) {
+              const toolParts = tool.function.name.split('_');
+              if (toolParts.length >= 2) {
+                const clientId = toolParts[0];
+                const toolName = toolParts.slice(1).join('_');
+                
+                // 在botMessage中添加MCP工具开始执行的信息
+                const mcpStartMessage = `\n\n🔧 **正在执行MCP工具**\n- 客户端：${clientId}\n- 工具：${toolName}\n- 状态：准备中...\n`;
+                
+                if (typeof botMessage.content === 'string') {
+                  botMessage.content += mcpStartMessage;
+                } else {
+                  botMessage.content = mcpStartMessage;
+                }
+              }
+            }
+            
             // 🔄 立即更新UI显示工具调用状态
             get().updateTargetSession(session, (session) => {
               session.messages = session.messages.concat();
@@ -716,6 +708,70 @@ export const useChatStore = createPersistStore(
                 tools[i] = { ...tool }; // 替换为更新后的工具信息
               }
             });
+            
+            // 🔧 检测MCP工具执行完成并显示详细信息
+            if (tool.function?.name && tool.function.name.includes('_') && tool.content) {
+              try {
+                // 尝试解析工具执行结果，查找MCP执行信息
+                let mcpExecutionInfo = null;
+                
+                // 如果工具内容是JSON字符串，尝试解析
+                if (typeof tool.content === 'string') {
+                  try {
+                    const parsed = JSON.parse(tool.content);
+                    mcpExecutionInfo = parsed.mcpExecutionInfo;
+                  } catch {
+                    // 不是JSON，继续处理
+                  }
+                }
+                
+                if (mcpExecutionInfo && mcpExecutionInfo.executionLog) {
+                  // 找到MCP执行信息，替换之前的准备中状态
+                  const currentContent = typeof botMessage.content === 'string' ? botMessage.content : '';
+                  
+                  // 查找并替换MCP工具的状态信息
+                  const toolParts = tool.function.name.split('_');
+                  const clientId = toolParts[0];
+                  const toolName = toolParts.slice(1).join('_');
+                  
+                  const statusPattern = new RegExp(
+                    `🔧 \\*\\*正在执行MCP工具\\*\\*\\n- 客户端：${clientId}\\n- 工具：${toolName}\\n- 状态：准备中\\.\\.\\.\\n`,
+                    'g'
+                  );
+                  
+                  const executionDetails = `\n\n📋 **MCP工具执行详情**\n\`\`\`\n${mcpExecutionInfo.executionLog}\n\`\`\`\n`;
+                  
+                  if (statusPattern.test(currentContent)) {
+                    // 替换准备中的状态为详细的执行信息
+                    botMessage.content = currentContent.replace(statusPattern, executionDetails);
+                  } else {
+                    // 如果没有找到准备中状态，直接添加执行信息
+                    botMessage.content = currentContent + executionDetails;
+                  }
+                } else {
+                  // 没有MCP执行信息但是是MCP工具，显示基本完成信息
+                  const toolParts = tool.function.name.split('_');
+                  const clientId = toolParts[0];
+                  const toolName = toolParts.slice(1).join('_');
+                  
+                  const currentContent = typeof botMessage.content === 'string' ? botMessage.content : '';
+                  const statusPattern = new RegExp(
+                    `🔧 \\*\\*正在执行MCP工具\\*\\*\\n- 客户端：${clientId}\\n- 工具：${toolName}\\n- 状态：准备中\\.\\.\\.\\n`,
+                    'g'
+                  );
+                  
+                  const completionMessage = `\n\n✅ **MCP工具执行完成**\n- 客户端：${clientId}\n- 工具：${toolName}\n- 状态：已完成\n`;
+                  
+                  if (statusPattern.test(currentContent)) {
+                    botMessage.content = currentContent.replace(statusPattern, completionMessage);
+                  } else {
+                    botMessage.content = currentContent + completionMessage;
+                  }
+                }
+              } catch (error) {
+                console.warn("[MCP Tool Display] Failed to process MCP execution info:", error);
+              }
+            }
             
             // 🔄 更新UI显示工具执行结果
             get().updateTargetSession(session, (session) => {
@@ -809,7 +865,22 @@ export const useChatStore = createPersistStore(
             session.mask.modelConfig.model.startsWith("chatgpt-"));
 
         const mcpEnabled = await isMcpEnabled();
-        const mcpSystemPrompt = mcpEnabled ? await getMcpSystemPrompt() : "";
+        const config = useAppConfig.getState();
+        const clientMcpEnabled = config.mcpConfig.enabled;
+        const mcpMode = config.mcpConfig.clientMode;
+        
+        // 客户端MCP控制逻辑
+        const shouldUseMcp = mcpEnabled && clientMcpEnabled && mcpMode !== "never";
+        
+        // 根据模式调整系统提示词
+        let mcpSystemPrompt = "";
+        if (shouldUseMcp) {
+            // 总是模式：使用原始行为（自动调用工具）
+            mcpSystemPrompt = (await getMcpSystemPrompt()).replace(
+              "{{ USE_MODE }}",
+              "ALWAYS"
+            );
+        }
 
         var systemPrompts: ChatMessage[] = [];
 
@@ -824,7 +895,7 @@ export const useChatStore = createPersistStore(
                 }) + mcpSystemPrompt,
             }),
           ];
-        } else if (mcpEnabled) {
+        } else if (shouldUseMcp) {
           systemPrompts = [
             createMessage({
               role: "system",

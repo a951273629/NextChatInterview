@@ -16,6 +16,20 @@ export interface MCPFunctionTool {
 }
 
 /**
+ * MCP工具执行信息
+ */
+export interface MCPExecutionInfo {
+  clientId: string;
+  toolName: string;
+  startTime: number;
+  endTime?: number;
+  duration?: number;
+  request: any;
+  status: 'starting' | 'success' | 'error';
+  executionLog?: string;
+}
+
+/**
  * MCP工具调用结果
  */
 export interface MCPToolCallResult {
@@ -24,6 +38,7 @@ export interface MCPToolCallResult {
   error?: string;
   clientId: string;
   toolName: string;
+  executionInfo?: MCPExecutionInfo;
 }
 
 /**
@@ -94,6 +109,9 @@ export async function executeMcpToolFromLLMCall(
     };
   }
 ): Promise<MCPToolCallResult> {
+  const startTime = Date.now();
+  let executionInfo: MCPExecutionInfo | undefined;
+  
   try {
     logger.info(`Executing MCP tool call: ${toolCall.function.name}`);
     
@@ -115,9 +133,6 @@ export async function executeMcpToolFromLLMCall(
       throw new Error(`Invalid tool arguments: ${parseError}`);
     }
     
-    // 动态导入避免循环依赖
-    const { executeMcpAction } = await import("./actions");
-    
     // 构造MCP请求
     const mcpRequest = {
       jsonrpc: "2.0" as const,
@@ -128,9 +143,31 @@ export async function executeMcpToolFromLLMCall(
         arguments: args
       }
     };
+
+    // 初始化执行信息
+    executionInfo = {
+      clientId,
+      toolName,
+      startTime,
+      request: mcpRequest,
+      status: 'starting',
+      executionLog: `🔧 正在调用MCP工具: [${clientId}] ${toolName}\n📋 参数: ${JSON.stringify(args, null, 2)}`
+    };
+    
+    // 动态导入避免循环依赖
+    const { executeMcpAction } = await import("./actions");
     
     // 执行MCP工具
     const result = await executeMcpAction(clientId, mcpRequest);
+    
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    // 更新执行信息
+    executionInfo.endTime = endTime;
+    executionInfo.duration = duration;
+    executionInfo.status = 'success';
+    executionInfo.executionLog += `\n✅ 执行完成 (耗时: ${duration}ms)\n📤 结果: ${typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result)}`;
     
     logger.success(`MCP tool call completed: ${toolCall.function.name}`);
     
@@ -138,17 +175,44 @@ export async function executeMcpToolFromLLMCall(
       success: true,
       result,
       clientId,
-      toolName
+      toolName,
+      executionInfo
     };
     
   } catch (error) {
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    
+    // 如果executionInfo未初始化，创建一个基本的
+    if (!executionInfo) {
+      const toolParts = toolCall.function.name.split('_');
+      const clientId = toolParts[0] || "unknown";
+      const toolName = toolParts.slice(1).join('_') || toolCall.function.name;
+      
+      executionInfo = {
+        clientId,
+        toolName,
+        startTime,
+        request: { method: "tools/call", params: { name: toolName } },
+        status: 'error',
+        executionLog: `🔧 尝试调用MCP工具: [${clientId}] ${toolName}`
+      };
+    }
+    
+    // 更新错误信息
+    executionInfo.endTime = endTime;
+    executionInfo.duration = duration;
+    executionInfo.status = 'error';
+    executionInfo.executionLog += `\n❌ 执行失败 (耗时: ${duration}ms)\n🚨 错误: ${error instanceof Error ? error.message : String(error)}`;
+    
     logger.error(`MCP tool call failed: ${toolCall.function.name} - ${error}`);
     
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error),
-      clientId: "unknown",
-      toolName: toolCall.function.name
+      clientId: executionInfo.clientId,
+      toolName: executionInfo.toolName,
+      executionInfo
     };
   }
 }
@@ -198,18 +262,20 @@ export async function createMcpFunctionMapping(): Promise<Record<string, Functio
           const result = await executeMcpToolFromLLMCall(toolCall);
           
           if (result.success) {
-            // 返回符合现有Plugin系统期望的格式
+            // 返回符合现有Plugin系统期望的格式，并包含执行信息
             return {
               data: result.result,
               status: 200,
-              statusText: "OK"
+              statusText: "OK",
+              mcpExecutionInfo: result.executionInfo
             };
           } else {
-            // 返回错误格式
+            // 返回错误格式，包含执行信息
             return {
               data: result.error || "MCP tool execution failed",
               status: 500,
-              statusText: "Internal Server Error"
+              statusText: "Internal Server Error",
+              mcpExecutionInfo: result.executionInfo
             };
           }
           

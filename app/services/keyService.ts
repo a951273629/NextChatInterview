@@ -196,6 +196,34 @@ export async function resumeKey(keyString: string): Promise<any> {
 }
 
 /**
+ * 扣除密钥时间
+ * @param keyString 密钥字符串
+ * @param seconds 要扣除的秒数
+ * @returns Promise<any> 返回更新后的密钥对象
+ * @throws Error 当API调用失败时抛出错误
+ */
+export async function deductKeyTime(keyString: string, seconds: number): Promise<any> {
+  const response = await fetch("/api/key-generate", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      keyString,
+      action: "deductTime",
+      seconds: seconds,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "扣除时间失败");
+  }
+
+  return await response.json();
+}
+
+/**
  * 获取设备信息
  * @returns Promise<{ipAddress: string, hardwareName: string}> 返回IP地址和硬件信息
  * @throws Error 当获取失败时抛出错误

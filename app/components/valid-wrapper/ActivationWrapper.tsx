@@ -1,16 +1,17 @@
-import React, { useState, createContext, useContext, useCallback } from "react";
-import { ACTIVATION_KEY_STRING } from "./activation";
-import { getKeyByString } from "../../services/keyService";
+import React, { useState, createContext, useContext, useCallback, useEffect } from "react";
+import * as keyService from "../../services/keyService";
+import { isActivated, clearActivation, getRemainingTime, ACTIVATION_KEY_STRING } from "./activation";
 import ActivateKeyDialog from "./ActivateKeyDialog";
 import ResumeKeyDialog from "./ResumeKeyDialog";
 import { safeLocalStorage } from "../../utils";
+import { toast } from "react-hot-toast";
 
 // 初始化localStorage
 const localStorage = safeLocalStorage();
 
 // 创建激活上下文
 type ActivationContextType = {
-  checkActivation: (action: () => void) => Promise<boolean>;
+  checkActivation: (action: () => void, extraTimeDeduction?: number) => Promise<boolean>;
 };
 
 const ActivationContext = createContext<ActivationContextType | null>(null);
@@ -29,53 +30,73 @@ export const ActivationProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [showActivateDialog, setShowActivateDialog] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
   const [showResumeDialog, setShowResumeDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
   // 检查激活状态函数
-  const checkActivation = useCallback(async (action: () => void): Promise<boolean> => {
+  const checkActivation = useCallback(async (action: () => void, extraTimeDeduction: number = 0): Promise<boolean> => {
     try {
       // 获取本地存储的密钥字符串
-      const keyString = localStorage.getItem(ACTIVATION_KEY_STRING);
-      
-      // 如果没有密钥字符串，显示激活弹窗
-      if (!keyString?.trim()) {
-        setPendingAction(() => action);
-        setShowActivateDialog(true);
-        return false;
-      }
-      
-      // 从服务器获取密钥实时状态
-      const keyInfo = await getKeyByString(keyString.trim());
-      
-      // 根据服务器状态决定操作
-      if (keyInfo?.status === "active") {
+             const keyString = localStorage.getItem(ACTIVATION_KEY_STRING);
+       if (!keyString) {
+         setShowDialog(true);
+         return false;
+       }
+
+       // 从服务器获取密钥状态
+       const keyInfo = await keyService.getKeyByString(keyString.trim());
+       
+       if (!keyInfo) {
+         setShowDialog(true);
+         return false;
+       }
+
+       // 检查密钥状态
+       if (keyInfo.status === "inactive" || keyInfo.status === "revoked") {
+         setShowDialog(true);
+         return false;
+       } else if (keyInfo.status === "paused") {
+         setShowResumeDialog(true);
+         return false;
+       } else if (keyInfo.status === "active") {
         // 密钥激活中，检查是否过期
         if (keyInfo.expires_at && keyInfo.expires_at > Date.now()) {
+          // 检查剩余时间是否足够额外扣除
+          if (extraTimeDeduction > 0) {
+            const remainingTime = Math.floor((keyInfo.expires_at - Date.now()) / 1000);
+            if (remainingTime < extraTimeDeduction) {
+              toast.error(`剩余时间不足，需要 ${extraTimeDeduction} 秒，当前剩余 ${remainingTime} 秒`);
+              return false;
+            }
+
+            // 调用服务器扣除时间
+            try {
+              const updatedKeyStatus = await keyService.deductKeyTime(keyString.trim(), extraTimeDeduction);
+              if (updatedKeyStatus) {
+                console.log(`时间扣除成功：${extraTimeDeduction}秒`);
+              }
+            } catch (error) {
+              console.warn('时间扣除失败，但允许操作继续:', error);
+              // 网络错误时允许操作继续，但记录错误
+            }
+          }
+
           action();
           return true;
         } else {
-          // 已过期，显示激活弹窗
-          setPendingAction(() => action);
-          setShowActivateDialog(true);
+          // 密钥过期
+          setShowDialog(true);
           return false;
         }
-      } else if (keyInfo?.status === "paused") {
-        // 密钥暂停，显示恢复弹窗
-        setPendingAction(() => action);
-        setShowResumeDialog(true);
-        return false;
       } else {
-        // 其他状态（expired, revoked, inactive 等），显示激活弹窗
-        setPendingAction(() => action);
-        setShowActivateDialog(true);
+        // 其他状态视为未激活
+        setShowDialog(true);
         return false;
       }
     } catch (error) {
       console.error("检查激活状态失败:", error);
-      // 网络错误或其他异常，显示激活弹窗
-      setPendingAction(() => action);
-      setShowActivateDialog(true);
+      setShowDialog(true);
       return false;
     }
   }, []);
@@ -103,10 +124,10 @@ export const ActivationProvider: React.FC<{ children: React.ReactNode }> = ({
       {children}
 
       {/* 激活对话框 */}
-      {showActivateDialog && (
+      {showDialog && (
         <ActivateKeyDialog
-          isOpen={showActivateDialog}
-          onClose={() => setShowActivateDialog(false)}
+          isOpen={showDialog}
+          onClose={() => setShowDialog(false)}
           onSuccess={handleActivateSuccess}
         />
       )}

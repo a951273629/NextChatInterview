@@ -475,3 +475,66 @@ export function resumeKey(keyString: string): Key | undefined {
     throw new Error(`恢复密钥失败: ${(error as Error).message}`);
   }
 }
+
+/**
+ * 扣除密钥时间
+ * @param keyString 密钥字符串
+ * @param seconds 要扣除的秒数
+ * @returns 更新后的密钥对象，如果密钥不存在或操作失败则返回undefined
+ */
+export function deductKeyTime(keyString: string, seconds: number): Key | undefined {
+  try {
+    // 首先查询密钥是否存在
+    const key = getKeyByString(keyString);
+
+    if (!key) {
+      throw new Error("密钥不存在");
+    }
+
+    if (key.status !== KeyStatus.ACTIVE) {
+      throw new Error("只能对激活状态的密钥进行时间扣除");
+    }
+
+    if (!key.expires_at) {
+      throw new Error("密钥没有过期时间，无法扣除时间");
+    }
+
+    // 计算新的过期时间（减去扣除的秒数）
+    const newExpiresAt = key.expires_at - (seconds * 1000); // 转换为毫秒
+    
+    // 检查扣除后是否已过期
+    const now = Date.now();
+    if (newExpiresAt <= now) {
+      // 如果扣除后时间已过期，将密钥设置为过期状态
+      const stmt = db.prepare(`
+        UPDATE keys 
+        SET status = ?, expires_at = ?
+        WHERE key_string = ?
+      `);
+      
+      stmt.run(KeyStatus.EXPIRED, toSqliteTimestamp(now), keyString);
+      
+      // 返回更新后的密钥
+      const updatedKey = getKeyByString(keyString);
+      console.log(`密钥 ${keyString} 扣除时间后已过期`);
+      return updatedKey;
+    } else {
+      // 更新过期时间
+      const stmt = db.prepare(`
+        UPDATE keys 
+        SET expires_at = ?
+        WHERE key_string = ?
+      `);
+      
+      stmt.run(toSqliteTimestamp(newExpiresAt), keyString);
+      
+      // 返回更新后的密钥
+      const updatedKey = getKeyByString(keyString);
+      console.log(`密钥 ${keyString} 成功扣除 ${seconds} 秒，新过期时间: ${new Date(newExpiresAt).toISOString()}`);
+      return updatedKey;
+    }
+  } catch (error) {
+    console.error("扣除密钥时间失败:", error);
+    throw new Error(`扣除密钥时间失败: ${(error as Error).message}`);
+  }
+}

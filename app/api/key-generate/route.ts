@@ -11,6 +11,7 @@ import {
   revokeKey,
   pauseKey,
   resumeKey,
+  deductKeyTime,
 } from "@/app/api/key-generate/back-end-service/KeyService";
 import { KeyStatus } from "../../constant";
 
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { keyString, ipAddress, hardwareName, action } = body;
+    const { keyString, ipAddress, hardwareName, action, seconds } = body;
 
     // 如果是撤销操作
     if (action === "revoke") {
@@ -136,6 +137,20 @@ export async function PUT(request: NextRequest) {
 
       const resumedKey = resumeKey(keyString);
       return NextResponse.json(resumedKey);
+    }
+
+    // 如果是时间扣除操作
+    if (action === "deductTime") {
+      if (!keyString) {
+        return NextResponse.json({ error: "缺少密钥参数" }, { status: 400 });
+      }
+
+      if (!seconds || typeof seconds !== 'number' || seconds <= 0) {
+        return NextResponse.json({ error: "扣除时间必须是正数" }, { status: 400 });
+      }
+
+      const updatedKey = deductKeyTime(keyString, seconds);
+      return NextResponse.json(updatedKey);
     }
 
     // 默认为激活操作

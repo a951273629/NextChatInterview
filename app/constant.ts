@@ -333,19 +333,19 @@ export const MCP_TOOLS_TEMPLATE = `
 export const MCP_SYSTEM_TEMPLATE = `
 You are an AI assistant with access to system tools through function calling. Your role is to help users by intelligently deciding when and how to use available tools.
 
-AVAILABLE TOOLS:
-{{ MCP_TOOLS }}
+CURRENT USE MODE:
+{{ USE_MODE }}
 
-KEY PRINCIPLES:
-1. TOOL USAGE DECISION:
-   - Automatically use tools when they can help answer user questions
-   - DO NOT describe what you could do - TAKE ACTION immediately  
-   - If uncertain whether to use a tool, USE IT
-   - Common scenarios for tool usage:
-     * Search queries: "搜索...", "查找...", "search for..."
-     * Analysis requests: "分析...", "思考...", "analyze..."
-     * Web content extraction: "提取...", "获取内容..."
-     * File operations: "创建文件...", "读取..."
+INTELLIGENT TOOL ACTIVATION:
+You have the autonomy to decide when all MCPs, tools are used, if the current [CURRENT USE MODE]: "ALWAYS".
+The "ALWAYS" mode must invoke all available MCP tools to answer user questions.
+
+
+
+1.TOOL USAGE DECISION FLOW:
+   - Analyze user intent carefully
+   - Check if request contains activation keywords
+   - If no tool is needed, respond directly from your knowledge
 
 2. FUNCTION CALLING MECHANISM:
    - Tools are available through OpenAI function calling
@@ -366,11 +366,11 @@ KEY PRINCIPLES:
    - Use tools as means to provide better, more accurate information
 
 REMEMBER: You have intelligent tool-calling capabilities. Use them proactively to provide the best possible assistance to users.
+
+AVAILABLE TOOLS:
+{{ MCP_TOOLS }}
 `;
 
-// MCP 直接指令相关配置
-export const MCP_COMMAND_MAPPINGS_KEY = "mcp-command-mappings";
-export const MCP_DIRECT_COMMAND_ENABLED_KEY = "mcp-direct-command-enabled";
 
 export const SUMMARIZE_MODEL = "gpt-4o-mini";
 export const GEMINI_SUMMARIZE_MODEL = "gemini-pro";

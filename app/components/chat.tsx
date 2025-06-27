@@ -117,6 +117,7 @@ import { MsEdgeTTS, OUTPUT_FORMAT } from "../utils/ms_edge_tts";
 import { isEmpty } from "lodash-es";
 import { getModelProvider } from "../utils/model";
 import { RealtimeChat } from "@/app/components/realtime-chat";
+import DialogBox from "@/app/components/comm/DialogBox";
 import clsx from "clsx";
 import { getAvailableClientsCount, isMcpEnabled } from "../mcp/actions";
 // import { InterviewOverlay } from "./interview/microphone/interview-overlay-microphone";
@@ -162,6 +163,7 @@ const MCPAction = () => {
     />
   );
 };
+
 function PromptToast(props: {
   showToast?: boolean;
   showModal?: boolean;
@@ -537,6 +539,7 @@ export function ChatActions(props: {
   // 注释掉Plugin相关功能 - 用户不需要此功能
   // const [showPluginSelector, setShowPluginSelector] = useState(false);
   const [showUploadImage, setShowUploadImage] = useState(false);
+  const [showMcpSelector, setShowMcpSelector] = useState(false);
 
   const [showSizeSelector, setShowSizeSelector] = useState(false);
   const [showQualitySelector, setShowQualitySelector] = useState(false);
@@ -801,6 +804,37 @@ export function ChatActions(props: {
             />
           )}
 
+          {showMcpSelector && (
+            <Selector
+              defaultSelectedValue={config.mcpConfig.clientMode}
+              items={[
+                {
+                  title: "联网搜索和深度思考",
+                  // subTitle: "使用深度思考&联网搜索",
+                  value: "always" as const,
+                },
+                {
+                  title: "关闭深度思考&联网搜索",
+                  // subTitle: "不使用深度思考&联网搜索", 
+                  value: "never" as const,
+                },
+              ]}
+              onClose={() => setShowMcpSelector(false)}
+              onSelection={(selection) => {
+                if (selection.length === 0) return;
+                const mode = selection[0];
+                config.update((config) => {
+                  config.mcpConfig.clientMode = mode;
+                });
+                const modeTexts = {
+                  always: "已开启",
+                  never: "已关闭"
+                } as const;
+                showToast(`深度思考&实时联网：${modeTexts[mode as keyof typeof modeTexts]}`);
+              }}
+            />
+          )}
+
           {/* {showPlugins(currentProviderName, currentModel) && (
             <ChatAction
               onClick={() => {
@@ -838,42 +872,28 @@ export function ChatActions(props: {
             text="从扬声器"
             icon={<InterViewIcon2 />}
           />
-          {/*           onClick={() => {
-            checkActivation(() => handleStartInterview());
-          }} */}
-          {/* 新增：TensorFlow 跳转按钮 */}
-          {/* <ChatActionVoice
-            onClick={() => {
-              navigate(Path.TensorFlow);
-            }}
-            text="声纹"
-            icon={<BrainIcon />}
-          /> */}
-          {/* {showPluginSelector && (
-            <Selector
-              multiple
-              defaultSelectedValue={chatStore.currentSession().mask?.plugin}
-              items={pluginStore.getAll().map((item) => ({
-                title: `${item?.title}@${item?.version}`,
-                value: item?.id,
-              }))}
-              onClose={() => setShowPluginSelector(false)}
-              onSelection={(s) => {
-                chatStore.updateTargetSession(session, (session) => {
-                  session.mask.plugin = s as string[];
-                });
-              }}
-            />
-          )} */}
 
-          {/* {!isMobileScreen && (
-            <ChatAction
-              onClick={() => props.setShowShortcutKeyModal(true)}
-              text={Locale.Chat.ShortcutKey.Title}
-              icon={<ShortcutkeyIcon />}
-            />
-          )} */}
-          {!isMobileScreen && <MCPAction />}
+          <ChatAction
+            onClick={() => setShowMcpSelector(true)}
+              text={(() => {
+                const config = useAppConfig.getState();
+                const mode = config.mcpConfig.clientMode;
+                const enabled = config.mcpConfig.enabled;
+                
+                if (!enabled) return "实时联网&深度思考(已禁用)";
+                
+                const modeTexts = {
+                  always: "已开启",
+                  never: "已关闭"
+                };
+                
+                // 如果模式是smart，则默认显示为always
+                const displayMode = mode === "always" ? "always" : mode;
+                
+                return `实时联网&深度思考(${modeTexts[displayMode as keyof typeof modeTexts]})`;
+              })()}
+              icon={<McpToolIcon />}
+          />
         </>
       </div>
 
@@ -1847,7 +1867,7 @@ function _Chat() {
       return;
     }
 
-    checkActivation(() => doSubmit(text));
+    checkActivation(() => doSubmit(text), 60); // 语音消息扣除10秒
   }, [checkActivation, doSubmit]);
 
   const toastShowDebounce = useMemo(() => debounce(toastShow, 500), [toastShow]);
@@ -2359,7 +2379,7 @@ function _Chat() {
                   className={styles["chat-input-send"]}
                   type="primary"
                   onClick={() => {
-                    checkActivation(() => doSubmit(userInput));
+                    checkActivation(() => doSubmit(userInput), 60); // 发送消息扣除5秒
                   }}
                 />
               </label>

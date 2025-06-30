@@ -89,6 +89,7 @@ export enum Path {
   McpMarket = "/mcp-market",
   InterviewMicrophone = "/chat/interview-microphone",
   InterviewLoudspeaker = "/chat/interview-loudspeaker",
+  Resume = "/chat/personal-resume",
   SetNotice = "/login/set-notice",
   KeyGenerate = "/login/key-generate",
 }
@@ -488,7 +489,13 @@ const openaiModels = [
   // "gemini-2.5-pro-preview-06-05",
   "deepseek-r1-250528",
 ];
-
+export const openaiModelsMap ={
+  "gpt-4.1":"gpt-4.5-preview",
+  "gpt-4o":"gpt-o4-latest",
+  "chatgpt-4o-latest":"gpt-o3",
+  "o3-mini":"gemini-2.5-pro-preview-06-05",
+  "deepseek-r1-250528":"deepseek-r1-250528",
+}
 // const googleModels = [
 //   // "gemini-1.0-pro", // Deprecated on 2/15/2025
 //   // "gemini-1.5-pro-latest",

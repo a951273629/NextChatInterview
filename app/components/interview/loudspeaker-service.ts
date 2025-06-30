@@ -415,6 +415,7 @@ export class LoudspeakerService {
   // UI控制方法
   handleShowFromFloat = (): void => {
     this.callbacks.setIsMinimized(false);
+    // this.isMobile = true;
   };
 
   handleMinimize = (): void => {

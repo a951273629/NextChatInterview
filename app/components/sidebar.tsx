@@ -274,7 +274,8 @@ export function SideBar(props: { className?: string }) {
             text={hasResume ? "简历已上传" : "点击上传简历"}
             className={styles["sidebar-bar-button-resume-set"]}
             onClick={() => {
-              setShowPersonalSet(true);
+              // setShowPersonalSet(true);
+              navigate(Path.Resume, { state: { fromHome: true } });
             }}
             shadow
           />

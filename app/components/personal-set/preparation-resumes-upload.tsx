@@ -4,8 +4,36 @@ import styles from "./preparation-resumes-upload.module.scss";
 import {
   USER_RESUMES_STORAGE_KEY,
   USER_RESUMES_NAME_STORAGE_KEY,
+  Path,
 } from "@/app/constant";
-import { extractTextFromPDF, type ProgressCallback } from "./resumes-extract"; 
+import { extractTextFromPDF, type ProgressCallback } from "./resumes-extract";
+import { 
+  summarizeResume, 
+  calculateFileHash, 
+  type SummaryProgressCallback, 
+  type ResumeData,
+  type ResumeSummaryResult 
+} from "./resume-summary-service"; 
+import { useNavigate } from "react-router-dom";
+
+// 自定义Prompt存储key
+const CUSTOM_PROMPT_STORAGE_KEY = "custom_interview_prompt";
+
+// 默认Prompt模板
+const DEFAULT_PROMPT = `You are now a super interview assistant. Answer all upcoming questions in {language} language. Base every answer strictly on my résumé. Speak succinctly and positively.
+When responding, think step-by-step using the STAR method before you speak, but reveal only the final polished answer.
+For behavioral questions, structure each reply as Situation → Action → Result and keep it under 2 minutes.
+Whenever possible, include one quantified metric (e.g., % improvement, $ savings) to demonstrate impact.
+Avoid filler words ('um', 'like') and finish with a forward-looking statement connecting to the company's needs.
+
+Rules:
+1. Use STAR / CAR / PAR consistently — Choose the framework that best fits the question, ensuring a clear beginning, action, and result.
+2. Keep answers between ≈ 60–120 seconds; complex behavioral stories may extend to 2–3 minutes but never ramble.
+3. Quantify achievements—cite numbers, percentages, or ranges to enhance credibility; approximate honestly if exact figures are unavailable. 
+4. Tell a compelling story—create a clear arc (setup–challenge–resolution) that hooks the interviewer emotionally. 
+5. Align with the job description—highlight skills the role values and mirror its language for relevance.
+6. Stay positive and candid—frame setbacks as learning moments and avoid blaming others. 
+7. Use resume-backed specifics only—no invented facts; verify every example against your documented experience.`;
 
 // Promise.withResolvers 类型声明
 declare global {
@@ -43,29 +71,18 @@ interface PreparationResumesUploadProps {
  * @param text 面试官的问题
  */
 export function additionalResumeText(text: string) {
-
-  const selectLanguage =  localStorage.getItem("interviewLanguage") ==='auto-detect' ? "Chinese" : localStorage.getItem("interviewLanguage");
-  const addtionText =
-    `
+  const selectLanguage = localStorage.getItem("interviewLanguage") === 'auto-detect' ? "Chinese" : localStorage.getItem("interviewLanguage");
+  
+  // 获取自定义Prompt，如果没有则使用默认Prompt
+  const customPrompt = typeof window !== 'undefined' ? localStorage.getItem(CUSTOM_PROMPT_STORAGE_KEY) : null;
+  const prompt = customPrompt || DEFAULT_PROMPT.replace('{language}', selectLanguage || "Chinese");
+  
+  const addtionText = `
     Interview Question:
       ${text}
 
     Promt:
-      You are now a super interview assistant. Answer all upcoming questions in ${typeof window !== 'undefined' ? selectLanguage || "Chinese" : "Chinese"} language. Base every answer strictly on my résumé. Speak succinctly and positively.
-     When responding, think step-by-step using the STAR method before you speak, but reveal only the final polished answer.
-     For behavioral questions, structure each reply as Situation → Action → Result and keep it under 2 minutes.
-     Whenever possible, include one quantified metric (e.g., % improvement, $ savings) to demonstrate impact.
-     Avoid filler words (‘um’, ‘like’) and finish with a forward-looking statement connecting to the company’s needs.
-    
-    Rules:
-      1. Use STAR / CAR / PAR consistently — Choose the framework that best fits the question, ensuring a clear beginning, action, and result.
-      2. Keep answers between ≈ 60–120 seconds; complex behavioral stories may extend to 2–3 minutes but never ramble.
-      3. Quantify achievements—cite numbers, percentages, or ranges to enhance credibility; approximate honestly if exact figures are unavailable. 
-      4. Tell a compelling story—create a clear arc (setup–challenge–resolution) that hooks the interviewer emotionally. 
-      5. Align with the job description—highlight skills the role values and mirror its language for relevance.
-      6. Stay positive and candid—frame setbacks as learning moments and avoid blaming others. 
-      7. Use resume-backed specifics only—no invented facts; verify every example against your documented experience.
-
+      ${prompt}
     
     Fllow Resume Content:
       ${typeof window !== 'undefined' ? localStorage.getItem(USER_RESUMES_STORAGE_KEY) : ''}
@@ -77,16 +94,23 @@ export function additionalResumeText(text: string) {
 const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
   onClose,
 }) => {
+
+  const navigate = useNavigate();
+
   // 状态管理
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [extractProgress, setExtractProgress] = useState<number>(0);
   const [isExtracting, setIsExtracting] = useState<boolean>(false);
+  const [isSummarizing, setIsSummarizing] = useState<boolean>(false);
+  const [summaryProgress, setSummaryProgress] = useState<number>(0);
+  const [summaryStage, setSummaryStage] = useState<string>("");
   const [hasResume, setHasResume] = useState<boolean>(false);
   const [resumeText, setResumeText] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [resumeFileName, setResumeFileName] = useState<string>("");
   const [isClientReady, setIsClientReady] = useState<boolean>(false);
+  const [customPrompt, setCustomPrompt] = useState<string>("");
 
   // 引用
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -101,18 +125,27 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
     }
   }, []);
 
-  // 检查本地存储是否有简历数据
+  // 检查本地存储是否有简历数据和自定义Prompt
   useEffect(() => {
     if (!isClientReady) return;
     
     const storedResume = localStorage.getItem(USER_RESUMES_STORAGE_KEY);
     const storedName = localStorage.getItem(USER_RESUMES_NAME_STORAGE_KEY);
+    const storedPrompt = localStorage.getItem(CUSTOM_PROMPT_STORAGE_KEY);
+    
     if (storedResume) {
       setHasResume(true);
       setResumeText(storedResume);
     }
     if (storedName) {
       setResumeFileName(storedName);
+    }
+    if (storedPrompt) {
+      setCustomPrompt(storedPrompt);
+    } else {
+      // 如果没有自定义Prompt，使用默认的作为初始值
+      const selectLanguage = localStorage.getItem("interviewLanguage") === 'auto-detect' ? "Chinese" : localStorage.getItem("interviewLanguage");
+      setCustomPrompt(DEFAULT_PROMPT.replace('{language}', selectLanguage || "Chinese"));
     }
   }, [isClientReady]);
 
@@ -263,15 +296,11 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
         console.log("PDF页数:", result.numPages);
         console.log(result.text); // 按要求输出提取内容
 
-        setResumeText(result.text);
-        localStorage.setItem(USER_RESUMES_STORAGE_KEY, result.text);
-        setHasResume(true);
         setExtractProgress(100);
+        
+        // 开始LLM总结流程
+        await startLLMSummarization(result.text, fileToProcess.name);
 
-        // 清除处理中的提示信息
-        if (errorMessage === "正在处理文件，请稍候...") {
-          setErrorMessage("");
-        }
       } else {
         throw new Error(result.error || "PDF文本提取失败，未能获取到文本内容");
       }
@@ -283,6 +312,146 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
 
     } finally {
       setIsExtracting(false);
+    }
+  };
+
+  // LLM总结处理函数
+  const startLLMSummarization = async (extractedText: string, fileName: string) => {
+    try {
+      setIsSummarizing(true);
+      setSummaryProgress(0);
+      setSummaryStage("准备总结...");
+
+      // 1. 计算文件哈希，检查是否已经总结过
+      const fileHash = await calculateFileHash(extractedText);
+      const cacheKey = `resume_summary_${fileHash}`;
+      const cachedSummary = localStorage.getItem(cacheKey);
+
+      if (cachedSummary) {
+        try {
+          const cachedData: ResumeData = JSON.parse(cachedSummary);
+          console.log("发现缓存的总结数据，直接使用");
+          
+          // 使用缓存的总结
+          setResumeText(cachedData.summaryText);
+          localStorage.setItem(USER_RESUMES_STORAGE_KEY, cachedData.summaryText);
+          localStorage.setItem(USER_RESUMES_NAME_STORAGE_KEY, fileName);
+          setResumeFileName(fileName);
+          setHasResume(true);
+          setSummaryProgress(100);
+          setSummaryStage("已使用缓存总结");
+          
+          // 清除处理中的提示信息
+          if (errorMessage === "正在处理文件，请稍候...") {
+            setErrorMessage("");
+          }
+          return;
+        } catch (cacheError) {
+          console.warn("缓存数据解析失败，重新总结", cacheError);
+        }
+      }
+
+      // 2. 进行LLM总结
+      setSummaryStage("调用LLM进行总结...");
+      
+      const summaryProgressCallback: SummaryProgressCallback = (progress: number, stage: string) => {
+        setSummaryProgress(progress);
+        setSummaryStage(stage);
+      };
+
+      const summaryResult: ResumeSummaryResult = await summarizeResume(extractedText, summaryProgressCallback);
+
+      if (summaryResult.success && summaryResult.summaryText) {
+        console.log("LLM总结成功:", {
+          originalLength: summaryResult.originalLength,
+          summaryLength: summaryResult.summaryLength,
+          compressionRatio: `${(summaryResult.compressionRatio * 100).toFixed(1)}%`,
+          model: summaryResult.model
+        });
+
+        // 3. 构建简历数据结构
+        const resumeData: ResumeData = {
+          summaryText: summaryResult.summaryText,
+          summaryTimestamp: Date.now(),
+          fileHash: fileHash,
+          summaryModel: summaryResult.model,
+          summaryVersion: "1.0",
+          isOriginal: false,
+          compressionRatio: summaryResult.compressionRatio
+        };
+
+        // 4. 保存到localStorage
+        setResumeText(summaryResult.summaryText);
+        localStorage.setItem(USER_RESUMES_STORAGE_KEY, summaryResult.summaryText);
+        localStorage.setItem(USER_RESUMES_NAME_STORAGE_KEY, fileName);
+        localStorage.setItem(cacheKey, JSON.stringify(resumeData));
+        
+        setResumeFileName(fileName);
+        setHasResume(true);
+        setSummaryProgress(100);
+        setSummaryStage("总结完成!");
+        
+        // 清除处理中的提示信息
+        if (errorMessage === "正在处理文件，请稍候...") {
+          setErrorMessage("");
+        }
+
+        console.log("简历总结和存储完成");
+        
+      } else {
+        // 总结失败，使用原始文本作为备选方案
+        console.warn("LLM总结失败，使用原始文本:", summaryResult.error);
+        
+        const fallbackData: ResumeData = {
+          summaryText: extractedText,
+          summaryTimestamp: Date.now(),
+          fileHash: fileHash,
+          summaryModel: "fallback",
+          summaryVersion: "1.0",
+          isOriginal: true,
+          compressionRatio: 1.0
+        };
+
+        setResumeText(extractedText);
+        localStorage.setItem(USER_RESUMES_STORAGE_KEY, extractedText);
+        localStorage.setItem(USER_RESUMES_NAME_STORAGE_KEY, fileName);
+        localStorage.setItem(cacheKey, JSON.stringify(fallbackData));
+        
+        setResumeFileName(fileName);
+        setHasResume(true);
+        setSummaryStage("总结失败，已保存原文");
+        
+        // 设置警告信息而不是错误
+        setErrorMessage(`LLM总结失败: ${summaryResult.error}，已保存原始简历文本`);
+      }
+
+    } catch (error: any) {
+      console.error("LLM总结过程失败:", error);
+      
+      // 总结过程失败，使用原始文本作为备选方案
+      const fallbackData: ResumeData = {
+        summaryText: extractedText,
+        summaryTimestamp: Date.now(),
+        fileHash: await calculateFileHash(extractedText),
+        summaryModel: "error",
+        summaryVersion: "1.0",
+        isOriginal: true,
+        compressionRatio: 1.0
+      };
+
+      setResumeText(extractedText);
+      localStorage.setItem(USER_RESUMES_STORAGE_KEY, extractedText);
+      localStorage.setItem(USER_RESUMES_NAME_STORAGE_KEY, fileName);
+      
+      setResumeFileName(fileName);
+      setHasResume(true);
+      setSummaryStage("总结失败");
+      
+      const errorMsg = error.message || String(error);
+      setErrorMessage(`总结过程出错: ${errorMsg}，已保存原始简历文本`);
+      
+    } finally {
+      setIsSummarizing(false);
     }
   };
 
@@ -351,13 +520,29 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
 
   // 处理关闭按钮点击
   const handleCloseClick = () => {
-    if (onClose) {
-      onClose();
+
+    navigate(Path.Chat);
+  };
+
+  // 处理自定义Prompt变化
+  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    if (value.length <= 2000) {
+      setCustomPrompt(value);
+      localStorage.setItem(CUSTOM_PROMPT_STORAGE_KEY, value);
     }
   };
 
+  // 重置为默认Prompt
+  const resetToDefaultPrompt = () => {
+    const selectLanguage = localStorage.getItem("interviewLanguage") === 'auto-detect' ? "Chinese" : localStorage.getItem("interviewLanguage");
+    const defaultPrompt = DEFAULT_PROMPT.replace('{language}', selectLanguage || "Chinese");
+    setCustomPrompt(defaultPrompt);
+    localStorage.setItem(CUSTOM_PROMPT_STORAGE_KEY, defaultPrompt);
+  };
+
   return (
-    <div className={styles["modal-overlay"]} onClick={handleBackgroundClick}>
+    <div className={styles["modal-overlay"]}>
       <div
         className={styles["modal-content"]}
         onClick={(e) => e.stopPropagation()}
@@ -433,26 +618,37 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
             </div>
           )}
 
+          {/* LLM总结进度 */}
+          {isSummarizing && (
+            <div className={styles["upload-progress"]}>
+              <div className={styles["progress-text"]}>
+                <span className={styles["progress-label"]}>
+                  {summaryStage || "LLM智能总结中..."}
+                </span>
+                <span className={styles["progress-percentage"]}>
+                  {summaryProgress}%
+                </span>
+              </div>
+              <div className={styles["progress-bar-container"]}>
+                <div
+                  className={styles["progress-bar"]}
+                  style={{ width: `${summaryProgress}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+
           {/* 测试环境按钮 */}
-          {isDevelopment && (
-            <div style={{ display: "flex", gap: "0.5rem" }}>
+          {/* {isDevelopment && (
+            <div className={styles["test-buttons-container"]}>
               <button
-                className={styles["test-button"]}
+                className={`${styles["test-button"]} ${styles["primary"]}`}
                 onClick={TestFileSelect}
-                style={{
-                  marginTop: "1rem",
-                  padding: "0.5rem 1rem",
-                  backgroundColor: "#2196F3",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "0.3rem",
-                  cursor: "pointer",
-                }}
               >
                 加载测试简历
               </button>
               <button
-                className={styles["test-button"]}
+                className={`${styles["test-button"]} ${styles["secondary"]}`}
                 onClick={() => {
                   if (uploadedFileRef.current) {
                     extractPdfText();
@@ -460,51 +656,54 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
                     setErrorMessage("请先上传或选择文件");
                   }
                 }}
-                style={{
-                  marginTop: "1rem",
-                  padding: "0.5rem 1rem",
-                  backgroundColor: "#4CAF50",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "0.3rem",
-                  cursor: "pointer",
-                }}
               >
                 重新提取文本
               </button>
             </div>
-          )}
-
-          {/* 状态显示 */}
+          )} */}
+          {/* 简历状态显示 */}
           {renderStatus()}
+          {/* 自定义Prompt设置 */}
+          <div className={styles["prompt-settings"]}>
+            <div className={styles["prompt-header"]}>
+              <h4 className={`${styles["section-title"]} ${styles["prompt-title"]}`}>Prompt提示词设置</h4>
+              <button
+                onClick={resetToDefaultPrompt}
+                className={styles["reset-button"]}
+              >
+                重置默认
+              </button>
+            </div>
+            <div className={styles["prompt-textarea-container"]}>
+              <textarea
+                value={customPrompt}
+                onChange={handlePromptChange}
+                placeholder="输入自定义面试助手Prompt..."
+                rows={6}
+                className={styles["prompt-textarea"]}
+              />
+              <div className={`${styles["char-counter"]} ${customPrompt.length > 1800 ? styles["warning"] : ""}`}>
+                {customPrompt.length}/2000
+              </div>
+            </div>
+            <div className={styles["prompt-description"]}>
+              自定义Prompt将替换默认的面试助手指令，用于指导AI如何回答面试问题。
+            </div>
+          </div>
+
+
 
           {/* 调试信息（仅在开发环境显示） */}
-          {isDevelopment && errorMessage && (
-            <div
-              style={{
-                marginTop: "1rem",
-                padding: "0.5rem",
-                backgroundColor: "#ffebee",
-                border: "1px solid #ffcdd2",
-                borderRadius: "0.3rem",
-                fontSize: "0.8rem",
-                color: "#c62828",
-              }}
-            >
+          {/* {isDevelopment && errorMessage && (
+            <div className={styles["debug-info"]}>
               <div>
                 <strong>错误详情：</strong>
               </div>
-              <pre
-                style={{
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  margin: "0.5rem 0",
-                }}
-              >
+              <pre className={styles["debug-content"]}>
                 {errorMessage}
               </pre>
             </div>
-          )}
+          )} */}
         </div>
       </div>
     </div>

@@ -29,6 +29,7 @@ import {
   Message
 } from "./loudspeaker-service";
 import { checkAzureSpeechUsage } from "./azureSpeech";
+import { showConfirm } from "../ui-lib";
 
 // 宽度管理常量
 const DEFAULT_INTERVIEW_WIDTH_VW = 20;
@@ -212,11 +213,17 @@ export const InterviewLoudspeaker: React.FC = () => {
 
   // 手机模式下默认设置
   useEffect(() => {
-    if (isMobile) {
+    if (isMobile && isMinimized == false) {
       setSyncEnabled(true);
       setSyncMode(SyncMode.RECEIVER);
+
+      showConfirm("当前为手机模式，即将自动进入接收模式，点击确认后生效").then((res)=>{
+        if(res){
+          loudspeakerService.handleMinimize();
+        }
+      });
     }
-  }, [isMobile]);
+  }, [isMobile,isMinimized]);
 
 
 
@@ -724,7 +731,7 @@ export const InterviewLoudspeaker: React.FC = () => {
               : syncEnabled && webSocketSync.connectionStatus !== "connected"
               ? "等待WebSocket连接..."
               : syncMode === SyncMode.RECEIVER
-              ? "接收端不用点击"
+              ? "当前为接收端"
               : "开始面试"}
           </button>
         </div>

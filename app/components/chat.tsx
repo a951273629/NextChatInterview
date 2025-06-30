@@ -101,6 +101,7 @@ import {
   REQUEST_TIMEOUT_MS,
   ServiceProvider,
   UNFINISHED_INPUT,
+  openaiModelsMap,
 } from "../constant";
 import { Avatar } from "./emoji";
 import { ContextPrompts, MaskAvatar, MaskConfig } from "./mask";
@@ -117,7 +118,7 @@ import { MsEdgeTTS, OUTPUT_FORMAT } from "../utils/ms_edge_tts";
 import { isEmpty } from "lodash-es";
 import { getModelProvider } from "../utils/model";
 import { RealtimeChat } from "@/app/components/realtime-chat";
-import DialogBox from "@/app/components/comm/DialogBox";
+
 import clsx from "clsx";
 import { getAvailableClientsCount, isMcpEnabled } from "../mcp/actions";
 // import { InterviewOverlay } from "./interview/microphone/interview-overlay-microphone";
@@ -533,8 +534,10 @@ export function ChatActions(props: {
         m.name == currentModel &&
         m?.provider?.providerName == currentProviderName,
     );
-    return model?.displayName ?? "";
+    const key = model?.displayName ?? "gpt-4.1";
+    return (openaiModelsMap as Record<string, string>)[key] ?? "";
   }, [models, currentModel, currentProviderName]);
+
   const [showModelSelector, setShowModelSelector] = useState(false);
   // 注释掉Plugin相关功能 - 用户不需要此功能
   // const [showPluginSelector, setShowPluginSelector] = useState(false);
@@ -556,7 +559,6 @@ export function ChatActions(props: {
   const isMobileScreen = useMobileScreen();
   const { checkActivation } = useActivation();
 
-  let contronlShow = false;
   useEffect(() => {
     const show = isVisionModel(currentModel);
     setShowUploadImage(show);
@@ -583,6 +585,16 @@ export function ChatActions(props: {
       );
     }
   }, [chatStore, currentModel, models, session]);
+
+  const [mcpEnabled, setMcpEnabled] = useState(false);
+
+  useEffect(() => {
+    const checkMcpStatus = async () => {
+      const enabled = await isMcpEnabled();
+      setMcpEnabled(enabled);
+    };
+    checkMcpStatus();
+  }, []);
 
   return (
     <div className={styles["chat-input-actions"]}>
@@ -679,10 +691,10 @@ export function ChatActions(props: {
               // 构建选择器项目列表，每个项目包含显示名称和值
               items={models.map((m) => ({
                 // 标题格式：模型显示名称 (提供商名称)
-                title: `${m.displayName}${
-                  m?.provider?.providerName
-                    ? " (" + m?.provider?.providerName + ")"
-                    : ""
+                title: `${
+                  (openaiModelsMap as Record<string, string>)[
+                    m.displayName ?? "gpt-4.1"
+                  ] ?? ""
                 }`,
                 // 值格式：模型名称@提供商名称
                 value: `${m.name}@${m?.provider?.providerName}`,
@@ -717,7 +729,11 @@ export function ChatActions(props: {
                   showToast(selectedModel?.displayName ?? "");
                 } else {
                   // 其他提供商直接显示模型名称
-                  showToast(model);
+                  showToast(
+                    (openaiModelsMap as Record<string, string>)[
+                      model ?? "gpt-4.1"
+                    ] ?? "",
+                  );
                 }
               }}
             />
@@ -804,7 +820,7 @@ export function ChatActions(props: {
             />
           )}
 
-          {showMcpSelector && (
+          {showMcpSelector && mcpEnabled && (
             <Selector
               defaultSelectedValue={config.mcpConfig.clientMode}
               items={[
@@ -815,7 +831,7 @@ export function ChatActions(props: {
                 },
                 {
                   title: "关闭深度思考&联网搜索",
-                  // subTitle: "不使用深度思考&联网搜索", 
+                  // subTitle: "不使用深度思考&联网搜索",
                   value: "never" as const,
                 },
               ]}
@@ -828,9 +844,13 @@ export function ChatActions(props: {
                 });
                 const modeTexts = {
                   always: "已开启",
-                  never: "已关闭"
+                  never: "已关闭",
                 } as const;
-                showToast(`深度思考&实时联网：${modeTexts[mode as keyof typeof modeTexts]}`);
+                showToast(
+                  `深度思考&实时联网：${
+                    modeTexts[mode as keyof typeof modeTexts]
+                  }`,
+                );
               }}
             />
           )}
@@ -864,8 +884,7 @@ export function ChatActions(props: {
             onClick={() => {
               navigate(Path.InterviewLoudspeaker);
               // checkActivation(() => {
-                
-              
+
               // });
               // contronlShow = !contronlShow;
             }}
@@ -873,27 +892,31 @@ export function ChatActions(props: {
             icon={<InterViewIcon2 />}
           />
 
-          <ChatAction
-            onClick={() => setShowMcpSelector(true)}
+          {mcpEnabled && (
+            <ChatAction
+              onClick={() => setShowMcpSelector(true)}
               text={(() => {
                 const config = useAppConfig.getState();
                 const mode = config.mcpConfig.clientMode;
                 const enabled = config.mcpConfig.enabled;
-                
+
                 if (!enabled) return "实时联网&深度思考(已禁用)";
-                
+
                 const modeTexts = {
                   always: "已开启",
-                  never: "已关闭"
+                  never: "已关闭",
                 };
-                
+
                 // 如果模式是smart，则默认显示为always
                 const displayMode = mode === "always" ? "always" : mode;
-                
-                return `实时联网&深度思考(${modeTexts[displayMode as keyof typeof modeTexts]})`;
+
+                return `实时联网&深度思考(${
+                  modeTexts[displayMode as keyof typeof modeTexts]
+                })`;
               })()}
               icon={<McpToolIcon />}
-          />
+            />
+          )}
         </>
       </div>
 
@@ -1115,7 +1138,6 @@ function _Chat() {
   const [showExport, setShowExport] = useState(false);
   const [showResumeUpload, setShowResumeUpload] = useState(false);
 
-
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [userInput, setUserInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -1243,31 +1265,44 @@ function _Chat() {
 
   const { checkActivation } = useActivation();
 
-  const doSubmit = useCallback((userInput: string) => {
-    console.log("发送消息");
+  const doSubmit = useCallback(
+    (userInput: string) => {
+      console.log("发送消息");
 
-    if (userInput.trim() === "" && isEmpty(attachImages)) return;
+      if (userInput.trim() === "" && isEmpty(attachImages)) return;
 
-    // const matchCommand = chatCommands.match(userInput);
-    // console.log(`发送消息 - 作为命令处理: ${userInput}`);
-    // if (matchCommand) {
-    //   setUserInput("");
-    //   setPromptHints([]);
-    //   matchCommand.invoke();
-    //   return;
-    // }
-    // console.log("发送消息 - 即将调用 chatStore.onUserInput");
-    setIsLoading(true);
-    chatStore
-      .onUserInput(additionalResumeText(userInput), attachImages)
-      .then(() => setIsLoading(false));
-    setAttachImages([]);
-    chatStore.setLastInput(userInput);
-    setUserInput("");
-    setPromptHints([]);
-    if (!isMobileScreen) inputRef.current?.focus();
-    setAutoScroll(true);
-  }, [attachImages, chatStore, isMobileScreen, inputRef, setAttachImages, setIsLoading, setUserInput, setPromptHints, setAutoScroll]);
+      // const matchCommand = chatCommands.match(userInput);
+      // console.log(`发送消息 - 作为命令处理: ${userInput}`);
+      // if (matchCommand) {
+      //   setUserInput("");
+      //   setPromptHints([]);
+      //   matchCommand.invoke();
+      //   return;
+      // }
+      // console.log("发送消息 - 即将调用 chatStore.onUserInput");
+      setIsLoading(true);
+      chatStore
+        .onUserInput(additionalResumeText(userInput), attachImages)
+        .then(() => setIsLoading(false));
+      setAttachImages([]);
+      chatStore.setLastInput(userInput);
+      setUserInput("");
+      setPromptHints([]);
+      if (!isMobileScreen) inputRef.current?.focus();
+      setAutoScroll(true);
+    },
+    [
+      attachImages,
+      chatStore,
+      isMobileScreen,
+      inputRef,
+      setAttachImages,
+      setIsLoading,
+      setUserInput,
+      setPromptHints,
+      setAutoScroll,
+    ],
+  );
 
   const onPromptSelect = (prompt: RenderPrompt) => {
     setTimeout(() => {
@@ -1549,7 +1584,7 @@ function _Chat() {
 
   // 检测是否有消息正在生成
   const isGenerating = useMemo(() => {
-    return isLoading || renderMessages.some(msg => msg.streaming);
+    return isLoading || renderMessages.some((msg) => msg.streaming);
   }, [isLoading, renderMessages]);
 
   // 在模型生成期间定时滚动到底部，确保用户始终看到最新内容
@@ -1854,28 +1889,34 @@ function _Chat() {
 
   const [showChatSidePanel, setShowChatSidePanel] = useState(false);
 
-  const toastShow = useCallback((text: string): void => {
-    if (text.length <= 3) {
-      toast("没有监听到任何文本!!!", {
-        icon: "⚠️", // 自定义图标
-        style: {
-          background: "#fff3cd", // 背景色
-          color: "#856404", // 文字颜色
-          border: "1px solid #ffeeba", // 边框
-        },
-      });
-      return;
-    }
+  const toastShow = useCallback(
+    (text: string): void => {
+      if (text.length <= 3) {
+        toast("没有监听到任何文本!!!", {
+          icon: "⚠️", // 自定义图标
+          style: {
+            background: "#fff3cd", // 背景色
+            color: "#856404", // 文字颜色
+            border: "1px solid #ffeeba", // 边框
+          },
+        });
+        return;
+      }
 
-    checkActivation(() => doSubmit(text), 60); // 语音消息扣除10秒
-  }, [checkActivation, doSubmit]);
+      checkActivation(() => doSubmit(text), 60); // 语音消息扣除10秒
+    },
+    [checkActivation, doSubmit],
+  );
 
-  const toastShowDebounce = useMemo(() => debounce(toastShow, 500), [toastShow]);
+  const toastShowDebounce = useMemo(
+    () => debounce(toastShow, 500),
+    [toastShow],
+  );
 
   return (
     <>
       <div className={styles.chat} key={session.id}>
-      {/* <TavilyTest /> */}
+        {/* <TavilyTest /> */}
         {/* 聊天窗口头部 */}
         <div className="window-header" data-tauri-drag-region>
           {isMobileScreen && (
@@ -1973,7 +2014,6 @@ function _Chat() {
                 />
               </div>
             )} */}
-
           </div>
 
           <PromptToast
@@ -2433,9 +2473,7 @@ function _Chat() {
       )}
 
       {showResumeUpload && (
-        <PreparationResumesUpload
-          onClose={() => setShowResumeUpload(false)}
-        />
+        <PreparationResumesUpload onClose={() => setShowResumeUpload(false)} />
       )}
 
       {/* {showOverlay && (

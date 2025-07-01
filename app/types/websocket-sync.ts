@@ -16,23 +16,28 @@ export enum ConnectionStatus {
 
 // WebSocket 消息类型
 export interface WebSocketMessage {
-  type: "speech_recognition" | "ping" | "pong" | "peer_status_update" | "room_status_update";
+  type: "llm_response" | "ping" | "pong" | "peer_status_update" | "room_status_update";
   timestamp: number;
   data: any;
 }
 
 // 语音识别消息数据
-export interface SpeechRecognitionData {
-  text: string;
-  isFinal: boolean;
-  language: string;
-  sessionId: string;
+// LLM回答数据接口 - 用于WebSocket传输LLM生成的内容
+export interface LLMResponseData {
+  content: string;        // LLM回答的文本内容
+  isComplete: boolean;    // 是否完成生成（流式输出的结束标记）
+  messageId: string;      // 消息ID，用于标识特定的消息
+  sessionId: string;      // 会话ID，用于标识会话
+  timestamp?: number;     // 时间戳（可选）
+  modelName?: string;     // 使用的模型名称（可选）
 }
 
-// 语音识别消息
-export interface SpeechRecognitionMessage extends WebSocketMessage {
-  type: "speech_recognition";
-  data: SpeechRecognitionData;
+
+
+// LLM回答消息
+export interface LLMResponseMessage extends WebSocketMessage {
+  type: "llm_response";
+  data: LLMResponseData;
 }
 
 // 对端状态数据
@@ -75,6 +80,8 @@ export interface WebSocketSyncState {
   lastMessageTime?: number;
 }
 
+
+
 // WebSocket Hook 返回类型
 export interface UseWebSocketSyncReturn {
   // 状态
@@ -91,10 +98,10 @@ export interface UseWebSocketSyncReturn {
   connect: () => void;
   disconnect: () => void;
   sendMessage: (message: WebSocketMessage) => void;
-  sendSpeechRecognition: (data: SpeechRecognitionData) => void;
+  sendLLMResponse: (data: LLMResponseData) => void;        // 新增：发送LLM回答
 
   // 回调设置
-  onSpeechRecognition?: (data: SpeechRecognitionData) => void;
+  onLLMResponse?: (data: LLMResponseData) => void;          // 新增：LLM回答回调
   onPeerStatusChange?: (peerStatus: PeerStatusData) => void;
 }
 

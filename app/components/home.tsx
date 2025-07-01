@@ -61,6 +61,13 @@ const InterviewLoudspeaker = dynamic(
   //   loading: () => <Loading noLogo />,
   // },
 );
+const PersonalResume = dynamic(
+  async () =>
+    (await import("./personal-set/preparation-resumes-upload")).default,
+  // {
+  //   loading: () => <Loading noLogo />,
+  // },
+);
 
 const Artifacts = dynamic(async () => (await import("./artifacts")).Artifacts, {
   loading: () => <Loading noLogo />,
@@ -99,7 +106,7 @@ const Sd = dynamic(async () => (await import("./sd")).Sd, {
 });
 
 const McpMarketPage = dynamic(
-  async () => (await import("./mcp-market")).McpMarketPage,
+  async () => (await import("./mcp-list/mcp-list")).McpList,
   {
     loading: () => <Loading noLogo />,
   },
@@ -359,6 +366,10 @@ function Screen() {
               <Route
                 path={Path.InterviewLoudspeaker}
                 element={<InterviewLoudspeaker />}
+              />
+              <Route
+               path={Path.Resume}
+               element={<PersonalResume/>}
               />
             </Route>
             <Route path={Path.Settings} element={<Settings />} />

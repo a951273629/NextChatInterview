@@ -12,8 +12,8 @@ import {
 // 配置常量
 const SERVER_PORT = process.env.WS_PORT || 8080;
 const SERVER_HOST = process.env.WS_HOST || 'localhost';
-const HEARTBEAT_INTERVAL = 30000; // 30秒心跳间隔
-const CLEANUP_INTERVAL = 60000; // 60秒清理间隔
+const HEARTBEAT_INTERVAL = 60000; // 60秒心跳间隔
+const CLEANUP_INTERVAL = 120000; // 120秒清理间隔
 
 /**
  * WebSocket同步服务器类

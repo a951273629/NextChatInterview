@@ -82,9 +82,17 @@ export function validateMessage(messageStr) {
       return { isValid: false, error: '消息缺少必需字段' };
     }
     
+    // 验证语音识别消息
     if (message.type === 'speech_recognition') {
       if (!message.data || !message.data.text || !message.data.sessionId) {
         return { isValid: false, error: '语音识别消息格式不正确' };
+      }
+    }
+    
+    // 验证数据同步消息
+    if (message.type === 'data_sync') {
+      if (!message.data || !message.data.activationKey || !message.data.sessionId) {
+        return { isValid: false, error: '数据同步消息格式不正确' };
       }
     }
     

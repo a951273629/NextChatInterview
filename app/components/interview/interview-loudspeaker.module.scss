@@ -1,4 +1,104 @@
+// ===============================================
+// 变量定义
+// ===============================================
+$color-white: #ffffff;
+$color-white-07: rgba(255, 255, 255, 0.7);
+$color-white-09: rgba(255, 255, 255, 0.9);
+$color-white-01: rgba(255, 255, 255, 0.1);
+$color-white-02: rgba(255, 255, 255, 0.2);
+$color-black-03: rgba(0, 0, 0, 0.3);
+$color-black-01: rgba(0, 0, 0, 0.1);
+$color-primary: #4caf50;
+$color-warning: #ff9800;
+$color-error: #ff6b6b;
+$color-error-bg: rgba(255, 107, 107, 0.1);
+$color-error-border: rgba(255, 107, 107, 0.3);
+$color-info: #2196F3;
+$color-info-hover: #1976D2;
+$color-neutral-light: #ccc;
+$color-neutral-dark: #888;
+
+$font-size-xs: 0.7rem;
+$font-size-sm: 0.75rem;
+$font-size-base: 0.8rem;
+$font-size-md: 0.85rem;
+$font-size-lg: 0.9rem;
+$font-size-xl: 1rem;
+
+$spacing-xs: 0.25rem;
+$spacing-sm: 0.5rem;
+$spacing-base: 0.75rem;
+$spacing-lg: 1rem;
+
+$border-radius-sm: 0.25rem;
+$border-radius-base: 0.4rem;
+$border-radius-lg: 0.5rem;
+
+$mobile-breakpoint: 600px;
+
+// ===============================================
+// Mixin定义
+// ===============================================
+
+// 移动端触摸优化
+@mixin mobile-touch-optimization {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+// 基础setting-item样式
+@mixin base-setting-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: $spacing-lg;
+  padding: $spacing-base;
+  border-radius: $border-radius-base;
+  background-color: $color-black-03;
+  @include mobile-touch-optimization;
+}
+
+// setting-label基础样式
+@mixin base-setting-label($width: 6rem) {
+  width: $width;
+  font-size: $font-size-lg;
+  color: $color-white;
+}
+
+// setting-control基础样式
+@mixin base-setting-control {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+// 响应式设置项
+@mixin responsive-setting-item {
+  @media only screen and (max-width: $mobile-breakpoint) {
+    padding: $spacing-sm;
+
+    .setting-label {
+      width: 5rem;
+      font-size: $font-size-md;
+    }
+
+    .setting-control {
+      .setting-status {
+        margin-left: $spacing-sm;
+        font-size: $font-size-base;
+      }
+
+      .setting-warning {
+        margin-top: $spacing-xs;
+        font-size: $font-size-sm;
+      }
+    }
+  }
+}
+
+// ===============================================
 // 主容器样式
+// ===============================================
 .overlay {
   position: fixed;
   top: 0;
@@ -542,46 +642,10 @@
     }
   }
 
-  // 设置项目样式优化
-  .setting-item {
-    padding: 0.5rem;
-    margin-bottom: 0.75rem;
-
-    .setting-label {
-      width: 4rem;
-      font-size: 0.8rem;
-    }
-
-    .setting-control {
-      .setting-status {
-        margin-left: 0.5rem;
-        font-size: 0.8rem;
-      }
-
-      .setting-warning {
-        margin-top: 0.25rem;
-        font-size: 0.75rem;
-      }
-    }
-  }
-
   // 模式描述样式
   .mode-description {
-    margin-top: 0.25rem;
-    font-size: 0.75rem;
-  }
-}
-
-// 动画效果
-@keyframes pulse {
-
-  0%,
-  100% {
-    box-shadow: 0 0 10px #4caf50;
-  }
-
-  50% {
-    box-shadow: 0 0 20px #4caf50, 0 0 30px #4caf50;
+    margin-top: $spacing-xs;
+    font-size: $font-size-sm;
   }
 }
 
@@ -600,12 +664,12 @@
     transition: all 0.2s;
 
     &:hover {
-      background: #1976D2;
+      background: $color-info-hover;
       transform: translateY(-1px);
     }
 
     &:disabled {
-      background: #ccc;
+      background: $color-neutral-light;
       cursor: not-allowed;
       transform: none;
     }
@@ -643,36 +707,30 @@
   }
 }
 
-// 添加同步设置相关样式（从 InterviewPreparation.module.scss 复制）
+// ===============================================
+// 设置项目组件样式
+// ===============================================
 .setting-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  border-radius: 0.4rem;
-  background-color: rgba(0, 0, 0, 0.3);
+  @include base-setting-item;
 
   .setting-label {
-    width: 6rem;
-    font-size: 0.9rem;
+    @include base-setting-label;
   }
 
   .setting-control {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
+    @include base-setting-control;
 
     .setting-status {
-      margin-left: 0.75rem;
-      font-size: 0.85rem;
+      margin-left: $spacing-base;
+      font-size: $font-size-md;
+      color: $color-white-09;
     }
 
     .setting-warning {
       width: 100%;
-      margin-top: 0.5rem;
-      font-size: 0.8rem;
-      color: #ff9800;
+      margin-top: $spacing-sm;
+      font-size: $font-size-base;
+      color: $color-warning;
     }
   }
 
@@ -688,7 +746,7 @@
       height: 0;
 
       &:checked+.slider {
-        background-color: #2196F3;
+        background-color: $color-info;
 
         &:before {
           transform: translateX(26px);
@@ -696,7 +754,7 @@
       }
 
       &:focus+.slider {
-        box-shadow: 0 0 1px #2196F3;
+        box-shadow: 0 0 1px $color-info;
       }
 
       &:disabled+.slider {
@@ -712,7 +770,7 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background-color: #ccc;
+      background-color: $color-neutral-light;
       transition: .4s;
       border-radius: 24px;
 
@@ -723,34 +781,28 @@
         width: 18px;
         left: 3px;
         bottom: 3px;
-        background-color: white;
+        background-color: $color-white;
         transition: .4s;
         border-radius: 50%;
       }
 
       &.disabled {
-        background-color: #888;
+        background-color: $color-neutral-dark;
         cursor: not-allowed;
       }
     }
   }
 
-  @media only screen and (max-width: 600px) {
-    padding: 0.5rem;
-
-    .setting-label {
-      width: 5rem;
-      font-size: 0.85rem;
-    }
-  }
+  // 应用响应式样式
+  @include responsive-setting-item;
 }
 
 // 模式描述样式
 .mode-description {
   width: 100%;
-  margin-top: 0.5rem;
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.7);
+  margin-top: $spacing-sm;
+  font-size: $font-size-base;
+  color: $color-white-07;
   font-style: italic;
 }
 
@@ -836,7 +888,7 @@
     }
   }
 
-  // 同步设置项收窄样式
+  // 收窄模式下的设置项样式修饰符
   .setting-item {
     justify-content: center;
 
@@ -848,10 +900,99 @@
       flex: none;
 
       .setting-status,
-      .mode-description,
-      .activationKey .keyDescription {
+      .mode-description {
         display: none;
       }
+    }
+  }
+}
+
+// 双端连接状态容器样式
+.connectionStatusContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background-color: $color-black-01;
+  border: 1px solid $color-white-01;
+  
+  @media only screen and (max-width: $mobile-breakpoint) {
+    padding: 6px 8px;
+    gap: 4px;
+    margin-top: 6px;
+  }
+}
+
+// 单个连接状态项样式
+.connectionItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  .statusIndicator {
+    font-size: $font-size-lg;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    
+    &.connected {
+      color: $color-primary;
+    }
+    
+    &.connecting {
+      color: #ffa726;
+    }
+    
+    &.disconnected {
+      color: $color-error;
+    }
+  }
+  
+  .connectionText {
+    font-size: $font-size-md;
+    font-weight: 500;
+    color: $color-white-09;
+  }
+
+  @media only screen and (max-width: $mobile-breakpoint) {
+    gap: 6px;
+    
+    .statusIndicator {
+      font-size: $font-size-base;
+      width: 14px;
+      height: 14px;
+    }
+    
+    .connectionText {
+      font-size: $font-size-base;
+    }
+  }
+}
+
+// 错误信息显示样式
+.errorInfo {
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: $color-error-bg;
+  border: 1px solid $color-error-border;
+  
+  .errorText {
+    font-size: $font-size-sm;
+    color: $color-error;
+    font-weight: 400;
+  }
+
+  @media only screen and (max-width: $mobile-breakpoint) {
+    margin-top: 3px;
+    padding: 3px 6px;
+    
+    .errorText {
+      font-size: $font-size-xs;
     }
   }
 }

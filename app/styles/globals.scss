@@ -256,7 +256,8 @@ div.math {
   justify-content: center;
 
   @media screen and (max-width: 600px) {
-    align-items: flex-end;
+    align-items: flex-start;
+    padding-top: 10vh;
   }
 }
 

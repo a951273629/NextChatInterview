@@ -89,6 +89,7 @@ export enum Path {
   McpMarket = "/mcp-market",
   InterviewMicrophone = "/chat/interview-microphone",
   InterviewLoudspeaker = "/chat/interview-loudspeaker",
+  Resume = "/chat/personal-resume",
   SetNotice = "/login/set-notice",
   KeyGenerate = "/login/key-generate",
 }
@@ -331,125 +332,46 @@ export const MCP_TOOLS_TEMPLATE = `
 `;
 
 export const MCP_SYSTEM_TEMPLATE = `
-You are an AI assistant with access to system tools. Your role is to help users by combining natural language understanding with tool operations when needed.
+You are an AI assistant with access to system tools through function calling. Your role is to help users by intelligently deciding when and how to use available tools.
 
-1. AVAILABLE TOOLS:
+CURRENT USE MODE:
+{{ USE_MODE }}
+
+INTELLIGENT TOOL ACTIVATION:
+You have the autonomy to decide when all MCPs, tools are used, if the current [CURRENT USE MODE]: "ALWAYS".
+The "ALWAYS" mode must invoke all available MCP tools to answer user questions.
+
+
+
+1.TOOL USAGE DECISION FLOW:
+   - Analyze user intent carefully
+   - Check if request contains activation keywords
+   - If no tool is needed, respond directly from your knowledge
+
+2. FUNCTION CALLING MECHANISM:
+   - Tools are available through OpenAI function calling
+   - You will automatically receive tool schemas
+   - Call functions directly when needed - no special syntax required
+   - The system handles tool execution and result integration
+
+3. RESPONSE FLOW:
+   - When user requests something requiring tools: call appropriate function immediately
+   - After tool execution: provide comprehensive analysis based on results
+   - Combine tool data with your knowledge for enhanced responses
+   - Always explain your reasoning and cite tool results when relevant
+
+4. INTEGRATION APPROACH:
+   - Tool results will be automatically integrated into your context
+   - Provide natural, conversational responses that incorporate tool data
+   - Focus on answering the user's original question comprehensively
+   - Use tools as means to provide better, more accurate information
+
+REMEMBER: You have intelligent tool-calling capabilities. Use them proactively to provide the best possible assistance to users.
+
+AVAILABLE TOOLS:
 {{ MCP_TOOLS }}
-
-2. WHEN TO USE TOOLS:
-   - ALWAYS USE TOOLS when they can help answer user questions
-   - DO NOT just describe what you could do - TAKE ACTION immediately
-   - If you\\'re not sure whether to use a tool, USE IT
-   - Common triggers for tool use:
-     * Questions about files or directories
-     * Requests to check, list, or manipulate system resources
-     * Any query that can be answered with available tools
-
-3. HOW TO USE TOOLS:
-   A. Tool Call Format:
-      - Use markdown code blocks with format: \`\`\`json:mcp:{clientId}\`\`\`
-      - Always include:
-        * method: "tools/call"（Only this method is supported）
-        * params: 
-          - name: must match an available primitive name
-          - arguments: required parameters for the primitive
-
-   B. Response Format:
-      - Tool responses will come as user messages
-      - Format: \`\`\`json:mcp-response:{clientId}\`\`\`
-      - Wait for response before making another tool call
-
-   C. Important Rules:
-      - Only use tools/call method
-      - Only ONE tool call per message
-      - ALWAYS TAKE ACTION instead of just describing what you could do
-      - Include the correct clientId in code block language tag
-      - Verify arguments match the primitive\\'s requirements
-
-4. INTERACTION FLOW:
-   A. When user makes a request:
-      - IMMEDIATELY use appropriate tool if available
-      - DO NOT ask if user wants you to use the tool
-      - DO NOT just describe what you could do
-   B. After receiving tool response:
-      - Explain results clearly
-      - Take next appropriate action if needed
-   C. If tools fail:
-      - Explain the error
-      - Try alternative approach immediately
-
-5. EXAMPLE INTERACTION:
-
-  good example:
-
-   \`\`\`json:mcp:filesystem
-   {
-     "method": "tools/call",
-     "params": {
-       "name": "list_allowed_directories",
-       "arguments": {}
-     }
-   }
-   \`\`\`"
-
-
-  \`\`\`json:mcp-response:filesystem
-  {
-  "method": "tools/call",
-  "params": {
-    "name": "write_file",
-    "arguments": {
-      "path": "/Users/river/dev/sheep-interview/test/joke.txt",
-      "content": "为什么数学书总是感到忧伤？因为它有太多的问题。"
-    }
-  }
-  }
-\`\`\`
-
-   follwing is the wrong! mcp json example:
-
-   \`\`\`json:mcp:filesystem
-   {
-      "method": "write_file",
-      "params": {
-        "path": "Sheep_Interview_Information.txt",
-        "content": "1"
-    }
-   }
-   \`\`\`
-
-   This is wrong because the method is not tools/call.
-   
-   \`\`\`{
-  "method": "search_repositories",
-  "params": {
-    "query": "2oeee"
-  }
-}
-   \`\`\`
-
-   This is wrong because the method is not tools/call.!!!!!!!!!!!
-
-   the right format is:
-   \`\`\`json:mcp:filesystem
-   {
-     "method": "tools/call",
-     "params": {
-       "name": "search_repositories",
-       "arguments": {
-         "query": "2oeee"
-       }
-     }
-   }
-   \`\`\`
-   
-   please follow the format strictly ONLY use tools/call method!!!!!!!!!!!
-   
 `;
 
-// MCP 直接指令相关配置
-export const MCP_COMMAND_MAPPINGS_KEY = "mcp-command-mappings";
-export const MCP_DIRECT_COMMAND_ENABLED_KEY = "mcp-direct-command-enabled";
 
 export const SUMMARIZE_MODEL = "gpt-4o-mini";
 export const GEMINI_SUMMARIZE_MODEL = "gemini-pro";
@@ -567,7 +489,13 @@ const openaiModels = [
   // "gemini-2.5-pro-preview-06-05",
   "deepseek-r1-250528",
 ];
-
+export const openaiModelsMap ={
+  "gpt-4.1":"gpt-4.5-preview",
+  "gpt-4o":"gpt-o4-latest",
+  "chatgpt-4o-latest":"gpt-o3",
+  "o3-mini":"gemini-2.5-pro-preview-06-05",
+  "deepseek-r1-250528":"deepseek-r1-250528",
+}
 // const googleModels = [
 //   // "gemini-1.0-pro", // Deprecated on 2/15/2025
 //   // "gemini-1.5-pro-latest",

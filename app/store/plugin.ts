@@ -218,6 +218,88 @@ export const usePluginStore = createPersistStore(
         selected.reduce((s, i) => Object.assign(s, i.funcs), {}),
       ];
     },
+    
+    /** 
+     * 获取包含MCP工具的完整工具列表
+     * 这是支持MCP集成的新API，异步版本
+     */
+    async getAsToolsWithMcp(ids: string[]) {
+              // console.log("getAsToolsWithMcp", JSON.stringify(ids));
+        
+         // 首先获取Plugin工具
+         const [pluginTools, pluginFuncs] = this.getAsTools(ids);
+         const pluginToolsArray = Array.isArray(pluginTools) ? pluginTools : [];
+         const pluginFuncsObj = pluginFuncs && typeof pluginFuncs === 'object' ? pluginFuncs as Record<string, Function> : {};
+        
+                // 🔧 获取MCP工具并集成
+          let allTools: any[] = pluginToolsArray;
+          let allFuncs: Record<string, Function> = pluginFuncsObj;
+          
+          try {
+            // 动态导入以避免循环依赖
+            const { isMcpEnabled } = await import("../mcp/actions");
+            const { useAppConfig } = await import("./config");
+            
+            const mcpEnabled = await isMcpEnabled();
+            const config = useAppConfig.getState();
+            const clientMcpEnabled = config.mcpConfig.enabled;
+            const mcpMode = config.mcpConfig.clientMode;
+            
+            // 客户端MCP控制逻辑
+            const shouldUseMcp = mcpEnabled && clientMcpEnabled && mcpMode !== "never";
+            
+            if (shouldUseMcp) {
+              const { convertMcpToolsToFunctionTools, createMcpFunctionMapping } = await import("../mcp/function-tools");
+              const mcpTools = await convertMcpToolsToFunctionTools();
+              const mcpFuncs = await createMcpFunctionMapping();
+              
+              // 🔧 包装MCP函数以确保执行信息能正确传递到Tool Calling机制
+              const wrappedMcpFuncs: Record<string, Function> = {};
+              for (const [toolName, mcpFunc] of Object.entries(mcpFuncs)) {
+                wrappedMcpFuncs[toolName] = async (args: any) => {
+                  try {
+                    const result = await mcpFunc(args);
+                    
+                    // 确保MCP执行信息能在工具调用结果中传递
+                    if (result && result.mcpExecutionInfo) {
+                      // 将MCP执行信息包含在工具调用的内容中
+                      const toolResult = {
+                        ...result,
+                        // 将执行信息序列化到内容中，以便onAfterTool能够解析
+                        mcpExecutionInfo: result.mcpExecutionInfo
+                      };
+                      
+                      // 确保返回结果包含序列化的执行信息
+                      return {
+                        ...toolResult,
+                        data: typeof result.data === 'object' 
+                          ? JSON.stringify({ 
+                              ...result.data, 
+                              mcpExecutionInfo: result.mcpExecutionInfo 
+                            })
+                          : result.data
+                      };
+                    }
+                    
+                    return result;
+                  } catch (error) {
+                    console.warn(`[Plugin Store] MCP tool ${toolName} execution failed:`, error);
+                    throw error;
+                  }
+                };
+              }
+              
+              allTools = [...pluginToolsArray, ...mcpTools];
+              allFuncs = { ...pluginFuncsObj, ...wrappedMcpFuncs };
+              
+              console.log(`[Plugin Store] Integrated ${pluginToolsArray.length} plugin tools + ${mcpTools.length} MCP tools = ${allTools.length} total tools`);
+            }
+          } catch (error) {
+            console.warn("[Plugin Store] Failed to integrate MCP tools:", error);
+          }
+          
+          return [allTools, allFuncs];
+    },
     get(id?: string) {
       return get().plugins[id ?? 1145141919810];
     },

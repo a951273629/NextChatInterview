@@ -1,0 +1,411 @@
+// MCP客户端列表组件样式
+// 遵循Minimal设计原则：简洁、清晰、功能性
+// 使用暖色调色板设计
+
+.mcp-list {
+  // ==================== 暖色调色板定义 ====================
+  // 暖色调主色系
+  --warm-orange: #ff6b35;        // 主橙色 - 活跃状态
+  --warm-amber: #ffa726;         // 琥珀色 - 初始化状态  
+  --warm-red: #ef5350;           // 暖红色 - 错误状态
+  --warm-yellow: #ffb74d;        // 暖黄色 - 警告状态
+  --warm-gray: #8d6e63;          // 暖灰色 - 暂停状态
+  --warm-coral: #ff8a65;         // 珊瑚色 - 工具标签
+  --warm-peach: #ffcc80;         // 桃色 - 背景色调
+  --warm-brown: #a1887f;         // 暖棕色 - 次要元素
+  
+  // 暖色调渐变和透明度
+  --warm-orange-light: rgba(255, 107, 53, 0.1);
+  --warm-amber-light: rgba(255, 167, 38, 0.1);
+  --warm-red-light: rgba(239, 83, 80, 0.1);
+  --warm-orange-border: rgba(255, 107, 53, 0.3);
+  --warm-amber-border: rgba(255, 167, 38, 0.3);
+  
+  // 兼容现有变量（如果项目中未定义）
+  --green: var(--warm-orange);
+  --red: var(--warm-red);
+  --yellow: var(--warm-yellow);
+  --gray: var(--warm-gray);
+  
+  // ==================== 组件样式 ====================
+  width: 100%;
+  background: var(--white);
+  border-radius: 12px;
+  border: 1px solid var(--border-in-light);
+  overflow: hidden;
+
+  @media (prefers-color-scheme: dark) {
+    background: var(--black);
+    border-color: var(--border-in-dark);
+  }
+}
+
+// ==================== 头部样式 ====================
+
+.mcp-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-in-light);
+  background: linear-gradient(135deg, var(--warm-peach), var(--warm-amber));
+  background-size: 200% 200%;
+  animation: warmGradient 8s ease infinite;
+
+  @media (prefers-color-scheme: dark) {
+    border-bottom-color: var(--border-in-dark);
+  }
+
+  .title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--black);
+
+    @media (prefers-color-scheme: dark) {
+      color: var(--white);
+    }
+  }
+
+  .info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--gray);
+
+    .count {
+      font-weight: 500;
+    }
+
+    .last-update {
+      opacity: 0.7;
+    }
+  }
+}
+
+// ==================== 状态样式 ====================
+
+.mcp-disabled,
+.loading,
+.error,
+.empty-state {
+  padding: 24px 20px;
+  text-align: center;
+  color: var(--gray);
+  font-size: 14px;
+
+  span {
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  small {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+}
+
+.error {
+  color: var(--warm-red);
+  background: var(--warm-red-light);
+  border: 1px solid var(--warm-red);
+  border-radius: 8px;
+
+  @media (prefers-color-scheme: dark) {
+    background: rgba(239, 83, 80, 0.1);
+  }
+}
+
+// ==================== 客户端列表样式 ====================
+
+.client-list {
+  .client-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-in-light);
+    transition: all 0.2s ease;
+
+    @media (prefers-color-scheme: dark) {
+      border-bottom-color: var(--border-in-dark);
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: var(--hover-color);
+    }
+
+    // 活跃状态样式
+    &.active {
+      border-left: 4px solid var(--warm-orange);
+      background: var(--warm-orange-light);
+      box-shadow: inset 0 0 20px var(--warm-orange-light);
+    }
+
+    // 错误状态样式
+    &.error {
+      border-left: 4px solid var(--warm-red);
+      background: var(--warm-red-light);
+      box-shadow: inset 0 0 20px var(--warm-red-light);
+
+      @media (prefers-color-scheme: dark) {
+        background: rgba(239, 83, 80, 0.08);
+      }
+    }
+  }
+}
+
+// ==================== 客户端信息样式 ====================
+
+.client-info {
+  .client-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+
+    .name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--black);
+
+      @media (prefers-color-scheme: dark) {
+        color: var(--white);
+      }
+    }
+  }
+
+  .client-details {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+
+    .tool-info {
+      color: var(--gray);
+      font-weight: 500;
+    }
+
+    .tool-count {
+      color: var(--warm-orange);
+      font-weight: 600;
+    }
+
+    .tool-count-zero {
+      color: var(--gray);
+      opacity: 0.7;
+    }
+
+    .tool-count-disabled {
+      color: var(--gray);
+      opacity: 0.5;
+    }
+
+    .error-msg {
+      color: var(--warm-red);
+      font-size: 11px;
+      background: var(--warm-red-light);
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--warm-red);
+      box-shadow: 0 2px 4px rgba(239, 83, 80, 0.2);
+    }
+  }
+}
+
+// ==================== 状态徽章样式 ====================
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  &.active {
+    background: linear-gradient(45deg, var(--warm-orange), var(--warm-coral)) !important;
+    box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+  }
+
+  &.error {
+    background: linear-gradient(45deg, var(--warm-red), #ff7043) !important;
+    box-shadow: 0 2px 8px rgba(239, 83, 80, 0.3);
+  }
+
+  &.initializing {
+    background: linear-gradient(45deg, var(--warm-amber), var(--warm-yellow)) !important;
+    box-shadow: 0 2px 8px rgba(255, 167, 38, 0.3);
+  }
+
+  &.paused {
+    background: linear-gradient(45deg, var(--warm-gray), var(--warm-brown)) !important;
+    box-shadow: 0 2px 8px rgba(141, 110, 99, 0.3);
+  }
+
+  &.undefined {
+    background-color: var(--gray) !important;
+    opacity: 0.6;
+  }
+}
+
+// ==================== 工具预览样式 ====================
+
+.tools-preview {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-in-light);
+
+  @media (prefers-color-scheme: dark) {
+    border-top-color: var(--border-in-dark);
+  }
+
+  .tools-header {
+    margin-bottom: 8px;
+
+    span {
+      font-size: 12px;
+      color: var(--gray);
+      font-weight: 500;
+    }
+  }
+
+  .tools-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    .tool-tag {
+      display: inline-block;
+      padding: 4px 10px;
+      background: linear-gradient(45deg, var(--warm-coral), var(--warm-orange));
+      color: white;
+      border-radius: 16px;
+      font-size: 10px;
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(255, 138, 101, 0.3);
+      transition: all 0.2s ease;
+      
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(255, 138, 101, 0.4);
+      }
+    }
+
+    .tool-more {
+      display: inline-block;
+      padding: 4px 10px;
+      background: linear-gradient(45deg, var(--warm-brown), var(--warm-gray));
+      color: white;
+      border-radius: 16px;
+      font-size: 10px;
+      font-weight: 600;
+      opacity: 0.8;
+      box-shadow: 0 2px 4px rgba(161, 136, 127, 0.3);
+    }
+  }
+}
+
+// ==================== 响应式设计 ====================
+
+@media (max-width: 768px) {
+  .mcp-list-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+
+    .info {
+      gap: 8px;
+    }
+  }
+
+  .client-info .client-details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .tools-preview .tools-list {
+    gap: 4px;
+
+    .tool-tag,
+    .tool-more {
+      font-size: 9px;
+      padding: 2px 6px;
+    }
+  }
+}
+
+// ==================== 暖色调动画效果 ====================
+
+@keyframes warmGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes warmPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+// ==================== 主题兼容性 ====================
+
+[data-theme="dark"] {
+  // 暗色主题下的暖色调调整
+  .mcp-list {
+    --warm-orange: #ff8a50;        // 更亮的橙色
+    --warm-amber: #ffb74d;         // 更亮的琥珀色
+    --warm-red: #ff6b6b;           // 更亮的暖红色
+    --warm-coral: #ff9575;         // 更亮的珊瑚色
+    --warm-peach: #ffd699;         // 更亮的桃色
+  }
+
+  .mcp-list {
+    background: var(--black);
+    border-color: var(--border-in-dark);
+  }
+
+  .mcp-list-header {
+    border-bottom-color: var(--border-in-dark);
+    background: linear-gradient(135deg, rgba(255, 204, 128, 0.1), rgba(255, 167, 38, 0.1));
+
+    .title {
+      color: var(--white);
+    }
+  }
+
+  .client-list .client-item {
+    border-bottom-color: var(--border-in-dark);
+
+    &.error {
+      background: rgba(255, 107, 107, 0.08);
+    }
+
+    &.active {
+      background: rgba(255, 138, 80, 0.12);
+    }
+  }
+
+  .client-info .client-name .name {
+    color: var(--white);
+  }
+
+  .tools-preview {
+    border-top-color: var(--border-in-dark);
+  }
+} 

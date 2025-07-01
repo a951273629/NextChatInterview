@@ -104,6 +104,11 @@ export const DEFAULT_CONFIG = {
     temperature: 0.9,
     voice: "alloy" as Voice,
   },
+
+  mcpConfig: {
+    clientMode: "always" as "always" | "never", // always: 总是调用, smart: 智能调用, never: 从不调用
+    enabled: true, // 是否启用MCP功能
+  },
 };
 
 export type ChatConfig = typeof DEFAULT_CONFIG;
@@ -111,6 +116,7 @@ export type ChatConfig = typeof DEFAULT_CONFIG;
 export type ModelConfig = ChatConfig["modelConfig"];
 export type TTSConfig = ChatConfig["ttsConfig"];
 export type RealtimeConfig = ChatConfig["realtimeConfig"];
+export type MCPConfig = ChatConfig["mcpConfig"];
 
 export function limitNumber(
   x: number,

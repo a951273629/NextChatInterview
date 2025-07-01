@@ -1,3 +1,6 @@
+// MCP Market 组件 - MCP服务器市场和管理界面
+// 提供预设服务器浏览、添加、配置、启停等功能
+
 import { IconButton } from "./button";
 import { ErrorBoundary } from "./error";
 import styles from "./mcp-market.module.scss";
@@ -33,33 +36,74 @@ import PlayIcon from "../icons/play.svg";
 import StopIcon from "../icons/pause.svg";
 import { Path } from "../constant";
 
+// 配置属性接口定义 - 用于服务器配置表单
 interface ConfigProperty {
-  type: string;
-  description?: string;
-  required?: boolean;
-  minItems?: number;
+  type: string;         // 属性类型（string, array等）
+  description?: string; // 属性描述
+  required?: boolean;   // 是否必填
+  minItems?: number;    // 数组最小项数
 }
 
+/**
+ * MCP Market 页面组件
+ * 
+ * 主要功能：
+ * 1. 显示预设MCP服务器列表
+ * 2. 管理服务器的添加、配置、启停
+ * 3. 查看服务器状态和支持的工具
+ * 4. 提供搜索和过滤功能
+ */
 export function McpMarketPage() {
   const navigate = useNavigate();
+
+  // ==================== 状态管理 ====================
+  
+  // MCP功能启用状态
   const [mcpEnabled, setMcpEnabled] = useState(false);
+  
+  // 搜索文本状态
   const [searchText, setSearchText] = useState("");
+  
+  // 用户配置表单数据
   const [userConfig, setUserConfig] = useState<Record<string, any>>({});
+  
+  // 当前正在编辑的服务器ID
   const [editingServerId, setEditingServerId] = useState<string | undefined>();
+  
+  // 当前查看工具的服务器工具列表
   const [tools, setTools] = useState<ListToolsResponse["tools"] | null>(null);
+  
+  // 当前正在查看工具的服务器ID
   const [viewingServerId, setViewingServerId] = useState<string | undefined>();
+  
+  // 全局加载状态
   const [isLoading, setIsLoading] = useState(false);
+  
+  // MCP配置数据
   const [config, setConfig] = useState<McpConfigData>();
+  
+  // 各客户端状态信息
   const [clientStatuses, setClientStatuses] = useState<
     Record<string, ServerStatusResponse>
   >({});
+  
+  // 预设服务器列表加载状态
   const [loadingPresets, setLoadingPresets] = useState(true);
+  
+  // 预设服务器列表数据
   const [presetServers, setPresetServers] = useState<PresetServer[]>([]);
+  
+  // 各服务器操作的加载状态（如启动、停止等）
   const [loadingStates, setLoadingStates] = useState<Record<string, string>>(
     {},
   );
 
-  // 检查 MCP 是否启用
+  // ==================== 副作用钩子 ====================
+
+  /**
+   * 检查MCP功能是否启用
+   * 如果未启用则跳转到首页
+   */
   useEffect(() => {
     const checkMcpStatus = async () => {
       const enabled = await isMcpEnabled();
@@ -71,7 +115,10 @@ export function McpMarketPage() {
     checkMcpStatus();
   }, [navigate]);
 
-  // 添加状态轮询
+  /**
+   * 状态轮询 - 定期更新所有客户端状态
+   * 每1000ms轮询一次，保持状态同步
+   */
   useEffect(() => {
     if (!mcpEnabled || !config) return;
 
@@ -88,7 +135,10 @@ export function McpMarketPage() {
     return () => clearInterval(timer);
   }, [mcpEnabled, config]);
 
-  // 加载预设服务器
+  /**
+   * 加载预设服务器列表
+   * 从远程API获取可用的MCP服务器预设配置
+   */
   useEffect(() => {
     const loadPresetServers = async () => {
       if (!mcpEnabled) return;
@@ -110,7 +160,10 @@ export function McpMarketPage() {
     loadPresetServers();
   }, [mcpEnabled]);
 
-  // 加载初始状态
+  /**
+   * 加载初始状态
+   * 获取当前MCP配置和所有客户端状态
+   */
   useEffect(() => {
     const loadInitialState = async () => {
       if (!mcpEnabled) return;
@@ -132,7 +185,10 @@ export function McpMarketPage() {
     loadInitialState();
   }, [mcpEnabled]);
 
-  // 加载当前编辑服务器的配置
+  /**
+   * 加载当前编辑服务器的配置
+   * 当用户选择编辑某个服务器时，从现有配置中提取用户配置数据
+   */
   useEffect(() => {
     if (!editingServerId || !config) return;
     const currentConfig = config.mcpServers[editingServerId];
@@ -143,18 +199,18 @@ export function McpMarketPage() {
         const userConfig: Record<string, any> = {};
         Object.entries(preset.argsMapping || {}).forEach(([key, mapping]) => {
           if (mapping.type === "spread") {
-            // For spread types, extract the array from args.
+            // 对于spread类型，从args中提取数组
             const startPos = mapping.position ?? 0;
             userConfig[key] = currentConfig.args.slice(startPos);
           } else if (mapping.type === "single") {
-            // For single types, get a single value
+            // 对于single类型，获取单个值
             userConfig[key] = currentConfig.args[mapping.position ?? 0];
           } else if (
             mapping.type === "env" &&
             mapping.key &&
             currentConfig.env
           ) {
-            // For env types, get values from environment variables
+            // 对于env类型，从环境变量中获取值
             userConfig[key] = currentConfig.env[mapping.key];
           }
         });
@@ -165,16 +221,26 @@ export function McpMarketPage() {
     }
   }, [editingServerId, config, presetServers]);
 
+  // 如果MCP未启用，不渲染组件
   if (!mcpEnabled) {
     return null;
   }
 
-  // 检查服务器是否已添加
+  // ==================== 工具函数 ====================
+
+  /**
+   * 检查服务器是否已添加到配置中
+   * @param id 服务器ID
+   * @returns 是否已添加
+   */
   const isServerAdded = (id: string) => {
     return id in (config?.mcpServers ?? {});
   };
 
-  // 保存服务器配置
+  /**
+   * 保存服务器配置
+   * 根据用户输入构建服务器配置并保存
+   */
   const saveServerConfig = async () => {
     const preset = presetServers.find((s) => s.id === editingServerId);
     if (!preset || !preset.configSchema || !editingServerId) return;
@@ -188,21 +254,25 @@ export function McpMarketPage() {
       const args = [...preset.baseArgs];
       const env: Record<string, string> = {};
 
+      // 根据参数映射构建最终配置
       Object.entries(preset.argsMapping || {}).forEach(([key, mapping]) => {
         const value = userConfig[key];
         if (mapping.type === "spread" && Array.isArray(value)) {
+          // spread类型：将数组展开到指定位置
           const pos = mapping.position ?? 0;
           args.splice(pos, 0, ...value);
         } else if (
           mapping.type === "single" &&
           mapping.position !== undefined
         ) {
+          // single类型：单个值到指定位置
           args[mapping.position] = value;
         } else if (
           mapping.type === "env" &&
           mapping.key &&
           typeof value === "string"
         ) {
+          // env类型：设置环境变量
           env[mapping.key] = value;
         }
       });
@@ -225,7 +295,10 @@ export function McpMarketPage() {
     }
   };
 
-  // 获取服务器支持的 Tools
+  /**
+   * 获取服务器支持的工具列表
+   * @param id 服务器ID
+   */
   const loadTools = async (id: string) => {
     try {
       const result = await getClientTools(id);
@@ -241,7 +314,11 @@ export function McpMarketPage() {
     }
   };
 
-  // 更新加载状态的辅助函数
+  /**
+   * 更新加载状态的辅助函数
+   * @param id 服务器ID
+   * @param message 加载消息，null表示清除加载状态
+   */
   const updateLoadingState = (id: string, message: string | null) => {
     setLoadingStates((prev) => {
       if (message === null) {
@@ -252,9 +329,13 @@ export function McpMarketPage() {
     });
   };
 
-  // 修改添加服务器函数
+  /**
+   * 添加服务器
+   * @param preset 预设服务器配置
+   */
   const addServer = async (preset: PresetServer) => {
     if (!preset.configurable) {
+      // 不需要配置的服务器，直接添加
       try {
         const serverId = preset.id;
         updateLoadingState(serverId, "Creating MCP client...");
@@ -273,13 +354,16 @@ export function McpMarketPage() {
         updateLoadingState(preset.id, null);
       }
     } else {
-      // 如果需要配置，打开配置对话框
+      // 需要配置的服务器，打开配置对话框
       setEditingServerId(preset.id);
       setUserConfig({});
     }
   };
 
-  // 修改暂停服务器函数
+  /**
+   * 暂停/停止服务器
+   * @param id 服务器ID
+   */
   const pauseServer = async (id: string) => {
     try {
       updateLoadingState(id, "Stopping server...");
@@ -294,7 +378,10 @@ export function McpMarketPage() {
     }
   };
 
-  // Restart server
+  /**
+   * 重启/启动服务器
+   * @param id 服务器ID
+   */
   const restartServer = async (id: string) => {
     try {
       updateLoadingState(id, "Starting server...");
@@ -311,7 +398,9 @@ export function McpMarketPage() {
     }
   };
 
-  // Restart all clients
+  /**
+   * 重启所有客户端
+   */
   const handleRestartAll = async () => {
     try {
       updateLoadingState("all", "Restarting all servers...");
@@ -326,7 +415,12 @@ export function McpMarketPage() {
     }
   };
 
-  // Render configuration form
+  // ==================== 渲染辅助函数 ====================
+
+  /**
+   * 渲染配置表单
+   * 根据服务器的配置schema动态生成表单字段
+   */
   const renderConfigForm = () => {
     const preset = presetServers.find((s) => s.id === editingServerId);
     if (!preset?.configSchema) return null;
@@ -334,6 +428,7 @@ export function McpMarketPage() {
     return Object.entries(preset.configSchema.properties).map(
       ([key, prop]: [string, ConfigProperty]) => {
         if (prop.type === "array") {
+          // 数组类型字段 - 支持动态添加/删除项目
           const currentValue = userConfig[key as keyof typeof userConfig] || [];
           const itemLabel = (prop as any).itemLabel || key;
           const addButtonText =
@@ -386,6 +481,7 @@ export function McpMarketPage() {
             </ListItem>
           );
         } else if (prop.type === "string") {
+          // 字符串类型字段
           const currentValue = userConfig[key as keyof typeof userConfig] || "";
           return (
             <ListItem key={key} title={key} subTitle={prop.description}>
@@ -406,16 +502,26 @@ export function McpMarketPage() {
     );
   };
 
+  /**
+   * 检查服务器状态
+   * @param clientId 客户端ID
+   * @returns 服务器状态信息
+   */
   const checkServerStatus = (clientId: string) => {
     return clientStatuses[clientId] || { status: "undefined", errorMsg: null };
   };
 
+  /**
+   * 获取服务器状态显示组件
+   * @param clientId 客户端ID
+   * @returns 状态显示组件
+   */
   const getServerStatusDisplay = (clientId: string) => {
     const status = checkServerStatus(clientId);
 
     const statusMap = {
       undefined: null, // 未配置/未找到不显示
-      // 添加初始化状态
+      // 初始化状态
       initializing: (
         <span className={clsx(styles["server-status"], styles["initializing"])}>
           Initializing
@@ -438,7 +544,11 @@ export function McpMarketPage() {
     return statusMap[status.status];
   };
 
-  // Get the type of operation status
+  /**
+   * 获取操作状态类型
+   * @param message 状态消息
+   * @returns 状态类型
+   */
   const getOperationStatusType = (message: string) => {
     if (message.toLowerCase().includes("stopping")) return "stopping";
     if (message.toLowerCase().includes("starting")) return "starting";
@@ -446,8 +556,12 @@ export function McpMarketPage() {
     return "default";
   };
 
-  // 渲染服务器列表
+  /**
+   * 渲染服务器列表
+   * 包括搜索过滤、状态排序、操作按钮等
+   */
   const renderServerList = () => {
+    // 加载中状态
     if (loadingPresets) {
       return (
         <div className={styles["loading-container"]}>
@@ -458,6 +572,7 @@ export function McpMarketPage() {
       );
     }
 
+    // 空列表状态
     if (!Array.isArray(presetServers) || presetServers.length === 0) {
       return (
         <div className={styles["empty-container"]}>
@@ -468,6 +583,7 @@ export function McpMarketPage() {
 
     return presetServers
       .filter((server) => {
+        // 搜索过滤
         if (searchText.length === 0) return true;
         const searchLower = searchText.toLowerCase();
         return (
@@ -477,6 +593,7 @@ export function McpMarketPage() {
         );
       })
       .sort((a, b) => {
+        // 状态排序 - 错误状态优先显示，然后是运行状态
         const aStatus = checkServerStatus(a.id).status;
         const bStatus = checkServerStatus(b.id).status;
         const aLoading = loadingStates[a.id];
@@ -484,16 +601,16 @@ export function McpMarketPage() {
 
         // 定义状态优先级
         const statusPriority: Record<string, number> = {
-          error: 0, // Highest priority for error status
-          active: 1, // Second for active
-          initializing: 2, // Initializing
-          starting: 3, // Starting
-          stopping: 4, // Stopping
-          paused: 5, // Paused
-          undefined: 6, // Lowest priority for undefined
+          error: 0,       // 错误状态最高优先级
+          active: 1,      // 活跃状态第二
+          initializing: 2, // 初始化中
+          starting: 3,    // 启动中
+          stopping: 4,    // 停止中
+          paused: 5,      // 暂停状态
+          undefined: 6,   // 未定义状态最低优先级
         };
 
-        // Get actual status (including loading status)
+        // 获取有效状态（包括加载状态）
         const getEffectiveStatus = (status: string, loading?: string) => {
           if (loading) {
             const operationType = getOperationStatusType(loading);
@@ -518,7 +635,7 @@ export function McpMarketPage() {
           );
         }
 
-        // Sort by name when statuses are the same
+        // 状态相同时按名称排序
         return a.name.localeCompare(b.name);
       })
       .map((server) => (
@@ -532,6 +649,7 @@ export function McpMarketPage() {
             <div className={styles["mcp-market-title"]}>
               <div className={styles["mcp-market-name"]}>
                 {server.name}
+                {/* 操作状态指示器 */}
                 {loadingStates[server.id] && (
                   <span
                     className={styles["operation-status"]}
@@ -542,7 +660,9 @@ export function McpMarketPage() {
                     {loadingStates[server.id]}
                   </span>
                 )}
+                {/* 服务器状态显示 */}
                 {!loadingStates[server.id] && getServerStatusDisplay(server.id)}
+                {/* GitHub仓库链接 */}
                 {server.repo && (
                   <a
                     href={server.repo}
@@ -555,6 +675,7 @@ export function McpMarketPage() {
                   </a>
                 )}
               </div>
+              {/* 标签显示 */}
               <div className={styles["tags-container"]}>
                 {server.tags.map((tag, index) => (
                   <span key={index} className={styles["tag"]}>
@@ -562,6 +683,7 @@ export function McpMarketPage() {
                   </span>
                 ))}
               </div>
+              {/* 服务器描述 */}
               <div
                 className={clsx(styles["mcp-market-info"], "one-line")}
                 title={server.description}
@@ -569,9 +691,11 @@ export function McpMarketPage() {
                 {server.description}
               </div>
             </div>
+            {/* 操作按钮区域 */}
             <div className={styles["mcp-market-actions"]}>
               {isServerAdded(server.id) ? (
                 <>
+                  {/* 已添加服务器的操作按钮 */}
                   {server.configurable && (
                     <IconButton
                       icon={<EditIcon />}
@@ -582,21 +706,17 @@ export function McpMarketPage() {
                   )}
                   {checkServerStatus(server.id).status === "paused" ? (
                     <>
+                      {/* 暂停状态下的操作 */}
                       <IconButton
                         icon={<PlayIcon />}
                         text="Start"
                         onClick={() => restartServer(server.id)}
                         disabled={isLoading}
                       />
-                      {/* <IconButton
-                        icon={<DeleteIcon />}
-                        text="Remove"
-                        onClick={() => removeServer(server.id)}
-                        disabled={isLoading}
-                      /> */}
                     </>
                   ) : (
                     <>
+                      {/* 运行状态下的操作 */}
                       <IconButton
                         icon={<EyeIcon />}
                         text="Tools"
@@ -619,6 +739,7 @@ export function McpMarketPage() {
                   )}
                 </>
               ) : (
+                /* 未添加服务器的添加按钮 */
                 <IconButton
                   icon={<AddIcon />}
                   text="Add"
@@ -632,13 +753,17 @@ export function McpMarketPage() {
       ));
   };
 
+  // ==================== 主渲染 ====================
+
   return (
     <ErrorBoundary>
       <div className={styles["mcp-market-page"]}>
+        {/* 窗口头部 */}
         <div className="window-header">
           <div className="window-header-title">
             <div className="window-header-main-title">
               MCP Market
+              {/* 全局操作加载指示器 */}
               {loadingStates["all"] && (
                 <span className={styles["loading-indicator"]}>
                   {loadingStates["all"]}
@@ -650,6 +775,7 @@ export function McpMarketPage() {
             </div>
           </div>
 
+          {/* 窗口操作按钮 */}
           <div className="window-actions">
             <div className="window-action-button">
               <IconButton
@@ -671,7 +797,9 @@ export function McpMarketPage() {
           </div>
         </div>
 
+        {/* 页面主体内容 */}
         <div className={styles["mcp-market-page-body"]}>
+          {/* 搜索过滤区域 */}
           <div className={styles["mcp-market-filter"]}>
             <input
               type="text"
@@ -682,10 +810,11 @@ export function McpMarketPage() {
             />
           </div>
 
+          {/* 服务器列表 */}
           <div className={styles["server-list"]}>{renderServerList()}</div>
         </div>
 
-        {/*编辑服务器配置*/}
+        {/* 编辑服务器配置模态框 */}
         {editingServerId && (
           <div className="modal-mask">
             <Modal
@@ -714,6 +843,7 @@ export function McpMarketPage() {
           </div>
         )}
 
+        {/* 查看服务器工具模态框 */}
         {viewingServerId && (
           <div className="modal-mask">
             <Modal

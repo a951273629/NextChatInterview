@@ -1,5 +1,5 @@
 import { safeLocalStorage } from "../../utils";
-
+import { getKeyByString } from "../../services/keyService";
 // 导出以便其他组件使用
 export { safeLocalStorage };
 
@@ -214,21 +214,15 @@ export async function syncActivationWithServer(): Promise<boolean> {
     }
 
     // 调用API获取密钥当前状态
-    const response = await fetch(`/api/key-generate?key=${keyString}`);
-
+    const response = await getKeyByString(keyString);
+    console.log(" syncActivationWithServer was called", keyString);
     // 检查会话是否仍然有效（防止竞态条件）
     if (currentSyncSession !== session) {
       console.log("同步会话已过期，忽略响应");
       return false;
     }
 
-    // 处理网络错误或服务器错误
-    if (!response.ok) {
-      console.warn("同步激活状态时遇到网络错误，稍后重试");
-      return false;
-    }
-
-    const key: KeyApiResponse = await response.json();
+    const key: KeyApiResponse = response;
 
     // 再次检查会话有效性（在JSON解析后）
     if (currentSyncSession !== session) {

@@ -289,12 +289,14 @@ export class ChatGPTApi implements LLMApi {
       }
       if (shouldStream) {
         let index = -1;
-        const [tools, funcs] = usePluginStore
+        const toolsResult = await usePluginStore
           .getState()
-          .getAsTools(
+          .getAsToolsWithMcp(
             useChatStore.getState().currentSession().mask?.plugin || [],
           );
-        // console.log("getAsTools", tools, funcs);
+        const tools = Array.isArray(toolsResult[0]) ? toolsResult[0] : [];
+        const funcs = toolsResult[1] && typeof toolsResult[1] === 'object' ? toolsResult[1] as Record<string, Function> : {};
+        console.log("[OpenAI MCP Integration] Loaded tools:", tools.length, "funcs:", Object.keys(funcs).length);
         streamWithThink(
           chatPath,
           requestPayload,

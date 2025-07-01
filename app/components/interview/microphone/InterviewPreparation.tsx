@@ -468,7 +468,7 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
       })}
     >
       <div className={styles["prep-header"]}>
-        <h3>面试准备就绪</h3>
+
         <ActivationStatus className={styles["activation-status"]} />
         <p>请确认以下设置后开始面试</p>
       </div>

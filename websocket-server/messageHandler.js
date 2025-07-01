@@ -30,17 +30,21 @@ export class MessageHandler {
 
     const { message } = validation;
     
-    console.log(formatLog('info', '收到客户端消息', {
-      clientId: client.id,
-      type: message.type,
-      mode: client.mode
-    }));
+    // console.log(formatLog('info', '收到客户端消息', {
+    //   clientId: client.id,
+    //   type: message.type,
+    //   mode: client.mode
+    // }));
 
     // 根据消息类型分发处理
     switch (message.type) {
-      case 'speech_recognition':
-        this.handleSpeechRecognition(client, message);
+
+      
+      case 'llm_response':
+        this.handleLLMResponse(client, message);
         break;
+      
+
       
       case 'ping':
         this.handlePing(client, message);
@@ -58,43 +62,47 @@ export class MessageHandler {
     }
   }
 
+
+
   /**
-   * 处理语音识别消息
-   * @param {Object} client - 客户端对象  
-   * @param {Object} message - 语音识别消息
+   * 处理LLM回答消息
+   * @param {Object} client - 客户端对象
+   * @param {Object} message - LLM回答消息
    */
-  handleSpeechRecognition(client, message) {
-    // 只有发送端可以发送语音识别消息
+  handleLLMResponse(client, message) {
+    // 只有发送端可以发送LLM回答消息
     if (client.mode !== 'sender') {
-      console.warn(formatLog('warn', '非发送端尝试发送语音识别消息', {
+      console.warn(formatLog('warn', '非发送端尝试发送LLM回答消息', {
         clientId: client.id,
         mode: client.mode
       }));
       
-      this.sendErrorMessage(client, '只有发送端可以发送语音识别消息');
+      this.sendErrorMessage(client, '只有发送端可以发送LLM回答消息');
       return;
     }
 
     const { activationKey } = client;
     const { data } = message;
 
-    // 验证语音识别数据
-    if (!this.validateSpeechData(data)) {
-      this.sendErrorMessage(client, '语音识别数据格式错误');
-      return;
-    }
+    // 验证LLM回答数据
+    // if (!this.validateLLMResponseData(data)) {
+    //   this.sendErrorMessage(client, 'LLM回答数据格式错误');
+    //   return;
+    // }
 
-    console.log(formatLog('info', '处理语音识别消息', {
-      clientId: client.id,
-      activationKey,
-      text: data.text.substring(0, 50), // 只记录前50字符
-      isFinal: data.isFinal,
-      language: data.language
-    }));
+    // console.log(formatLog('info', '处理LLM回答消息', {
+    //   clientId: client.id,
+    //   activationKey,
+    //   content: data.content.substring(0, 50), // 只记录前50字符
+    //   isComplete: data.isComplete,
+    //   messageId: data.messageId
+    // }));
 
     // 转发消息给同房间的所有接收端
     this.forwardToReceivers(activationKey, message, client.id);
   }
+
+
 
   /**
    * 处理心跳ping消息
@@ -136,10 +144,10 @@ export class MessageHandler {
     const receivers = this.roomManager.getReceivers(activationKey);
     
     if (receivers.length === 0) {
-      console.warn(formatLog('warn', '房间内没有接收端', {
-        activationKey,
-        senderClientId
-      }));
+      // console.warn(formatLog('warn', '房间内没有接收端', {
+      //   activationKey,
+      //   senderClientId
+      // }));
       return;
     }
 
@@ -184,24 +192,26 @@ export class MessageHandler {
     }));
   }
 
+
+
   /**
-   * 验证语音识别数据
-   * @param {Object} data - 语音识别数据
+   * 验证LLM回答数据
+   * @param {Object} data - LLM回答数据
    * @returns {boolean} 是否有效
    */
-  validateSpeechData(data) {
+  validateLLMResponseData(data) {
     if (!data) return false;
     
     // 检查必需字段
-    if (!data.text || typeof data.text !== 'string') {
+    if (!data.content || typeof data.content !== 'string') {
       return false;
     }
     
-    if (typeof data.isFinal !== 'boolean') {
+    if (typeof data.isComplete !== 'boolean') {
       return false;
     }
     
-    if (!data.language || typeof data.language !== 'string') {
+    if (!data.messageId || typeof data.messageId !== 'string') {
       return false;
     }
     
@@ -209,16 +219,18 @@ export class MessageHandler {
       return false;
     }
 
-    // 检查文本长度限制
-    if (data.text.length > 1000) {
-      console.warn(formatLog('warn', '语音识别文本过长', {
-        textLength: data.text.length
+    // 检查内容长度限制
+    if (data.content.length > 50000) { // 50KB限制
+      console.warn(formatLog('warn', 'LLM回答内容过长', {
+        contentLength: data.content.length
       }));
       return false;
     }
 
     return true;
   }
+
+
 
   /**
    * 发送消息给客户端

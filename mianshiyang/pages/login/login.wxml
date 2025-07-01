@@ -1,0 +1,48 @@
+<!--pages/login/login.wxml-->
+<view class="container">
+  <view class="login-header">
+    <text class="title">扫码登录</text>
+    <text class="subtitle">请确认登录信息</text>
+    <button wx:if="{{canIUseGetUserProfile}}" bindtap="getUserProfile"> 获取头像昵称 </button>
+  </view>
+
+  <!-- 等待状态 -->
+  <view class="login-content" wx:if="{{loginStatus === 'waiting'}}">
+    <view class="waiting-status">
+      <text class="status-text">等待扫码...</text>
+      <text class="scene-info" wx:if="{{scene}}">识别码: {{scene}}</text>
+    </view>
+  </view>
+
+  <!-- 登录中状态 -->
+  <view class="login-content" wx:if="{{loginStatus === 'logging'}}">
+    <view class="loading-status">
+      <view class="loading-icon">⌛</view>
+      <text class="status-text">正在登录...</text>
+      <text class="loading-tip">请稍等，正在获取您的信息</text>
+    </view>
+  </view>
+
+  <!-- 成功状态 -->
+  <view class="login-content" wx:if="{{loginStatus === 'success'}}">
+    <view class="success-status">
+      <view class="success-icon">✅</view>
+      <text class="status-text">登录成功！</text>
+      <view class="user-info" wx:if="{{userInfo}}">
+        <image class="avatar" src="{{userInfo.avatarUrl}}" mode="aspectFill"></image>
+        <text class="nickname">{{userInfo.nickName}}</text>
+      </view>
+      <text class="success-tip">页面将自动关闭...</text>
+    </view>
+  </view>
+
+  <!-- 错误状态 -->
+  <view class="login-content" wx:if="{{loginStatus === 'error'}}">
+    <view class="error-status">
+      <view class="error-icon">❌</view>
+      <text class="status-text">登录失败</text>
+      <text class="error-message">{{errorMessage}}</text>
+      <button class="retry-btn" bindtap="retryLogin">重试</button>
+    </view>
+  </view>
+</view>

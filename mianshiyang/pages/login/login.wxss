@@ -1,0 +1,33 @@
+/* pages/login/login.wxss */
+.container {
+  padding: 20px;
+  text-align: center;
+}
+.title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 30px;
+}
+.qr-code-container {
+  width: 200px;
+  height: 200px;
+  margin: 0 auto;
+  background-color: #f0f0f0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.qr-code {
+  max-width: 100%;
+  max-height: 100%;
+}
+.refresh-btn, .login-btn {
+  margin-top: 20px;
+  width: 80%;
+}
+.login-success {
+  color: green;
+  font-size: 18px;
+  margin-top: 20px;
+}

@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./WechatAuthor.module.scss";
-import { Path } from "../constant";
-import { useAccessStore } from "../store";
-import { safeLocalStorage } from "../utils";
-import { showConfirm } from "./ui-lib";
+import { Path } from "../../constant";
+import { useAccessStore } from "../../store";
+import { safeLocalStorage } from "../../utils";
+import { showConfirm } from "../ui-lib";
 
 interface WechatUserInfo {
   id: string;

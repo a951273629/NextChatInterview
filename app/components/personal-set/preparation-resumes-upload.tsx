@@ -6,7 +6,7 @@ import {
   USER_RESUMES_NAME_STORAGE_KEY,
 } from "@/app/constant";
 import { extractTextFromPDF, type ProgressCallback } from "./resumes-extract"; 
-
+import { WechatLogin } from "../wechat-login/WechatLogin";
 // Promise.withResolvers 类型声明
 declare global {
   interface PromiseConstructor {
@@ -358,6 +358,7 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
 
   return (
     <div className={styles["modal-overlay"]} onClick={handleBackgroundClick}>
+      <WechatLogin />
       <div
         className={styles["modal-content"]}
         onClick={(e) => e.stopPropagation()}

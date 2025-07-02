@@ -28,18 +28,8 @@ db.pragma("foreign_keys = ON");
 // 启用WAL模式
 db.pragma("journal_mode = WAL");
 
-// 执行schema.sql中的表创建语句
-const schemaPath = path.join(process.cwd(), "app/db/schema.sql");
+// 执行update_notice.sql中的表创建语句
 const noticeSchemaPath = path.join(process.cwd(), "app/db/update_notice.sql");
-
-// 检查schema文件是否存在
-if (fs.existsSync(schemaPath)) {
-  const schema = fs.readFileSync(schemaPath, "utf8");
-  db.exec(schema);
-  console.log("Schema loaded successfully");
-} else {
-  console.warn(`Schema file not found at: ${schemaPath}`);
-}
 
 // 加载通知系统表结构
 if (fs.existsSync(noticeSchemaPath)) {

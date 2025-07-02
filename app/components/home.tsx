@@ -34,7 +34,6 @@ import clsx from "clsx";
 import { initializeMcpSystem, isMcpEnabled } from "../mcp/actions";
 import LoginPage from "./login/login";
 import TensorFlow from "./tensor-flow/TensorFlow";
-import { ActivationProvider } from "./valid-wrapper/ActivationWrapper";
 import { NoticeManager } from "./notice/notice-announcement";
 import { ProtectedRoute } from "./login/ProtectedRoute";
 
@@ -114,13 +113,6 @@ const McpMarketPage = dynamic(
 
 const HomePortal = dynamic(
   async () => (await import("./home-portal/home-portal")).HomePortal,
-  {
-    loading: () => <Loading noLogo />,
-  },
-);
-
-const KeyGenerate = dynamic(
-  async () => (await import("./key-generate/KeyGenerate")).KeyGeneratePage,
   {
     loading: () => <Loading noLogo />,
   },
@@ -441,37 +433,27 @@ export function Home() {
 
   return (
     <ErrorBoundary>
-      <ActivationProvider>
-        {/*  React Router在这里初始化 */}
-        <Router>
-          <Routes>
-            <Route
-              path={Path.Home}
-              element={<Navigate to={Path.HomePortal} replace />}
-            />
-            <Route path={Path.HomePortal} element={<HomePortal />} />
-            <Route path={Path.Login} element={<LoginPage />} />
-            <Route
-              path={Path.SetNotice}
-              element={
-                <ProtectedRoute>
-                  <NoticeSet />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path={Path.KeyGenerate}
-              element={
-                <ProtectedRoute>
-                  <KeyGenerate />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/*" element={<Screen />} />
-          </Routes>
-          <NoticeManager />
-        </Router>
-      </ActivationProvider>
+      {/*  React Router在这里初始化 */}
+      <Router>
+        <Routes>
+          <Route
+            path={Path.Home}
+            element={<Navigate to={Path.HomePortal} replace />}
+          />
+          <Route path={Path.HomePortal} element={<HomePortal />} />
+          <Route path={Path.Login} element={<LoginPage />} />
+          <Route
+            path={Path.SetNotice}
+            element={
+              <ProtectedRoute>
+                <NoticeSet />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/*" element={<Screen />} />
+        </Routes>
+        <NoticeManager />
+      </Router>
     </ErrorBoundary>
   );
 }

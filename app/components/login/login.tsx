@@ -63,16 +63,7 @@ export default function LoginPage() {
     });
   };
 
-  const handleNavigateToKeyGenerate = () => {
-    // 使用navigate传递状态
-    navigate("/login/key-generate", {
-      state: {
-        from: location.pathname,
-        loginTime: sessionStorage.getItem("loginTime"),
-        user: "admin"
-      }
-    });
-  };
+
 
   return (
     <div className={styles.container}>
@@ -113,10 +104,6 @@ export default function LoginPage() {
               <IconButton
                 text="通知设置"
                 onClick={handleNavigateToSetNotice}
-              />
-              <IconButton
-                text="密钥生成"
-                onClick={handleNavigateToKeyGenerate}
               />
             </div>
           </div>

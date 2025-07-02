@@ -45,30 +45,7 @@ export const USER_RESUMES_STORAGE_KEY = "LocalUserResumeStorage";
 // 添加缓存的简历文件名 key
 export const USER_RESUMES_NAME_STORAGE_KEY = "LocalUserResumeNameStorage";
 
-// 创建常用的状态枚举供应用使用
-export enum KeyStatus {
-  INACTIVE = "inactive", // 未激活
-  ACTIVE = "active", // 激活中
-  EXPIRED = "expired", // 已过期
-  REVOKED = "revoked", // 已撤销
-  PAUSED = "paused", // 已暂停
-}
 
-// 定义Key的数据结构
-export interface Key {
-  id?: number;
-  key_string: string;
-  status: KeyStatus;
-  created_at: number;
-  activated_at?: number | null;
-  expires_at: number | null;
-  activated_ip?: string | null;
-  hardware_name?: string | null;
-  duration_hours: number; // 添加密钥有效时长（小时）
-  notes?: string | null; // 附加备注信息
-  paused_at?: number | null; // 暂停开始时间戳(Unix时间)
-  remaining_time_on_pause?: number | null; // 暂停时剩余的有效秒数
-}
 
 // 添加到现有的Path枚举中
 export enum Path {
@@ -91,7 +68,6 @@ export enum Path {
   InterviewLoudspeaker = "/chat/interview-loudspeaker",
   Resume = "/chat/personal-resume",
   SetNotice = "/login/set-notice",
-  KeyGenerate = "/login/key-generate",
 }
 
 export enum ApiPath {

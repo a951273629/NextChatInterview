@@ -1,12 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./InterviewPreparation.module.scss";
 import { toast } from "react-hot-toast";
-import { useActivation } from "../../valid-wrapper/ActivationWrapper";
-import ActivationStatus from "../../valid-wrapper/ActivationStatus";
 import { safeLocalStorage } from "@/app/utils";
 import { useNavigate } from "react-router-dom";
 import { Path, NARROW_SIDEBAR_WIDTH } from "@/app/constant";
-import { ACTIVATION_KEY } from "../../valid-wrapper/activation";
 import { useAppConfig } from "@/app/store";
 import {
   useInterviewLanguage,
@@ -65,32 +62,8 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameIdRef = useRef<number | NodeJS.Timeout | null>(null);
 
-  // 判断是否已激活
-  const [isActivated, setIsActivated] = useState<boolean>(false);
-
   // 导航hook
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // 检查本地存储中的激活状态
-    const checkActivationStatus = () => {
-      const status = localStorage.getItem(ACTIVATION_KEY);
-      if (status === "active") {
-        setIsActivated(true);
-        clearInterval(intervalActive);
-      }
-    };
-
-    const intervalActive = setInterval(() => {
-      console.log("check active status");
-      checkActivationStatus();
-    }, 2000);
-
-    checkActivationStatus();
-    return () => {
-      clearInterval(intervalActive);
-    };
-  }, []);
 
   // 初始化时检测设备状态
   useEffect(() => {
@@ -104,8 +77,7 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
     };
   }, []);
 
-  // 获取激活检查函数
-  const { checkActivation } = useActivation();
+
 
   // 监测麦克风音量
   const startVolumeMonitoring = useCallback(() => {
@@ -468,8 +440,6 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
       })}
     >
       <div className={styles["prep-header"]}>
-
-        <ActivationStatus className={styles["activation-status"]} />
         <p>请确认以下设置后开始面试</p>
       </div>
 
@@ -579,14 +549,12 @@ export const InterviewPreparation: React.FC<InterviewPreparationProps> = ({
       <div className={styles["prep-footer"]}>
         <button
           className={`${styles["start-button"]} ${
-            micStatus !== "ready" || !isActivated ? styles["disabled"] : ""
+            micStatus !== "ready" ? styles["disabled"] : ""
           }`}
-          onClick={() => {
-            checkActivation(() => handleStartInterview());
-          }}
+          onClick={handleStartInterview}
           disabled={micStatus !== "ready"}
         >
-          {isActivated ? "开始面试" : "请先激活"}
+          开始面试
         </button>
       </div>
     </div>

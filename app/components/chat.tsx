@@ -123,8 +123,6 @@ import clsx from "clsx";
 import { getAvailableClientsCount, isMcpEnabled } from "../mcp/actions";
 // import { InterviewOverlay } from "./interview/microphone/interview-overlay-microphone";
 // import { InterviewLoudspeaker } from "./interview/interview-loudspeaker";
-import { useActivation } from "./valid-wrapper/ActivationWrapper";
-import ActivationStatus from "./valid-wrapper/ActivationStatus";
 import { additionalResumeText } from "./personal-set/preparation-resumes-upload";
 import PreparationResumesUpload from "./personal-set/preparation-resumes-upload";
 // import { useInterviewLanguage } from "@/app/hooks/useInterviewLanguage";
@@ -557,7 +555,6 @@ export function ChatActions(props: {
   const currentStyle = session.mask.modelConfig?.style ?? "vivid";
 
   const isMobileScreen = useMobileScreen();
-  const { checkActivation } = useActivation();
 
   useEffect(() => {
     const show = isVisionModel(currentModel);
@@ -883,10 +880,6 @@ export function ChatActions(props: {
           <ChatActionVoice
             onClick={() => {
               navigate(Path.InterviewLoudspeaker);
-              // checkActivation(() => {
-
-              // });
-              // contronlShow = !contronlShow;
             }}
             text="从扬声器"
             icon={<InterViewIcon2 />}
@@ -1262,8 +1255,6 @@ function _Chat() {
       }
     }
   };
-
-  const { checkActivation } = useActivation();
 
   const doSubmit = useCallback(
     (userInput: string) => {
@@ -1903,9 +1894,9 @@ function _Chat() {
         return;
       }
 
-      checkActivation(() => doSubmit(text), 60); // 语音消息扣除10秒
+      doSubmit(text); // 语音消息发送
     },
-    [checkActivation, doSubmit],
+    [doSubmit],
   );
 
   const toastShowDebounce = useMemo(
@@ -1950,10 +1941,6 @@ function _Chat() {
           </div>
 
           <div className="window-actions">
-            {/* 添加激活状态显示 */}
-            <div className="window-action-button">
-              <ActivationStatus className={styles["activation-status"]} />
-            </div>
 
             {/* <div className="window-action-button">
               <IconButton
@@ -2419,7 +2406,7 @@ function _Chat() {
                   className={styles["chat-input-send"]}
                   type="primary"
                   onClick={() => {
-                    checkActivation(() => doSubmit(userInput), 60); // 发送消息扣除5秒
+                    doSubmit(userInput); // 发送消息
                   }}
                 />
               </label>

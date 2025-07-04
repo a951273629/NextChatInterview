@@ -11,22 +11,13 @@ export const useInterviewChat = () => {
   const chatStore = useChatStore();
 
   /**
-   * 根据 sessionId 查找会话，如果没找到则使用第一个会话
+   * 默认就使用第一个会话
    * @param sessionId 会话ID
    * @returns ChatSession 实例
    */
-  const findOrCreateSessionById = (sessionId: string) => {
-    // 先查找是否已存在对应的会话
-    const existingSession = chatStore.sessions.find(s => s.id === sessionId);
-    if (existingSession) {
-      console.log("📝 找到现有面试会话:", sessionId);
-      return existingSession;
-    }
+  const findOrCreateSessionById = () => {
 
-    // 没找到指定 session，使用第一个 session 或当前 session
     const fallbackSession = chatStore.sessions[0] || chatStore.currentSession();
-    console.log("📝 未找到指定会话，使用第一个会话:", fallbackSession.id);
-    
     return fallbackSession;
   };
 
@@ -35,15 +26,9 @@ export const useInterviewChat = () => {
    * @param data LLM响应数据
    */
   const handleLLMResponse = (data: LLMResponseData) => {
-    // console.log("🤖 处理LLM响应:", {
-    //   messageId: data.messageId,
-    //   sessionId: data.sessionId,
-    //   isComplete: data.isComplete,
-    //   contentLength: data.content.length,
-    // });
 
     // 查找或创建目标会话
-    const targetSession = findOrCreateSessionById(data.sessionId);
+    const targetSession = findOrCreateSessionById();
 
     // 使用主系统的会话更新方法处理 assistant 消息
     chatStore.updateTargetSession(targetSession, (session) => {
@@ -86,10 +71,8 @@ export const useInterviewChat = () => {
    * 如果需要特定的面试会话，可以通过 sessionId 查找
    */
   const getCurrentInterviewSession = (sessionId?: string) => {
-    if (sessionId) {
-      return findOrCreateSessionById(sessionId);
-    }
-    return chatStore.currentSession();
+ 
+      return findOrCreateSessionById();
   };
 
   // 返回面试相关的功能接口

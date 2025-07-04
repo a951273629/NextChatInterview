@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
         grant_type: "client_credential",
         appid: WECHAT_CONFIG.appid,
         secret: WECHAT_CONFIG.secret,
-        force_refresh: true
+        force_refresh: false
       }),
     });
 

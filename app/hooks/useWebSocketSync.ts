@@ -150,41 +150,46 @@ export const useWebSocketSync = ({
 
 
 
-  // 发送LLM回答消息
-  const sendLLMResponse = useCallback(
-    (data: LLMResponseData) => {
-      // console.log("🤖 sendLLMResponse调用状态:", {
-      //   mode,
-      //   actualWebSocketState: getWebSocket()?.readyState,
-      //   isConnected: isConnected(),
-      // });
+  // 🔧 使用useRef创建稳定的发送函数，避免依赖变化导致的重复注册
+  const sendLLMResponseRef = useRef<(data: LLMResponseData) => void>();
 
-      if (mode !== SyncMode.SENDER) {
-        console.warn("⚠️ 非发送端模式，无法发送LLM回答消息");
-        return;
-      }
+  // 更新函数引用，但保持函数本身稳定
+  sendLLMResponseRef.current = (data: LLMResponseData) => {
+    // console.log("🤖 sendLLMResponse调用状态:", {
+    //   mode,
+    //   actualWebSocketState: getWebSocket()?.readyState,
+    //   isConnected: isConnected(),
+    // });
 
-      if (!isConnected()) {
-        console.warn("⚠️ WebSocket未连接，无法发送LLM回答消息", {
-          actualState: getWebSocket()?.readyState,
-        });
-        return;
-      }
+    if (mode !== SyncMode.SENDER) {
+      console.warn("⚠️ 非发送端模式，无法发送LLM回答消息");
+      return;
+    }
 
-      const message: LLMResponseMessage = {
-        type: "llm_response",
-        timestamp: Date.now(),
-        data: {
-          ...data,
-          sessionId: sessionIdRef.current,
-        },
-      };
+    if (!isConnected()) {
+      console.warn("⚠️ WebSocket未连接，无法发送LLM回答消息", {
+        actualState: getWebSocket()?.readyState,
+      });
+      return;
+    }
 
-      // console.log("📤 发送LLM回答消息:", message);
-      sendMessage(JSON.stringify(message));
-    },
-    [mode, sendMessage, isConnected, getWebSocket],
-  );
+    const message: LLMResponseMessage = {
+      type: "llm_response",
+      timestamp: Date.now(),
+      data: {
+        ...data,
+        sessionId: sessionIdRef.current,
+      },
+    };
+
+    // console.log("📤 发送LLM回答消息:", message);
+    sendMessage(JSON.stringify(message));
+  };
+
+  // 提供稳定的函数引用
+  const sendLLMResponse = useCallback((data: LLMResponseData) => {
+    sendLLMResponseRef.current?.(data);
+  }, []); // 🔧 空依赖数组确保函数引用永远稳定
 
 
 

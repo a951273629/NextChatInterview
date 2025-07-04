@@ -5,6 +5,7 @@ import styles from "./WechatLogin.module.scss";
 import Locale from "../../locales";
 import { useAccessStore } from "../../store";
 import { safeLocalStorage } from "../../utils";
+import { uuid } from "short-uuid";
 // import { ErrorIcon, LoadingIcon, SuccessIcon } from "../ui-lib";
 
 // 登录状态枚举
@@ -42,7 +43,7 @@ export function WechatLogin({  }: WechatLoginProps = {}) {
     setStatus(LoginStatus.LOADING);
     setErrorMessage("");
   //  login_${Date.now()}
-    const scene = `12345678`;
+    const scene = uuid().toString().slice(0, 31);
     setCurrentScene(scene);
 
     try {
@@ -205,11 +206,6 @@ export function WechatLogin({  }: WechatLoginProps = {}) {
     generateQRCode();
   };
 
-  // 处理登录错误
-  const handleLoginError = () => {
-    setStatus(LoginStatus.ERROR);
-    setErrorMessage("登录失败，请稍后重试");
-  };
 
   const renderStatus = () => {
     switch (status) {
@@ -235,7 +231,7 @@ export function WechatLogin({  }: WechatLoginProps = {}) {
           <div className={styles["login-success"]}>
             <div className={styles["success-icon"]}>✅</div>
             <h3>登录成功！</h3>
-            {loginResult?.userInfo && (
+            {/* {loginResult?.userInfo && (
               <div className={styles["user-info"]}>
                 <img 
                   src={loginResult.userInfo.avatarUrl} 
@@ -249,24 +245,12 @@ export function WechatLogin({  }: WechatLoginProps = {}) {
                   </p>
                 )}
               </div>
-            )}
+            )} */}
             <button onClick={generateQRCode} className={styles["reset-btn"]}>
               重新登录
             </button>
           </div>
         );
-          //      case LoginStatus.ERROR:
-          //  return (
-          //    <div className={styles.statusWrapper}>
-          //      <div className={styles.statusIcon}>
-          //        <span className={styles.errorIcon}>❌</span>
-          //      </div>
-          //      <p className={styles.statusText}>{errorMessage}</p>
-          //      <button className={styles.refreshButton} onClick={generateQRCode}>
-          //        刷新二维码
-          //      </button>
-          //    </div>
-          //  );
       default:
         return null;
     }
@@ -284,7 +268,7 @@ export function WechatLogin({  }: WechatLoginProps = {}) {
           {renderStatus()}
         </div>
 
-        {(status === LoginStatus.READY || status === LoginStatus.LOADING) && (
+        {/* {(status === LoginStatus.READY || status === LoginStatus.LOADING) && (
           <div className={styles.footer}>
             <p className={styles.expireHint}>二维码有效期为2分钟，请尽快扫码</p>
             <button
@@ -295,7 +279,7 @@ export function WechatLogin({  }: WechatLoginProps = {}) {
               刷新二维码
             </button>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );

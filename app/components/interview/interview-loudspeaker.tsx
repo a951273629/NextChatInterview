@@ -219,18 +219,22 @@ export const InterviewLoudspeaker: React.FC = () => {
     }
   }, [webSocketSync.peerStatus]);
 
-  // 注册WebSocket回调到chatStore，用于发送LLM输出到接收端
+  // 🔧 注册WebSocket回调到chatStore，用于发送LLM输出到接收端
   useEffect(() => {
     if (syncEnabled && syncMode === SyncMode.SENDER) {
       // 在监听端模式下，注册WebSocket发送回调到chat store
+      console.log("🔗 注册WebSocket回调到chatStore");
       chatStore.setWebSocketCallback(webSocketSync.sendLLMResponse, syncMode);
-    } 
+    } else {
+      // 不是发送模式时清除回调
+      chatStore.setWebSocketCallback(null, null);
+    }
 
     // 组件卸载时清除回调
     return () => {
       chatStore.setWebSocketCallback(null, null);
     };
-  }, [syncEnabled, syncMode, webSocketSync.sendLLMResponse]);
+  }, [syncEnabled, syncMode]); // 🔧 移除 sendLLMResponse 依赖，因为现在它是稳定的
 
   // 手机模式下默认设置
   useEffect(() => {

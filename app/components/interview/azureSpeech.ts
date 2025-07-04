@@ -1,4 +1,5 @@
 import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
+import { billingService } from "@/app/services/BillingService";
 let index = 0;
 // Azure Speech 配置接口
 export interface AzureSpeechConfig {
@@ -192,6 +193,10 @@ export class AzureSpeechRecognizer {
       this.recognizer.recognized = (s, e) => {
         if (e.result && e.result.text) {
           console.log("✅ 最终识别结果:", e.result.text);
+          
+          // 🎯 Azure Speech 扣费：每次识别完成扣费2点
+          billingService.chargeForAzureSpeech();
+          
           onResult(e.result.text, true);
         } else {
           // console.log("ℹ️ 识别结果为空或无效:", e.result);
@@ -332,32 +337,96 @@ export class AzureSpeechRecognizer {
   }
 }
 
-// 工具函数：从环境变量获取 Azure 配置
-export function getAzureSpeechConfig(): AzureSpeechConfig {
+// 获取下一个可用的 Azure Speech Key 和 Region (异步验证版本)
+export async function getNextAvailableKey(): Promise<AzureSpeechConfig> {
+  const { getAzureSpeechEnvironmentConfig } = require("@/app/api/azure/config");
+  const envConfig = getAzureSpeechEnvironmentConfig();
+  const language = localStorage.getItem("interviewLanguage") || "auto-detect"; // 默认中英混合
+  
+  // 🛡️ 边界检查
+  if (!envConfig.key || envConfig.key.length === 0) {
+    throw new Error("Azure Speech Keys 配置为空");
+  }
+  
+  // 🔄 循环尝试所有密钥，直到找到可用的或全部失败
+  const maxAttempts = envConfig.key.length;
+  let attemptedCount = 0;
+  
+  while (attemptedCount < maxAttempts) {
+    // 获取下一个密钥索引
+    const selectedKey = envConfig.key[index] || envConfig.key[0];
+    const selectedRegion = envConfig.region[index] || envConfig.region[0];
 
-    function getNextKeyRegion():AzureSpeechConfig {
+    index = (index + 1) % envConfig.key.length;
+    attemptedCount++;
     
-    const { getAzureSpeechEnvironmentConfig } = require("@/app/api/azure/config");
-     const envConfig = getAzureSpeechEnvironmentConfig();
-     const language = localStorage.getItem("interviewLanguage") || "auto-detect"; // 默认中英混合
-     
-     // 🛡️ 边界检查
-     if (!envConfig.key || envConfig.key.length === 0) {
-       throw new Error("Azure Speech Keys 配置为空");
-     }
-     
-     // 🔄 修正索引逻辑 - 确保从0开始循环
-     index = (index + 1) % envConfig.key.length;
+    console.log(`🔑 尝试验证 Azure Speech 密钥 (${attemptedCount}/${maxAttempts}):`, {
+      keyPrefix: `${selectedKey.substring(0, 8)}...`,
+      region: selectedRegion,
+      index: index
+    });
 
+    // 🔍 通过 API 验证密钥有效性
+    try {
+      const response = await fetch(`/api/azure?key=${encodeURIComponent(selectedKey)}&region=${encodeURIComponent(selectedRegion)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-     return {
-       subscriptionKey: envConfig.key[index] || envConfig.key[0],
-       region: envConfig.region[index] || envConfig.region[0],
-       language,
-     }
-   }
+      const result = await response.json();
 
-  return getNextKeyRegion();
+      if (!result.success) {
+        console.warn(`⚠️ 密钥验证失败 (${attemptedCount}/${maxAttempts}):`, result.message);
+        
+        
+        // 尝试从缓存中移除无效的密钥
+        try {
+          const { removeKeyRegionPair } = require("@/app/api/azure/config");
+          removeKeyRegionPair(selectedKey, selectedRegion);
+          console.log("🗑️ 已移除无效的密钥对");
+        } catch (removeError) {
+          console.error("❌ 移除无效密钥时出错:", removeError);
+        }
+        
+        // 如果还有其他密钥可以尝试，继续循环
+        if (attemptedCount < maxAttempts) {
+          console.log(`🔄 继续尝试下一个密钥...`);
+          continue;
+        }
+      } else {
+        // 🎉 验证成功，返回有效配置
+        console.log(`✅ 密钥验证成功 (第${attemptedCount}次尝试):`, result.message);
+
+        return {
+          subscriptionKey: selectedKey,
+          region: selectedRegion,
+          language,
+        };
+      }
+
+    } catch (error) {
+      console.error(`❌ 密钥验证过程出错 (${attemptedCount}/${maxAttempts}):`, error);
+      
+      
+      // 如果还有其他密钥可以尝试，继续循环
+      if (attemptedCount < maxAttempts) {
+        console.log(`🔄 网络错误，继续尝试下一个密钥...`);
+        continue;
+      }
+    }
+  }
+  
+  // 🚨 所有密钥都验证失败，抛出异常
+  const errorMessage = `所有 Azure Speech 密钥验证失败。]`;
+  console.error("🚨", errorMessage);
+  throw new Error(errorMessage);
+}
+
+// 工具函数：从环境变量获取 Azure 配置 (异步版本)
+export async function getAzureSpeechConfig(): Promise<AzureSpeechConfig> {
+  return await getNextAvailableKey();
 }
 
 // 检查 Azure Speech SDK 是否可用
@@ -381,123 +450,5 @@ export function isAzureSpeechAvailable(): boolean {
   } catch (error) {
     console.error("❌ Azure Speech 不可用:", error);
     return false;
-  }
-}
-
-// ==========================================
-// Azure Speech API 调用方法
-// ==========================================
-
-/**
- * 检查 Azure Speech 使用量 - 基础检查
- * 调用 GET /api/azure 端点
- */
-export async function checkAzureSpeechUsage(): Promise<AzureSpeechUsageInfo> {
-  try {
-    console.log("🔍 开始检查 Azure Speech 使用量...");
-
-    const response = await fetch('/api/azure', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    const data: AzureSpeechUsageInfo = await response.json();
-
-    if (!response.ok) {
-      console.error("❌ Azure Speech 使用量检查失败:", data.error);
-      return {
-        success: false,
-        error: data.error || `HTTP ${response.status}: ${response.statusText}`,
-        details: data.details,
-      };
-    }
-
-    console.log("✅ Azure Speech 使用量检查成功:", data);
-    return data;
-
-  } catch (error) {
-    console.error("❌ Azure Speech 使用量检查网络错误:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "网络请求失败",
-      details: { timestamp: new Date().toISOString() },
-    };
-  }
-}
-
-/**
- * 获取 Azure Speech 详细使用量信息
- * 调用 POST /api/azure 端点
- */
-export async function getAzureSpeechDetailedUsage(
-  request: AzureSpeechDetailedUsageRequest = {}
-): Promise<AzureSpeechDetailedUsageInfo> {
-  try {
-    console.log("🔍 获取 Azure Speech 详细使用量信息...", request);
-
-    const response = await fetch('/api/azure', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    });
-
-    const data: AzureSpeechDetailedUsageInfo = await response.json();
-
-    if (!response.ok) {
-      console.error("❌ Azure Speech 详细使用量获取失败:", data.error);
-      return {
-        success: false,
-        error: data.error || `HTTP ${response.status}: ${response.statusText}`,
-        details: data.details,
-      };
-    }
-
-    console.log("✅ Azure Speech 详细使用量获取成功:", data);
-    return data;
-
-  } catch (error) {
-    console.error("❌ Azure Speech 详细使用量获取网络错误:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "网络请求失败",
-      details: { timestamp: new Date().toISOString() },
-    };
-  }
-}
-
-/**
- * 便捷方法：快速检查 Azure Speech 服务状态
- * 只返回基本的连接状态信息
- */
-export async function checkAzureSpeechServiceStatus(): Promise<{
-  available: boolean;
-  region?: string;
-  keyValid?: boolean;
-  error?: string;
-}> {
-  try {
-    const usageInfo = await checkAzureSpeechUsage();
-    
-    if (usageInfo.success && usageInfo.serviceInfo) {
-      return {
-        available: true,
-        region: usageInfo.serviceInfo.region,
-        keyValid: usageInfo.serviceInfo.keyStatus === "有效",
-      };
-    } else {
-      return {
-        available: false,
-        error: usageInfo.error,
-      };
-    }
-  } catch (error) {
-    return {
-      available: false,
-      error: error instanceof Error ? error.message : "检查失败",
-    };
   }
 }

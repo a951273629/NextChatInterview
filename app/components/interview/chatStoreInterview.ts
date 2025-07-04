@@ -2,7 +2,7 @@ import { useChatStore, ChatMessage, createMessage } from "@/app/store/chat";
 import { LLMResponseData } from "@/app/types/websocket-sync";
 
 /**
- * 面试聊天功能 Hook
+ * 接收端 Hook
  * 
  * 基于主 chatStore 提供面试特定的功能，不创建独立的状态管理
  * 完全复用主系统的会话管理、消息处理等功能
@@ -35,12 +35,12 @@ export const useInterviewChat = () => {
    * @param data LLM响应数据
    */
   const handleLLMResponse = (data: LLMResponseData) => {
-    console.log("🤖 处理LLM响应:", {
-      messageId: data.messageId,
-      sessionId: data.sessionId,
-      isComplete: data.isComplete,
-      contentLength: data.content.length,
-    });
+    // console.log("🤖 处理LLM响应:", {
+    //   messageId: data.messageId,
+    //   sessionId: data.sessionId,
+    //   isComplete: data.isComplete,
+    //   contentLength: data.content.length,
+    // });
 
     // 查找或创建目标会话
     const targetSession = findOrCreateSessionById(data.sessionId);
@@ -64,12 +64,12 @@ export const useInterviewChat = () => {
         }) as ChatMessage;
         
         session.messages.push(assistantMessage);
-        console.log(`📝 创建新assistant消息: ${data.messageId}`);
+        // console.log(`📝 创建新assistant消息: ${data.messageId}`);
       } else {
         // 更新现有消息内容（流式输出）
         assistantMessage.content = data.content;
         assistantMessage.streaming = !data.isComplete;
-        console.log(`🔄 更新assistant消息: ${data.messageId}, 完成状态: ${data.isComplete}`);
+        // console.log(`🔄 更新assistant消息: ${data.messageId}, 完成状态: ${data.isComplete}`);
       }
 
       // 更新session时间戳

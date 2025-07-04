@@ -20,6 +20,8 @@ export function IconButton(props: {
   autoFocus?: boolean;
   style?: CSSProperties;
   aria?: string;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }) {
   return (
     <button
@@ -34,6 +36,8 @@ export function IconButton(props: {
         props.className,
       )}
       onClick={props.onClick}
+      onMouseEnter={props.onMouseEnter}
+      onMouseLeave={props.onMouseLeave}
       title={props.title}
       disabled={props.disabled}
       role="button"

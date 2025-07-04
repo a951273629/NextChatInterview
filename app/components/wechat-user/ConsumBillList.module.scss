@@ -1,0 +1,366 @@
+/* 模态框背景遮罩 */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 20px;
+  box-sizing: border-box;
+  margin: 0;
+  border: none;
+  outline: none;
+}
+
+/* 模态框内容容器 */
+.modalContent {
+  position: relative;
+  background-color: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  max-width: 520px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  animation: modalFadeIn 0.3s ease-out;
+  margin: auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 关闭按钮 */
+.closeButton {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10001;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  color: var(--black);
+
+  &:hover {
+    background-color: var(--hover-color);
+  }
+}
+
+/* 模态框动画 */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 消费记录列表容器 */
+.billList {
+  padding: 32px 24px 24px;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* 头部区域 */
+.header {
+  text-align: center;
+  margin-bottom: 24px;
+  flex-shrink: 0;
+
+  h3 {
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    color: var(--black-50);
+    margin: 0;
+    line-height: 1.4;
+  }
+}
+
+/* 内容区域 */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 200px;
+}
+
+/* 加载状态 */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+
+  p {
+    margin: 16px 0 0 0;
+    color: var(--black-50);
+    font-size: 14px;
+  }
+}
+
+.loadingSpinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--gray);
+  border-top: 3px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 错误状态 */
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+
+  .errorIcon {
+    font-size: 32px;
+    margin-bottom: 12px;
+  }
+
+  p {
+    margin: 0 0 16px 0;
+    color: var(--black);
+    font-size: 14px;
+    line-height: 1.4;
+  }
+}
+
+.retryButton {
+  padding: 8px 16px;
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: var(--primary-dark);
+  }
+}
+
+/* 空状态 */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+
+  .emptyIcon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.6;
+  }
+
+  p {
+    margin: 0;
+    color: var(--black-50);
+    font-size: 14px;
+  }
+}
+
+/* 消费记录列表 */
+.recordsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+}
+
+/* 消费记录项 */
+.recordItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background-color: var(--white);
+  border: 1px solid var(--border-in-light);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+  &:hover {
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+  }
+}
+
+/* 记录左侧信息 */
+.recordLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.recordType {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--black);
+  line-height: 1.3;
+}
+
+.recordTime {
+  font-size: 12px;
+  color: var(--black-50);
+  line-height: 1.2;
+}
+
+/* 记录右侧金额 */
+.recordRight {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.recordAmount {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e74c3c;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  background-color: #ffeaea;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #f8d7da;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .modalContent {
+    max-width: 100%;
+    margin: 10px;
+    max-height: 95vh;
+  }
+
+  .billList {
+    padding: 24px 16px 16px;
+  }
+
+  .header {
+    margin-bottom: 20px;
+
+    h3 {
+      font-size: 18px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+    }
+  }
+
+  .recordItem {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .recordType {
+    font-size: 13px;
+  }
+
+  .recordTime {
+    font-size: 11px;
+  }
+
+  .recordAmount {
+    font-size: 14px;
+    padding: 3px 6px;
+  }
+
+  .loading,
+  .error,
+  .empty {
+    padding: 30px 15px;
+  }
+
+  .emptyIcon {
+    font-size: 40px;
+    margin-bottom: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modalContent {
+    margin: 5px;
+    border-radius: 8px;
+  }
+
+  .billList {
+    padding: 20px 12px 12px;
+  }
+
+  .recordItem {
+    padding: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .recordRight {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .recordAmount {
+    font-size: 15px;
+  }
+}
+
+/* 滚动条样式 */
+.content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.content::-webkit-scrollbar-track {
+  background: var(--gray);
+  border-radius: 3px;
+}
+
+.content::-webkit-scrollbar-thumb {
+  background: var(--black-50);
+  border-radius: 3px;
+}
+
+.content::-webkit-scrollbar-thumb:hover {
+  background: var(--black);
+}

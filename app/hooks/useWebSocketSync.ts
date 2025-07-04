@@ -11,13 +11,13 @@ import {
   PeerStatusData,
   PeerStatusUpdateMessage,
   UseWebSocketSyncReturn,
-  ACTIVATION_KEY_STRING,
   DEFAULT_WEBSOCKET_URL,
 } from "@/app/types/websocket-sync";
+import { safeLocalStorage } from "@/app/utils";
 import { nanoid } from "nanoid";
 
 interface UseWebSocketSyncOptions {
-  activationKey?: string;
+  openId: string;
   mode: SyncMode;
   enabled: boolean;
   onLLMResponse?: (data: LLMResponseData) => void;          // 新增：LLM回答回调
@@ -26,23 +26,24 @@ interface UseWebSocketSyncOptions {
 }
 
 export const useWebSocketSync = ({
-  activationKey = localStorage.getItem(ACTIVATION_KEY_STRING) || "",
+  openId,
   mode,
   enabled,
   onLLMResponse,
   onPeerStatusChange,
   serverUrl = DEFAULT_WEBSOCKET_URL,
 }: UseWebSocketSyncOptions): UseWebSocketSyncReturn => {
+
   // 状态管理
   const [connectedClients, setConnectedClients] = useState(0);
   const [lastError, setLastError] = useState<string | undefined>();
   const [peerStatus, setPeerStatus] = useState<PeerStatusData | undefined>();
   const sessionIdRef = useRef<string>(nanoid());
 
-  // WebSocket URL，包含激活密钥
+  // WebSocket URL，使用openId作为密钥
   const socketUrl = enabled
     ? `${serverUrl}?key=${encodeURIComponent(
-        activationKey,
+       openId,
       )}&mode=${mode}&sessionId=${sessionIdRef.current}`
     : null;
 

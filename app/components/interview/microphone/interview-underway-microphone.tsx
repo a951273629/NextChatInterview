@@ -179,7 +179,7 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
       }
 
       // 获取配置
-      const config = getAzureSpeechConfig();
+      const config = await getAzureSpeechConfig();
       config.language = recognitionLanguage || "auto-detect";
 
       // 创建识别器

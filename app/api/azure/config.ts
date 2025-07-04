@@ -8,12 +8,32 @@ export interface AzureSpeechEnvironmentConfig {
   region: string[];
 }
 
+// 缓存对象，存储可用的 key-region 对
+interface KeyRegionCache {
+  keys: string[];
+  regions: string[];
+  lastUpdated: number;
+}
+
+let keyRegionCache: KeyRegionCache | null = null;
+
 /**
  * 从环境变量获取 Azure Speech 配置
  * @returns Azure Speech 配置对象
  * @throws Error 当配置缺失时抛出错误
  */
 export function getAzureSpeechEnvironmentConfig(): AzureSpeechEnvironmentConfig {
+  // 检查缓存是否有效
+  const now = Date.now();
+  if (keyRegionCache && (now - keyRegionCache.lastUpdated) ) {
+    console.log("🔄 使用缓存的 Azure Speech 配置");
+    return {
+      key: [...keyRegionCache.keys],
+      region: [...keyRegionCache.regions],
+    };
+  }
+
+  // 从环境变量读取配置
   const keyEnv = process.env.NEXT_PUBLIC_AZURE_SPEECH_KEY;
   const regionEnv = process.env.NEXT_PUBLIC_AZURE_SPEECH_REGION;
   
@@ -35,10 +55,59 @@ export function getAzureSpeechEnvironmentConfig(): AzureSpeechEnvironmentConfig 
     throw new Error(errorMsg);
   }
 
+  // 更新缓存
+  keyRegionCache = {
+    keys: [...key],
+    regions: [...region],
+    lastUpdated: now,
+  };
+
   return {
     key,
     region,
   };
+}
+
+/**
+ * 从缓存中移除指定的 key-region 对
+ * @param targetKey 要移除的密钥
+ * @param targetRegion 要移除的区域
+ * @returns 是否成功移除
+ */
+export function removeKeyRegionPair(targetKey: string, targetRegion: string): boolean {
+  if (!keyRegionCache) {
+    console.warn("⚠️ 缓存未初始化，无法移除 key-region 对");
+    return false;
+  }
+
+  const keyIndex = keyRegionCache.keys.indexOf(targetKey);
+  // const regionIndex = keyRegionCache.regions.indexOf(targetRegion);
+
+  if (keyIndex === -1) {
+    console.warn("⚠️ 未找到指定的 key-region 对:", { targetKey: `${targetKey.substring(0, 8)}...`, targetRegion });
+    return false;
+  }
+
+  // 移除指定的 key-region 对
+  keyRegionCache.keys.splice(keyIndex, 1);
+  keyRegionCache.regions.splice(keyIndex, 1);
+
+  console.log("✅ 已从缓存中移除 key-region 对:", { 
+    targetKey: `${targetKey.substring(0, 8)}...`, 
+    targetRegion,
+    remainingKeys: keyRegionCache.keys.length,
+    remainingRegions: keyRegionCache.regions.length,
+  });
+
+  return true;
+}
+
+/**
+ * 强制刷新缓存
+ */
+export function refreshKeyRegionCache(): void {
+  keyRegionCache = null;
+  console.log("🔄 已清空 Azure Speech 配置缓存");
 }
 
 /**

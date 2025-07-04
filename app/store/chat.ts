@@ -36,13 +36,10 @@ import { ModelConfig, ModelType, useAppConfig } from "./config";
 import { useAccessStore } from "./access";
 import { collectModelsWithDefaultModel } from "../utils/model";
 import { createEmptyMask, Mask } from "./mask";
-import { usePluginStore } from "./plugin";
+// import { usePluginStore } from "./plugin";
 import { executeMcpAction, getAllTools, isMcpEnabled } from "../mcp/actions";
-import { extractMcpJson, isMcpJson } from "../mcp/utils";
-// import { detectCommand, CommandMapping } from "../mcp/command-mapping";
-// import { McpRequestMessage } from "../mcp/types";
-// import { MultiCommandResult, multiCommandExecutor } from "../mcp/multi-command";
 import { LLMResponseData, SyncMode } from "../types/websocket-sync";
+import { billingService, BillingResult } from "../services/BillingService";
 
 
 const localStorage = safeLocalStorage();
@@ -501,6 +498,34 @@ export const useChatStore = createPersistStore(
         
         // 更新会话统计信息（字符数等）
         get().updateStat(userMessage, session);
+
+        // ==================== 扣费拦截器 ====================
+        // 🔥 关键：在LLM调用前进行扣费检查，失败则终止流程
+        if (!isMcpResponse) { // 只对用户主动输入进行扣费，MCP响应不重复扣费
+          const billingResult = await get().chargeBilling(modelConfig.model);
+          
+          if (!billingResult.success) {
+            // 扣费失败：更新botMessage显示错误信息，终止流程
+            botMessage.streaming = false;
+            botMessage.isError = true;
+            botMessage.content = `💳 **扣费失败**\n\n${billingResult.message}\n\n${
+              billingResult.error === 'USER_NOT_LOGGED_IN' 
+                ? '💡 请点击右上角头像进行登录' 
+                : '💡 请检查账户余额或联系管理员'
+            }`;
+            botMessage.date = new Date().toLocaleString();
+            
+            // 更新会话状态
+            get().updateTargetSession(session, (session) => {
+              session.messages = session.messages.concat();
+            });
+            
+            // 触发新消息事件
+            get().onNewMessage(botMessage, session);
+            return; // 🛑 终止流程，不继续LLM调用
+          }
+          
+        }
 
         await this.executeLLMAnalysis(mContent, botMessage, session, messageIndex);
       },
@@ -1156,6 +1181,23 @@ export const useChatStore = createPersistStore(
           webSocketCallback: callback,
           webSocketMode: mode,
         });
+      },
+
+      /**
+       * 扣费方法
+       * 根据模型类型进行扣费
+       */
+      async chargeBilling(modelName: string): Promise<BillingResult> {
+        try {
+          return await billingService.chargeForChat(modelName);
+        } catch (error) {
+          console.error('[Chat Store] Billing failed:', error);
+          return {
+            success: false,
+            message: '扣费服务异常，请稍后重试',
+            error: error instanceof Error ? error.message : '未知错误',
+          };
+        }
       },
 
       /** check if the message contains MCP JSON and execute the MCP action */

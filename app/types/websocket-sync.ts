@@ -106,7 +106,7 @@ export interface UseWebSocketSyncReturn {
 }
 
 // 常量
-export const ACTIVATION_KEY_STRING = "user_activation_key_string";
+
 export const DEFAULT_WEBSOCKET_URL =
   process.env.NODE_ENV === "development"
     ? "ws://localhost:8080"

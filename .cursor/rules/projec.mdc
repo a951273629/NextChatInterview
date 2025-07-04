@@ -3,3 +3,4 @@ description:
 globs: *.tsx,*.*
 alwaysApply: false
 ---
+Do not create any test code or perform any test step verification without a user request.

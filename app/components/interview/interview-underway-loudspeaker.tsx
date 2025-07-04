@@ -125,14 +125,14 @@ export const InterviewUnderwayLoudspeaker: React.FC<
   }, []);
 
   // 初始化 Azure Speech 识别器
-  const initializeAzureSpeechRecognizer = () => {
+  const initializeAzureSpeechRecognizer = async () => {
     try {
       if (!mediaStream) {
         throw new Error("MediaStream 未准备就绪");
       }
 
       console.log("🔧 准备初始化 Azure Speech 识别器...");
-      const config = getAzureSpeechConfig();
+      const config = await getAzureSpeechConfig();
       // 根据识别语言设置配置
       config.language = recognitionLanguage;
 
@@ -151,7 +151,7 @@ export const InterviewUnderwayLoudspeaker: React.FC<
   };
 
   // 开始语音识别 Azure Speech SDK
-  const startSpeechRecognition = () => {
+  const startSpeechRecognition = async () => {
     if (!mediaStream) {
       console.log("⚠️ 媒体流未准备就绪，请先获取录屏权限");
       return;
@@ -161,7 +161,7 @@ export const InterviewUnderwayLoudspeaker: React.FC<
       console.log("🚀 开始 Azure 语音识别...");
 
       // 初始化 Azure Speech 识别器
-      const recognizer = initializeAzureSpeechRecognizer();
+      const recognizer = await initializeAzureSpeechRecognizer();
 
       // 开始连续识别
       recognizer.startContinuousRecognition(

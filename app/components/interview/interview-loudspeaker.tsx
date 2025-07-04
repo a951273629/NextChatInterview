@@ -1,21 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
 import styles from "./interview-loudspeaker.module.scss";
 import { InterviewUnderwayLoudspeaker } from "./interview-underway-loudspeaker";
-import { toast, Toaster } from "react-hot-toast";
+import { Toaster } from "react-hot-toast";
 import { MiniFloatWindow } from "./mini-float-window";
-import { SyncMode, ACTIVATION_KEY_STRING } from "@/app/types/websocket-sync";
+import { SyncMode } from "@/app/types/websocket-sync";
 import RecorderIcon from "@/app/icons/record_light.svg";
 import { useOutletContext, useSearchParams } from "react-router-dom";
-import { useInterviewLanguage, LANGUAGE_OPTIONS, RecognitionLanguage } from "@/app/hooks/useInterviewLanguage";
+import { useInterviewLanguage, LANGUAGE_OPTIONS } from "@/app/hooks/useInterviewLanguage";
 import { useAppConfig } from "@/app/store";
-import { NARROW_SIDEBAR_WIDTH, USER_RESUMES_STORAGE_KEY, USER_RESUMES_NAME_STORAGE_KEY,  } from "@/app/constant";
+import { NARROW_SIDEBAR_WIDTH, WECHAT_USER_INFO_KEY } from "@/app/constant";
 import clsx from "clsx";
 import QRCode from "@/app/components/qr-code/qrcode";
 
 import WIFI from "@/app/icons/wifi.svg";
 import SpeakerIcon from "@/app/icons/speaker.svg";
 import { useWebSocketSync } from "@/app/hooks/useWebSocketSync";
-import { useChatStore, ChatMessage } from "@/app/store";
+import { useChatStore } from "@/app/store";
 import { useInterviewChat } from "./chatStoreInterview";
 import { 
   LoudspeakerService, 
@@ -25,11 +25,11 @@ import {
   SpeakerDevice,
   LoudspeakerServiceCallbacks,
   LoudspeakerServiceRefs,
-  LoudspeakerServiceProps,
   Message
 } from "./loudspeaker-service";
-import { checkAzureSpeechUsage } from "./azureSpeech";
+// import { checkAzureSpeechUsage } from "./azureSpeech";
 import { showConfirm } from "../ui-lib";
+import { safeLocalStorage } from "@/app/utils";
 
 // 宽度管理常量
 const DEFAULT_INTERVIEW_WIDTH_VW = 20;
@@ -129,9 +129,7 @@ export const InterviewLoudspeaker: React.FC = () => {
   // 添加语言选择状态 - 使用新的钩子
   const [recognitionLanguage, setRecognitionLanguage] = useInterviewLanguage();
 
-  const [activationKey, setActivationKey] = useState<string>(
-    localStorage.getItem(ACTIVATION_KEY_STRING) || "",
-  );
+
 
   // 音频相关引用
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
@@ -149,18 +147,35 @@ export const InterviewLoudspeaker: React.FC = () => {
   // 对端连接状态管理
   const [peerConnected, setPeerConnected] = useState(false);
   const [peerMode, setPeerMode] = useState<SyncMode | null>(null);
+  // 获取openId作为通信密钥
+  const getOpenId = () => {
+    const storage = safeLocalStorage();
+    const userInfoStr = storage.getItem(WECHAT_USER_INFO_KEY);
+    if (userInfoStr) {
+      try {
+        const userInfo = JSON.parse(userInfoStr);
+        return userInfo.openid || "default_user";
+      } catch (error) {
+        console.error("解析用户信息失败:", error);
+        return "default_user";
+      }
+    }
+    return "default_user";
+  };
+
+  // 直接使用getOpenId()初始化状态，避免空字符串导致的无效连接
+  const [openId, setOpenId] = useState<string>(() => getOpenId());
   // 使用面试专用功能获取会话
   // const targetSession = interviewChat.getCurrentInterviewSession();
-  // WebSocket 同步功能 - 移到这里  
+  // WebSocket 同步功能 - 只有在openId有效且不是默认值时才启用连接
   const webSocketSync = useWebSocketSync({
-    activationKey: (activationKey && activationKey.trim()) || "default_key",
     mode: syncMode,
-    enabled: syncEnabled,
+    enabled: syncEnabled && Boolean(openId) && openId !== "default_user",
 
     onLLMResponse: (data) => {
       // 接收端处理LLM回答
       if (syncMode === SyncMode.RECEIVER) {
-        console.log("🤖 接收到同步的LLM输出结果:", data);
+        // console.log("🤖 接收到同步的LLM输出结果:", data);
         // 使用面试专用功能处理 LLM 响应
         interviewChat.handleLLMResponse(data);
         // 处理完LLM响应后滚动到底部
@@ -173,15 +188,21 @@ export const InterviewLoudspeaker: React.FC = () => {
       setPeerConnected(peerStatus.connected);
       setPeerMode(peerStatus.mode === "sender" ? SyncMode.SENDER : SyncMode.RECEIVER);
     },
-
+    openId: openId,
   });
-  useEffect(()=>{
-    checkAzureSpeechUsage().then((res)=>{
-      // console.log("🔍 检查 Azure Speech 使用量:", JSON.stringify(res, null, 2) );
-    }).catch((err)=>{
-      console.error("❌ 检查 Azure Speech 使用量失败:", err);
-    });
-  },[])
+
+
+  // useEffect(()=>{
+  //   // openId已在状态初始化时设置，这里只需要检查Azure Speech使用量
+  //   checkAzureSpeechUsage().then((res)=>{
+  //     // console.log("🔍 检查 Azure Speech 使用量:", JSON.stringify(res, null, 2) );
+  //   }).catch((err)=>{
+  //     console.error("❌ 检查 Azure Speech 使用量失败:", err);
+  //   });
+    
+  //   // 记录当前使用的openId用于调试
+  //   console.log("🔑 当前使用的openId:", openId);
+  // },[])
   // 监听WebSocket连接状态变化，重置对端连接状态
   useEffect(() => {
     if (webSocketSync.connectionStatus !== "connected") {
@@ -275,7 +296,6 @@ export const InterviewLoudspeaker: React.FC = () => {
     setIsMinimized,
     setIsStarted,
     setRecognitionLanguage,
-    setActivationKey,
   };
 
   // 创建服务引用
@@ -299,11 +319,10 @@ export const InterviewLoudspeaker: React.FC = () => {
     width,
     webSocketSync,
     syncMode,
-    activationKey,
   });
 
   // 更新服务状态
-  loudspeakerService.updateProps({ retryCount, isMobile, width, webSocketSync, syncMode, activationKey });
+  loudspeakerService.updateProps({ retryCount, isMobile, width, webSocketSync, syncMode });
 
   // 初始化时检测设备状态
   useEffect(() => {
@@ -348,18 +367,15 @@ export const InterviewLoudspeaker: React.FC = () => {
   }, [syncMode]);
 
   useEffect(() => {
-    const wsKey = searchParams.get("wsKey");
     const wsMode = searchParams.get("wsMode");
+    const urlOpenId = searchParams.get("openId");
 
-    if (wsMode === 'receiver' && wsKey) {
-      console.log("从URL参数中找到wsKey，设置激活密钥:", wsKey);
-      setActivationKey(wsKey);
-      localStorage.setItem(ACTIVATION_KEY_STRING, wsKey);
-
-      console.log("从URL参数中找到wsMode=receiver，自动设置为接收端模式");
+    if (wsMode === 'receiver' && urlOpenId) {
+      console.log("🔗 从URL参数中找到wsMode=receiver，自动设置为接收端模式");
+      console.log("🔑 从URL获取的openId:", urlOpenId);
       setSyncEnabled(true);
       setSyncMode(SyncMode.RECEIVER);
-      
+      setOpenId(urlOpenId);
     }
   }, [searchParams]);
 
@@ -437,33 +453,19 @@ export const InterviewLoudspeaker: React.FC = () => {
           </div>
         )}
 
-        {/* 激活密钥显示 */}
-        {syncEnabled && (
-          <div className={styles["setting-item"]}>
-            <div className={styles["setting-label"]}>连接密钥：</div>
-            <div className={styles["setting-control"]}>
-              <div className={styles.activationKey}>
-                <code style={{ color: "red" }}>{activationKey}</code>
-                <span className={styles.keyDescription}>
-                  &nbsp;&nbsp;&nbsp;&nbsp;【监听端】和【接收端】需使用相同密钥
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* 扫码连接 */}
- 
         {syncEnabled && syncMode === SyncMode.SENDER && (
           <div className={styles["setting-item"]}>
             <div className={styles["setting-label"]}>扫码连接</div>
             <div className={styles["setting-control"]}>
               <div style={{ background: 'white', padding: '10px', borderRadius: '8px', width: 'fit-content' }}>
-                                 <QRCode 
-                   text={`${window.location.origin}#/chat/interview-loudspeaker?wsKey=${activationKey}&wsMode=receiver`}
-                   size={80}
-                   alt="扫码连接接收端"
-                 />
+                <QRCode 
+                  text={`${window.location.origin}#/chat/interview-loudspeaker?wsMode=receiver&openId=${openId}`}
+                  size={80}
+                  alt="扫码连接接收端"
+                />
               </div>
               <div className={styles["mode-description"]}>
                打开微信,扫一扫,连接【接收端】
@@ -477,6 +479,13 @@ export const InterviewLoudspeaker: React.FC = () => {
           <div className={styles["setting-item"]}>
             <div className={styles["setting-label"]}>连接状态：</div>
             <div className={styles["setting-control"]}>
+              {/* 显示当前使用的openId */}
+              {/* <div className={styles.openIdInfo}>
+                <span className={styles.openIdLabel}>通信密钥: </span>
+                <code style={{ fontSize: '12px', color: '#666' }}>
+                  {openId || "未获取"}
+                </code>
+              </div> */}
               <div className={styles.connectionStatusContainer}>
                 {/* 本端连接状态 */}
                 <div className={styles.connectionItem}>

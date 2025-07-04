@@ -1,8 +1,8 @@
 import React from "react";
-import { SyncMode, ACTIVATION_KEY_STRING } from "@/app/types/websocket-sync";
-import { toast } from "react-hot-toast";
+import { SyncMode } from "@/app/types/websocket-sync";
+
 import { RecognitionLanguage } from "@/app/hooks/useInterviewLanguage";
-import { USER_RESUMES_STORAGE_KEY, USER_RESUMES_NAME_STORAGE_KEY } from "@/app/constant";
+
 
 // 类型定义
 export type DeviceStatus = "ready" | "error" | "unavailable" | "unauthorized";
@@ -50,7 +50,6 @@ export interface LoudspeakerServiceCallbacks {
   setIsMinimized: (minimized: boolean) => void;
   setIsStarted: (started: boolean) => void;
   setRecognitionLanguage: (language: RecognitionLanguage) => void;
-  setActivationKey: (key: string) => void;
 }
 
 export interface LoudspeakerServiceRefs {
@@ -73,7 +72,6 @@ export interface LoudspeakerServiceProps {
   // 新增：WebSocket和同步相关
   webSocketSync?: any;
   syncMode?: SyncMode;
-  activationKey?: string;
 }
 
 export class LoudspeakerService {
@@ -85,7 +83,6 @@ export class LoudspeakerService {
   private width: number;
   private webSocketSync?: any;
   private syncMode?: SyncMode;
-  private activationKey?: string;
 
   constructor(props: LoudspeakerServiceProps) {
     this.callbacks = props.callbacks;
@@ -96,7 +93,6 @@ export class LoudspeakerService {
     this.width = props.width;
     this.webSocketSync = props.webSocketSync;
     this.syncMode = props.syncMode;
-    this.activationKey = props.activationKey;
   }
 
   // 更新服务状态
@@ -106,7 +102,6 @@ export class LoudspeakerService {
     if (props.width !== undefined) this.width = props.width;
     if (props.webSocketSync !== undefined) this.webSocketSync = props.webSocketSync;
     if (props.syncMode !== undefined) this.syncMode = props.syncMode;
-    if (props.activationKey !== undefined) this.activationKey = props.activationKey;
   }
 
   // 检查扬声器状态

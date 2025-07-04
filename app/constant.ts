@@ -44,6 +44,8 @@ export const UPLOAD_URL = `${CACHE_URL_PREFIX}/upload`;
 export const USER_RESUMES_STORAGE_KEY = "LocalUserResumeStorage";
 // 添加缓存的简历文件名 key
 export const USER_RESUMES_NAME_STORAGE_KEY = "LocalUserResumeNameStorage";
+// 微信用户信息存储key
+export const WECHAT_USER_INFO_KEY = "wechat_user_info";
 
 
 
@@ -67,7 +69,12 @@ export enum Path {
   InterviewMicrophone = "/chat/interview-microphone",
   InterviewLoudspeaker = "/chat/interview-loudspeaker",
   Resume = "/chat/personal-resume",
+  Recharge = "/chat/recharge",
+  ConsumBillList = "/chat/consum-bill-list",
   SetNotice = "/login/set-notice",
+  KeyManagement = "/login/key-management",
+  WechatLogin = "/wechat-login",
+
 }
 
 export enum ApiPath {
@@ -426,43 +433,10 @@ export const VISION_MODEL_REGEXES = [
 export const EXCLUDE_VISION_MODEL_REGEXES = [/claude-3-5-haiku-20241022/];
 
 const openaiModels = [
-  // As of July 2024, gpt-4o-mini should be used in place of gpt-3.5-turbo,
-  // as it is cheaper, more capable, multimodal, and just as fast. gpt-3.5-turbo is still available for use in the API.
-  // "gpt-3.5-turbo",
-  // "gpt-3.5-turbo-1106",
-  // "gpt-3.5-turbo-0125",
-  // "gpt-4",
-  // "gpt-4-0613",
-  // "gpt-4-32k",
-  // "gpt-4-32k-0613",
-  // "gpt-4-turbo",
-  // "gpt-4-turbo-preview",
   "gpt-4.1",
-  // "gpt-4.5-preview",
-  // "gpt-4.1-2025-04-14",
-  // "gpt-4.1-mini",
-  // "gpt-4.1-mini-2025-04-14",
-  // "gpt-4.1-nano",
-  // "gpt-4.1-nano-2025-04-14",
-  // "gpt-4.5-preview",
-  // "gpt-4.5-preview-2025-02-27",
   "gpt-4o",
-  // "gpt-4o-2024-05-13",
-  // "gpt-4o-2024-08-06",
-  // "gpt-4o-2024-11-20",
   "chatgpt-4o-latest",
-  // "gpt-4o-mini",
-  // "gpt-4o-mini-2024-07-18",
-  // "gpt-4-vision-preview",
-  // "gpt-4-turbo-2024-04-09",
-  // "gpt-4-1106-preview",
-  // "dall-e-3",
-  // "o1-mini",
-  // "o1-preview",
   "o3-mini",
-  // "o3",
-  // "o4-mini",
-  // "gemini-2.5-pro-preview-06-05",
   "deepseek-r1-250528",
 ];
 export const openaiModelsMap ={

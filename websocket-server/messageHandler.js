@@ -182,14 +182,14 @@ export class MessageHandler {
       }
     });
 
-    console.log(formatLog('info', '消息转发完成', {
-      activationKey,
-      senderClientId,
-      receiversTotal: receivers.length,
-      successCount,
-      failCount,
-      messageType: message.type
-    }));
+    // console.log(formatLog('info', '消息转发完成', {
+    //   activationKey,
+    //   senderClientId,
+    //   receiversTotal: receivers.length,
+    //   successCount,
+    //   failCount,
+    //   messageType: message.type
+    // }));
   }
 
 

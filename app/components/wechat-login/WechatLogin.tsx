@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Path } from "../../constant";
+import { Path, WECHAT_USER_INFO_KEY } from "../../constant";
 import styles from "./WechatLogin.module.scss";
-import LoadingIcon from "@/app/icons/loading.svg";
-import SuccessIcon from "@/app/icons/confirm.svg";
-import ErrorIcon from "@/app/icons/close.svg";
 import Locale from "../../locales";
 import { useAccessStore } from "../../store";
 import { safeLocalStorage } from "../../utils";
@@ -25,7 +22,7 @@ interface WechatLoginProps {
   onLoginSuccess?: (loginData: any) => void;
 }
 
-export function WechatLogin({ onLoginSuccess }: WechatLoginProps = {}) {
+export function WechatLogin({  }: WechatLoginProps = {}) {
   const navigate = useNavigate();
   const [status, setStatus] = useState<LoginStatus>(LoginStatus.LOADING);
   const [errorMessage, setErrorMessage] = useState<string>("");
@@ -89,20 +86,87 @@ export function WechatLogin({ onLoginSuccess }: WechatLoginProps = {}) {
     const pollInterval = setInterval(async () => {
       try {
         console.log("轮询登录状态:", scene);
-        
-        const response = await fetch(`/api/wechat/check-login?scene=${encodeURIComponent(scene)}`);
-        const data = await response.json();
-        
+        let data: any = {};
+
+        if(process.env.NODE_ENV === "production"){
+          const response = await fetch(`/api/wechat/check-login?scene=${encodeURIComponent(scene)}`);
+           data = await response.json();
+        }else {
+          data = {
+            success: true,
+            loggedIn: true,
+            data:{
+            openid: 'oRGIi5XRM5yen3xD_vL_jPlyyLUc',
+            unionid: undefined,
+            session_key: '8OZFvZjnVwLBPE9HEYG0gw==',
+            userInfo: {
+              nickName: '开发测试用户',
+              avatarUrl: 'https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKxCqRzuYWQmpwiaqQEjNxbK7NbFCsBAfMA0Wm6g0R8HXjE7WLo47ZG1IU4PYOQEOxUGxJJmvfwkTA/132',
+              gender: 1,
+              country: '中国',
+              province: '广东',
+              city: '深圳',
+              language: 'zh_CN'
+            },
+            scene: '12345678',
+            loginTime: '2025-06-22T12:22:04.887Z'
+           }
+          }
+          
+        }
         if (data.success && data.loggedIn) {
           // 登录成功
           console.log("用户已完成登录:", data.data);
           clearInterval(pollInterval);
-          setStatus(LoginStatus.SUCCESS);
-          setLoginResult(data.data);
           
-          // 可选：通知父组件登录成功
-          if (onLoginSuccess) {
-            onLoginSuccess(data.data);
+          // 调用用户API进行注册/登录
+          try {
+            const userResponse = await fetch('/api/wechat-user/user/', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                openid: data.data.openid,
+                userInfo: data.data.userInfo
+              }),
+            });
+
+            const userResult = await userResponse.json();
+            if (userResult.success) {
+              // 合并微信登录数据和用户管理数据
+              const completeLoginData = {
+                ...data.data,
+                user: userResult.user
+              };
+              
+              // 更新全局登录状态
+              accessStore.update((state) => {
+                state.wechatLoggedIn = true;
+                state.accessToken = data.data.openid; // 使用openid作为token
+              });
+              
+              // 保存用户信息到localStorage
+              storage.setItem(WECHAT_USER_INFO_KEY, JSON.stringify({
+                openid: data.data.openid,
+                userInfo: data.data.userInfo,
+                user: userResult.user,
+                loginTime: new Date().toISOString()
+              }));
+              
+              setStatus(LoginStatus.SUCCESS);
+              setLoginResult(completeLoginData);
+              navigate(Path.Chat);
+
+            } else {
+              console.error("用户API调用失败:", userResult.message);
+              setErrorMessage(`用户信息获取失败: ${userResult.message}`);
+              setStatus(LoginStatus.ERROR);
+            }
+          } catch (userError) {
+            console.error("用户API调用出错:", userError);
+            setErrorMessage("用户信息处理失败，请稍后重试");
+            setStatus(LoginStatus.ERROR);
           }
           
           // 清理登录状态
@@ -179,6 +243,11 @@ export function WechatLogin({ onLoginSuccess }: WechatLoginProps = {}) {
                   className={styles["user-avatar"]}
                 />
                 <p className={styles["user-name"]}>{loginResult.userInfo.nickName}</p>
+                {loginResult?.user && (
+                  <p className={styles["user-balance"]}>
+                    余额: {loginResult.user.balance} 点
+                  </p>
+                )}
               </div>
             )}
             <button onClick={generateQRCode} className={styles["reset-btn"]}>

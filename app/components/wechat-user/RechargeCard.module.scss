@@ -1,0 +1,271 @@
+/* 模态框背景遮罩 */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 20px;
+  box-sizing: border-box;
+  margin: 0;
+  border: none;
+  outline: none;
+}
+
+/* 模态框内容容器 */
+.modalContent {
+  position: relative;
+  background-color: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  max-width: 480px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalFadeIn 0.3s ease-out;
+  margin: auto;
+  box-sizing: border-box;
+}
+
+/* 关闭按钮 */
+.closeButton {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 10001;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  color: var(--black);
+
+  &:hover {
+    background-color: var(--hover-color);
+  }
+}
+
+/* 模态框动画 */
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 充值卡内容 */
+.rechargeCard {
+  padding: 32px 24px 24px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 24px;
+
+  h3 {
+    font-size: 20px;
+    margin-bottom: 8px;
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    color: var(--black-50);
+    margin: 0;
+  }
+}
+
+.inputSection {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--black);
+  margin: 0;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: var(--white);
+  transition: border-color 0.3s ease;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+  }
+
+  &:disabled {
+    background-color: var(--gray);
+    color: var(--black-50);
+    cursor: not-allowed;
+  }
+
+  &::placeholder {
+    color: var(--black-50);
+  }
+}
+
+.submitBtn {
+  width: 100%;
+  padding: 12px 24px;
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+
+  &:hover:not(:disabled) {
+    background-color: var(--primary-dark);
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    background-color: var(--gray);
+    color: var(--black-50);
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  &.loading {
+    background-color: var(--primary-light);
+    cursor: wait;
+  }
+}
+
+.result {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  animation: slideIn 0.3s ease-out;
+
+  &.success {
+    background-color: #f0f9ff;
+    border: 1px solid #0ea5e9;
+  }
+
+  &.error {
+    background-color: #fef2f2;
+    border: 1px solid #ef4444;
+  }
+}
+
+.resultIcon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.resultText {
+  flex: 1;
+  
+  .message {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--black);
+  }
+
+  .detail, .balance {
+    margin: 4px 0 0 0;
+    font-size: 13px;
+    color: var(--black-50);
+  }
+
+  .balance {
+    font-weight: 600;
+    color: var(--primary);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 响应式设计 */
+@media only screen and (max-width: 600px) {
+  .modalOverlay {
+    padding: 10px;
+  }
+
+  .modalContent {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 8px;
+    width: calc(100% - 20px);
+  }
+
+  .closeButton {
+    top: 10px;
+    right: 10px;
+    font-size: 20px;
+    width: 28px;
+    height: 28px;
+  }
+
+  .rechargeCard {
+    padding: 24px 20px 20px;
+  }
+
+  .header h3 {
+    font-size: 18px;
+  }
+
+  .input, .submitBtn {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+} 

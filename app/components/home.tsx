@@ -63,11 +63,15 @@ const InterviewLoudspeaker = dynamic(
 const PersonalResume = dynamic(
   async () =>
     (await import("./personal-set/preparation-resumes-upload")).default,
-  // {
-  //   loading: () => <Loading noLogo />,
-  // },
 );
-
+const RechargeCard = dynamic(
+  async () =>
+    (await import("./wechat-user/RechargeCard")).RechargeCard,
+);
+const ConsumBillList = dynamic(
+  async () =>
+    (await import("./wechat-user/ConsumBillList")).ConsumBillList,
+);
 const Artifacts = dynamic(async () => (await import("./artifacts")).Artifacts, {
   loading: () => <Loading noLogo />,
 });
@@ -124,6 +128,30 @@ const NoticeSet = dynamic(
     loading: () => <Loading noLogo />,
   },
 );
+
+const KeyManagement = dynamic(
+  async () => (await import("./login/key-generate-managment/key-management")).KeyManagement,
+  {
+    loading: () => <Loading noLogo />,
+  },
+);
+
+const AuthWrapper = dynamic(
+  async () => (await import("./wechat-login/auth-wrapper")).AuthWrapper,
+  {
+    loading: () => <Loading noLogo />,
+  },
+);
+
+const WechatLoginComponent = dynamic(
+  async () => (await import("./wechat-login/WechatLogin")).WechatLogin,
+  {
+    loading: () => <Loading noLogo />,
+  },
+);
+
+
+
 // const InterviewPage = dynamic(
 //   async ()=>(await import("./interview-overlay")).InterviewOverlay,{
 //     loading: ()=> <Loading noLogo/>
@@ -335,15 +363,16 @@ function Screen() {
     if (isSd) return <Sd />;
     if (isSdNew) return <Sd />;
     return (
-      <>
+      <AuthWrapper>
+         {/* 只有登录时才可以路由到其他页面，相当于拦截器 */}
         <SideBar
           className={clsx({
             [styles["sidebar-show"]]: isHome,
           })}
         />
         <WindowContent>
-          {/* 只有登录时才可以路由到其他页面，相当于拦截器 */}
-          {/* <AuthWrapper> */}
+         
+          
           <Routes>
             <Route path={Path.NewChat} element={<NewChat />} />
             <Route path={Path.Masks} element={<MaskPage />} />
@@ -363,15 +392,23 @@ function Screen() {
                path={Path.Resume}
                element={<PersonalResume/>}
               />
+              <Route
+               path={Path.Recharge}
+               element={<RechargeCard/>}
+              />
+              <Route
+                path={Path.ConsumBillList}
+                element={<ConsumBillList/>}
+              />
             </Route>
             <Route path={Path.Settings} element={<Settings />} />
             <Route path={Path.McpMarket} element={<McpMarketPage />} />
 
             <Route path={Path.TensorFlow} element={<TensorFlow />} />
           </Routes>
-          {/* </AuthWrapper> */}
+          
         </WindowContent>
-      </>
+      </AuthWrapper>
     );
   };
 
@@ -442,11 +479,20 @@ export function Home() {
           />
           <Route path={Path.HomePortal} element={<HomePortal />} />
           <Route path={Path.Login} element={<LoginPage />} />
+          <Route path={Path.WechatLogin} element={<WechatLoginComponent />} />
           <Route
             path={Path.SetNotice}
             element={
               <ProtectedRoute>
                 <NoticeSet />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={Path.KeyManagement}
+            element={
+              <ProtectedRoute>
+                <KeyManagement />
               </ProtectedRoute>
             }
           />

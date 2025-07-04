@@ -6,24 +6,9 @@ const WECHAT_CONFIG = {
   secret: "319727a552d580a31697356358945c41",
 };
 
-// 内存缓存access_token
-let tokenCache: {
-  access_token: string;
-  expires_at: number;
-} | null = null;
-
 export async function GET(req: NextRequest) {
   try {
-    // 检查缓存的token是否有效（提前5分钟过期）
-    if (tokenCache && tokenCache.expires_at > Date.now() + 5 * 60 * 1000) {
-      return NextResponse.json({
-        success: true,
-        access_token: tokenCache.access_token,
-        expires_in: Math.floor((tokenCache.expires_at - Date.now()) / 1000),
-      });
-    }
-
-    // 调用微信稳定版API获取access_token
+    // 直接调用微信稳定版API获取access_token，不使用缓存
     const url = `https://api.weixin.qq.com/cgi-bin/stable_token`;
     
     const response = await fetch(url, {
@@ -35,7 +20,7 @@ export async function GET(req: NextRequest) {
         grant_type: "client_credential",
         appid: WECHAT_CONFIG.appid,
         secret: WECHAT_CONFIG.secret,
-        force_refresh: false
+        force_refresh: true
       }),
     });
 
@@ -53,12 +38,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // 缓存token
-    tokenCache = {
-      access_token: data.access_token,
-      expires_at: Date.now() + data.expires_in * 1000,
-    };
-
+    // 直接返回获取到的token，不进行缓存
     return NextResponse.json({
       success: true,
       access_token: data.access_token,

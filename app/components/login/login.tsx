@@ -63,6 +63,17 @@ export default function LoginPage() {
     });
   };
 
+  const handleNavigateToKeyManagement = () => {
+    // 使用navigate传递状态到密钥管理页面
+    navigate("/login/key-management", {
+      state: {
+        from: location.pathname,
+        loginTime: sessionStorage.getItem("loginTime"),
+        user: "admin"
+      }
+    });
+  };
+
 
 
   return (
@@ -104,6 +115,10 @@ export default function LoginPage() {
               <IconButton
                 text="通知设置"
                 onClick={handleNavigateToSetNotice}
+              />
+                            <IconButton
+                text="秘钥管理"
+                onClick={handleNavigateToKeyManagement}
               />
             </div>
           </div>

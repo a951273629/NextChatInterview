@@ -124,7 +124,8 @@ import { getAvailableClientsCount, isMcpEnabled } from "../mcp/actions";
 // import { InterviewOverlay } from "./interview/microphone/interview-overlay-microphone";
 // import { InterviewLoudspeaker } from "./interview/interview-loudspeaker";
 import { additionalResumeText } from "./personal-set/preparation-resumes-upload";
-import PreparationResumesUpload from "./personal-set/preparation-resumes-upload";
+// import PreparationResumesUpload from "./personal-set/preparation-resumes-upload";
+import { PersonalCenter } from "./wechat-login/PersonalCenter";
 // import { useInterviewLanguage } from "@/app/hooks/useInterviewLanguage";
 
 const localStorage = safeLocalStorage();
@@ -1129,7 +1130,8 @@ function _Chat() {
   // const [, , isEnglish] = useInterviewLanguage();
 
   const [showExport, setShowExport] = useState(false);
-  const [showResumeUpload, setShowResumeUpload] = useState(false);
+  // const [showResumeUpload, setShowResumeUpload] = useState(false);
+  const [showPersonalCenter, setShowPersonalCenter] = useState(false);
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [userInput, setUserInput] = useState("");
@@ -1970,9 +1972,17 @@ function _Chat() {
                 bordered
                 title={Locale.Chat.Actions.Profile}
                 onClick={() => {
-                  // 打开上传简历弹窗
-                  setShowResumeUpload(true);
+                  setShowPersonalCenter(true);
+                  //单击打开菜单
+                  
                 }}
+                // onMouseEnter={() => {
+                //   setShowPersonalCenter(true);
+                //   //单击打开菜单
+                // }}
+                // onMouseLeave={() => {
+                //   setShowPersonalCenter(false);
+                // }}
               />
             </div>
             {/* <div className="window-action-button">
@@ -2459,8 +2469,8 @@ function _Chat() {
         <ShortcutKeyModal onClose={() => setShowShortcutKeyModal(false)} />
       )}
 
-      {showResumeUpload && (
-        <PreparationResumesUpload onClose={() => setShowResumeUpload(false)} />
+      {showPersonalCenter && (
+        <PersonalCenter onClose={() => setShowPersonalCenter(false)} />
       )}
 
       {/* {showOverlay && (

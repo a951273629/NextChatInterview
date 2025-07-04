@@ -28,8 +28,9 @@ db.pragma("foreign_keys = ON");
 // 启用WAL模式
 db.pragma("journal_mode = WAL");
 
-// 执行update_notice.sql中的表创建语句
+// 加载表结构SQL文件路径
 const noticeSchemaPath = path.join(process.cwd(), "app/db/update_notice.sql");
+const userSystemSchemaPath = path.join(process.cwd(), "app/db/user_system_schema.sql");
 
 // 加载通知系统表结构
 if (fs.existsSync(noticeSchemaPath)) {
@@ -38,6 +39,15 @@ if (fs.existsSync(noticeSchemaPath)) {
   console.log("Notice schema loaded successfully");
 } else {
   console.warn(`Notice schema file not found at: ${noticeSchemaPath}`);
+}
+
+// 加载用户系统表结构
+if (fs.existsSync(userSystemSchemaPath)) {
+  const userSystemSchema = fs.readFileSync(userSystemSchemaPath, "utf8");
+  db.exec(userSystemSchema);
+  console.log("User system schema loaded successfully");
+} else {
+  console.warn(`User system schema file not found at: ${userSystemSchemaPath}`);
 }
 
 // 导出数据库实例供其他模块使用

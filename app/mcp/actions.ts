@@ -338,7 +338,7 @@ export async function executeMcpAction(
   clientId: string,
   request: McpRequestMessage,
   retryAttempted = false, // 添加重试标志，避免无限循环
-) {
+): Promise<any> {
   try {
     const client = clientsMap.get(clientId);
     if (!client?.client) {

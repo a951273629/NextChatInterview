@@ -201,6 +201,13 @@ export function HomePortal() {
                 className={styles.previewImage}
               />
             </div>
+            <div className={styles.previewCard}>
+              <img
+                src="./msy_4.jpg"
+                alt="面试羊"
+                className={styles.previewImage}
+              />
+            </div>
           </div>
 
           <div className={styles.additionalInfo}>

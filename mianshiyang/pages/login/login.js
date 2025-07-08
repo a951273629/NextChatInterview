@@ -12,14 +12,14 @@ Page({
     decryptedUserData: null
   },
   
-  onLoad(options) {
-    console.log('页面加载参数:', options);
+  onLoad(query) {
+    console.log('页面加载参数:', query);
     
     // 获取scene参数
     let scene = '12345678';
-    if (options.scene) {
+    if (query.scene) {
       // scene需要使用decodeURIComponent才能获取到生成二维码时传入的scene
-      scene = decodeURIComponent(options.scene);
+      scene = decodeURIComponent(query.scene);
       console.log('获取到scene参数:', scene);
     }
     
@@ -86,7 +86,7 @@ Page({
         });
         
         // 调用解密API解密encryptedData
-        this.decryptUserData(res.encryptedData, res.iv);
+        // this.decryptUserData(res.encryptedData, res.iv);
       },
       fail: (err) => {
         console.error('getUserProfile失败:', err);

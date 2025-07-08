@@ -1,15 +1,15 @@
 <!--pages/login/login.wxml-->
 <view class="container">
   <view class="login-header">
-    <text class="title">扫码登录</text>
-    <text class="subtitle">请确认登录信息</text>
-    <button wx:if="{{canIUseGetUserProfile}}" bindtap="getUserProfile"> 获取头像昵称 </button>
+    <!-- <text class="title">扫码登录</text> -->
+    <!-- <text class="subtitle">请确认登录信息</text> -->
+    <button wx:if="{{canIUseGetUserProfile}}" bindtap="getUserProfile"> 点击完成 </button>
   </view>
 
   <!-- 等待状态 -->
   <view class="login-content" wx:if="{{loginStatus === 'waiting'}}">
     <view class="waiting-status">
-      <text class="status-text">等待扫码...</text>
+      <!-- <text class="status-text">等待扫码...</text> -->
       <text class="scene-info" wx:if="{{scene}}">识别码: {{scene}}</text>
     </view>
   </view>
@@ -32,7 +32,7 @@
         <image class="avatar" src="{{userInfo.avatarUrl}}" mode="aspectFill"></image>
         <text class="nickname">{{userInfo.nickName}}</text>
       </view>
-      <text class="success-tip">页面将自动关闭...</text>
+      <text class="success-tip">已经成功请查看网页端...</text>
     </view>
   </view>
 

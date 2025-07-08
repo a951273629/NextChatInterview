@@ -42,10 +42,11 @@ export function WechatLogin({  }: WechatLoginProps = {}) {
   const generateQRCode = async () => {
     setStatus(LoginStatus.LOADING);
     setErrorMessage("");
-  //  login_${Date.now()}
-    const scene = uuid().toString().slice(0, 31);
+    let scene = "12345678";
+    if(process.env.NODE_ENV === "production"){
+      const scene = uuid().toString().slice(0, 31);
+    }
     setCurrentScene(scene);
-
     try {
       const response = await fetch("/api/wechat/qrcode", {
         method: "POST",
@@ -88,33 +89,33 @@ export function WechatLogin({  }: WechatLoginProps = {}) {
       try {
         console.log("轮询登录状态:", scene);
         let data: any = {};
+        const response = await fetch(`/api/wechat/check-login?scene=${encodeURIComponent(scene)}`);
+        data = await response.json();
+        // if(process.env.NODE_ENV === "production"){
 
-        if(process.env.NODE_ENV === "production"){
-          const response = await fetch(`/api/wechat/check-login?scene=${encodeURIComponent(scene)}`);
-           data = await response.json();
-        }else {
-          data = {
-            success: true,
-            loggedIn: true,
-            data:{
-            openid: 'oRGIi5XRM5yen3xD_vL_jPlyyLUc',
-            unionid: undefined,
-            session_key: '8OZFvZjnVwLBPE9HEYG0gw==',
-            userInfo: {
-              nickName: '开发测试用户',
-              avatarUrl: 'https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKxCqRzuYWQmpwiaqQEjNxbK7NbFCsBAfMA0Wm6g0R8HXjE7WLo47ZG1IU4PYOQEOxUGxJJmvfwkTA/132',
-              gender: 1,
-              country: '中国',
-              province: '广东',
-              city: '深圳',
-              language: 'zh_CN'
-            },
-            scene: '12345678',
-            loginTime: '2025-06-22T12:22:04.887Z'
-           }
-          }
+        // }else {
+        //   data = {
+        //     success: true,
+        //     loggedIn: true,
+        //     data:{
+        //     openid: 'oRGIi5XRM5yen3xD_vL_jPlyyLUc',
+        //     unionid: undefined,
+        //     session_key: '8OZFvZjnVwLBPE9HEYG0gw==',
+        //     userInfo: {
+        //       nickName: '开发测试用户',
+        //       avatarUrl: 'https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKxCqRzuYWQmpwiaqQEjNxbK7NbFCsBAfMA0Wm6g0R8HXjE7WLo47ZG1IU4PYOQEOxUGxJJmvfwkTA/132',
+        //       gender: 1,
+        //       country: '中国',
+        //       province: '广东',
+        //       city: '深圳',
+        //       language: 'zh_CN'
+        //     },
+        //     scene: '12345678',
+        //     loginTime: '2025-06-22T12:22:04.887Z'
+        //    }
+        //   }
           
-        }
+        // }
         if (data.success && data.loggedIn) {
           // 登录成功
           console.log("用户已完成登录:", data.data);
@@ -219,11 +220,11 @@ export function WechatLogin({  }: WechatLoginProps = {}) {
       case LoginStatus.READY:
         return (
           <div className={styles["login-qrcode"]}>
-            <h3>请使用微信扫描二维码</h3>
+            <h3>请微信扫描二维码</h3>
             <div className={styles["qrcode-container"]}>
               <img src={qrcodeUrl} alt="登录二维码" className={styles["qrcode"]} />
             </div>
-            <p className={styles["qrcode-tip"]}>扫码后自动完成登录</p>
+            {/* <p className={styles["qrcode-tip"]}>扫码后自动完成登录</p> */}
           </div>
         );
       case LoginStatus.SUCCESS:
@@ -246,9 +247,9 @@ export function WechatLogin({  }: WechatLoginProps = {}) {
                 )}
               </div>
             )} */}
-            <button onClick={generateQRCode} className={styles["reset-btn"]}>
+            {/* <button onClick={generateQRCode} className={styles["reset-btn"]}>
               重新登录
-            </button>
+            </button> */}
           </div>
         );
       default:
@@ -259,10 +260,6 @@ export function WechatLogin({  }: WechatLoginProps = {}) {
   return (
     <div className={styles.container}>
       <div className={styles.loginCard}>
-        <div className={styles.header}>
-          <h2>{Locale.Auth.Title}</h2>
-          <p className={styles.subtitle}>使用微信扫码登录</p>
-        </div>
 
         <div className={styles.qrcodeContainer}>
           {renderStatus()}

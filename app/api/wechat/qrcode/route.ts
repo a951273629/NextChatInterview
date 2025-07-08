@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getWechatAccessToken } from "../service";
 
 export async function POST(req: NextRequest) {
   console.log("=== 开始处理微信小程序码生成请求 ===");
@@ -13,21 +14,12 @@ export async function POST(req: NextRequest) {
     console.log("请求body:", requestBody);
     
     const { scene = "test_login", page = "pages/login",env_version="trial" } = requestBody;
-    console.log("解析后的参数:", { scene, page });
+    console.log("解析后的参数:", { scene, page, env_version });
 
-    // 获取access_token
-    const tokenUrl = `${req.nextUrl.origin}/api/wechat/access-token`;
-    console.log("正在获取access_token，URL:", tokenUrl);
-    
-    const tokenResponse = await fetch(tokenUrl, {
-      method: "GET",
-    });
-
-    console.log("access_token响应状态:", tokenResponse.status);
-    console.log("access_token响应头:", Object.fromEntries(tokenResponse.headers.entries()));
-
-    const tokenData = await tokenResponse.json();
-    console.log("access_token响应数据:", tokenData);
+    // 直接调用获取access_token函数（避免内部fetch调用和SSL问题）
+    console.log("正在获取access_token...");
+    const tokenData = await getWechatAccessToken();
+    console.log("access_token获取结果:", tokenData);
 
     if (!tokenData.success) {
       console.log("❌ 获取access_token失败:", tokenData);
@@ -35,7 +27,8 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           message: "获取access_token失败",
-          error: tokenData.message,
+          error: tokenData.error || tokenData.message,
+          errcode: tokenData.errcode,
         },
         { status: 400 }
       );
@@ -102,7 +95,7 @@ export async function POST(req: NextRequest) {
       page,
     };
     
-    console.log("✅ 成功生成小程序码, scene:", scene, "page:", page);
+    console.log("✅ 成功生成小程序码, scene:", scene, "page:", page, "env_version:", env_version);
     console.log("=== 微信小程序码生成请求完成 ===");
     
     return NextResponse.json(result);

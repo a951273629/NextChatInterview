@@ -74,6 +74,17 @@ export default function LoginPage() {
     });
   };
 
+  const handleNavigateToUserManagement = () => {
+    // 使用navigate传递状态到用户管理页面
+    navigate("/login/user-management", {
+      state: {
+        from: location.pathname,
+        loginTime: sessionStorage.getItem("loginTime"),
+        user: "admin"
+      }
+    });
+  };
+
 
 
   return (
@@ -116,9 +127,13 @@ export default function LoginPage() {
                 text="通知设置"
                 onClick={handleNavigateToSetNotice}
               />
-                            <IconButton
+              <IconButton
                 text="秘钥管理"
                 onClick={handleNavigateToKeyManagement}
+              />
+              <IconButton
+                text="用户管理"
+                onClick={handleNavigateToUserManagement}
               />
             </div>
           </div>

@@ -65,6 +65,42 @@ export class BillingService {
   }
 
   /**
+   * 检查用户余额
+   */
+  private async checkBalance(openid: string): Promise<{success: boolean, balance: number, message?: string}> {
+    try {
+      const response = await fetch(`/api/wechat-user/user?openid=${encodeURIComponent(openid)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success && data.user) {
+        return {
+          success: true,
+          balance: data.user.balance || 0,
+        };
+      } else {
+        return {
+          success: false,
+          balance: 0,
+          message: data.message || '获取余额失败',
+        };
+      }
+    } catch (error) {
+      console.error('[BillingService] Balance check failed:', error);
+      return {
+        success: false,
+        balance: 0,
+        message: '网络错误，无法获取余额',
+      };
+    }
+  }
+
+  /**
    * 调用扣费API
    */
   private async callConsumptionAPI(
@@ -73,6 +109,39 @@ export class BillingService {
     consumeType: string = 'chat'
   ): Promise<BillingResult> {
     try {
+      // 🔍 第一步：检查用户余额
+      console.log(`[BillingService] 检查余额 - openid: ${openid}, 需要扣费: ${amount}点`);
+      const balanceCheck = await this.checkBalance(openid);
+      
+      if (!balanceCheck.success) {
+        return {
+          success: false,
+          message: balanceCheck.message || '无法获取余额信息',
+          error: 'BALANCE_CHECK_FAILED',
+        };
+      }
+
+      // 🚨 第二步：余额不足检查
+      if (balanceCheck.balance < amount) {
+        console.log(`[BillingService] 余额不足 - 当前余额: ${balanceCheck.balance}点, 需要: ${amount}点`);
+        
+        // 🔄 路由到充值页面
+        if (typeof window !== 'undefined') {
+          setTimeout(() => {
+            window.location.href = '/chat/recharge';
+          }, 100); // 短暂延迟确保错误信息能够显示
+        }
+        
+        return {
+          success: false,
+          message: `余额不足，当前余额: ${balanceCheck.balance}点，需要: ${amount}点`,
+          balance: balanceCheck.balance,
+          error: 'INSUFFICIENT_BALANCE',
+        };
+      }
+
+      // ✅ 第三步：余额充足，执行扣费
+      console.log(`[BillingService] 余额充足，开始扣费 - 当前余额: ${balanceCheck.balance}点`);
 
       const response = await fetch('/api/wechat-user/consumption', {
         method: 'POST',
@@ -88,6 +157,7 @@ export class BillingService {
 
       const data = await response.json();
       console.log("billing result balance", data.balance);
+      
       if (response.ok && data.success) {
         return {
           success: true,
@@ -101,7 +171,6 @@ export class BillingService {
           error: data.error,
         };
       }
-      
       
     } catch (error) {
       console.error('[BillingService] API call failed:', error);

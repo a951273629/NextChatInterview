@@ -1,33 +1,355 @@
 /* pages/login/login.wxss */
+
+/* 全局重置和基础样式 */
+page {
+  height: 100vh;
+  /* background: linear-gradient(135deg, #C41E3A 0%, #8B0000 50%, #FFD700 100%);
+   */
+   background-image: "/pages/yang.png";
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* 主容器 */
 .container {
-  padding: 20px;
+  min-height: 100vh;
+  /* padding: 40rpx 60rpx; */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* 添加装饰性背景元素 */
+.container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(196, 30, 58, 0.1) 0%, transparent 50%);
+  z-index: 0;
+}
+
+/* 登录头部 */
+.login-header {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 100rpx;
   text-align: center;
 }
+
+/* 主标题 */
 .title {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 30px;
+  font-size: 64rpx;
+  font-weight: 700;
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF6B35 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 4rpx 8rpx rgba(0, 0, 0, 0.3);
+  margin-bottom: 40rpx;
+  display: block;
+  letter-spacing: 4rpx;
 }
+
+/* 副标题 */
+.subtitle {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 60rpx;
+  display: block;
+}
+
+/* 登录按钮 */
+.login-header button {
+  width: 320rpx;
+  height: 88rpx;
+  background: linear-gradient(135deg, #C41E3A 0%, #8B0000 50%, #FFD700 100%);
+  border: none;
+  border-radius: 44rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: white;
+  box-shadow: 0 8rpx 20rpx rgba(196, 30, 58, 0.4);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.login-header button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.login-header button:active::before {
+  left: 100%;
+}
+
+.login-header button:active {
+  transform: scale(0.98);
+  box-shadow: 0 4rpx 12rpx rgba(196, 30, 58, 0.3);
+}
+
+/* 登录内容区域 */
+.login-content {
+  width: 100%;
+  max-width: 600rpx;
+  position: relative;
+  z-index: 1;
+}
+
+/* 状态卡片通用样式 */
+.waiting-status,
+.loading-status,
+.success-status,
+.error-status {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 32rpx;
+  padding: 60rpx 40rpx;
+  text-align: center;
+  box-shadow: 0 16rpx 40rpx rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10rpx);
+  border: 2rpx solid rgba(255, 215, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.waiting-status::before,
+.loading-status::before,
+.success-status::before,
+.error-status::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6rpx;
+  background: linear-gradient(90deg, #FFD700, #C41E3A, #FFD700);
+}
+
+/* 等待状态 */
+.waiting-status {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 255, 255, 0.95) 100%);
+}
+
+/* 加载状态 */
+.loading-status {
+  background: linear-gradient(135deg, rgba(196, 30, 58, 0.1) 0%, rgba(255, 255, 255, 0.95) 100%);
+}
+
+/* 加载图标动画 */
+.loading-icon {
+  font-size: 80rpx;
+  margin-bottom: 30rpx;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 成功状态 */
+.success-status {
+  background: linear-gradient(135deg, rgba(34, 139, 34, 0.1) 0%, rgba(255, 255, 255, 0.95) 100%);
+}
+
+.success-icon {
+  font-size: 80rpx;
+  margin-bottom: 30rpx;
+  animation: bounce 0.6s ease-in-out;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/* 错误状态 */
+.error-status {
+  background: linear-gradient(135deg, rgba(220, 20, 60, 0.1) 0%, rgba(255, 255, 255, 0.95) 100%);
+}
+
+.error-icon {
+  font-size: 80rpx;
+  margin-bottom: 30rpx;
+  color: #DC143C;
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10rpx); }
+  75% { transform: translateX(10rpx); }
+}
+
+/* 状态文本 */
+.status-text {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20rpx;
+  display: block;
+}
+
+/* 场景信息 */
+.scene-info {
+  font-size: 24rpx;
+  color: #666;
+  background: rgba(255, 215, 0, 0.2);
+  padding: 10rpx 20rpx;
+  border-radius: 20rpx;
+  display: inline-block;
+  margin-top: 20rpx;
+}
+
+/* 加载提示 */
+.loading-tip {
+  font-size: 28rpx;
+  color: #666;
+  display: block;
+  margin-top: 20rpx;
+}
+
+/* 成功提示 */
+.success-tip {
+  font-size: 28rpx;
+  color: #22C55E;
+  display: block;
+  margin-top: 20rpx;
+}
+
+/* 错误信息 */
+.error-message {
+  font-size: 28rpx;
+  color: #DC143C;
+  display: block;
+  margin: 20rpx 0;
+  padding: 20rpx;
+  background: rgba(220, 20, 60, 0.1);
+  border-radius: 16rpx;
+  border-left: 4rpx solid #DC143C;
+}
+
+/* 用户信息 */
+.user-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 30rpx 0;
+  padding: 20rpx;
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 20rpx;
+}
+
+.avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  margin-right: 20rpx;
+  border: 4rpx solid #FFD700;
+  box-shadow: 0 4rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.nickname {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+/* 重试按钮 */
+.retry-btn {
+  width: 240rpx;
+  height: 80rpx;
+  background: linear-gradient(135deg, #DC143C 0%, #8B0000 100%);
+  border: none;
+  border-radius: 40rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: white;
+  box-shadow: 0 8rpx 16rpx rgba(220, 20, 60, 0.3);
+  margin-top: 30rpx;
+  transition: all 0.3s ease;
+}
+
+.retry-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 4rpx 8rpx rgba(220, 20, 60, 0.2);
+}
+
+/* 响应式设计 */
+@media (max-width: 375px) {
+  .container {
+    padding: 30rpx 40rpx;
+  }
+  
+  .title {
+    font-size: 56rpx;
+  }
+  
+  .waiting-status,
+  .loading-status,
+  .success-status,
+  .error-status {
+    padding: 50rpx 30rpx;
+  }
+}
+
+/* 兼容性样式 */
 .qr-code-container {
-  width: 200px;
-  height: 200px;
-  margin: 0 auto;
-  background-color: #f0f0f0;
+  width: 400rpx;
+  height: 400rpx;
+  margin: 40rpx auto;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 24rpx;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 20px;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.1);
+  border: 2rpx solid rgba(255, 215, 0, 0.3);
 }
+
 .qr-code {
-  max-width: 100%;
-  max-height: 100%;
+  max-width: 90%;
+  max-height: 90%;
+  border-radius: 12rpx;
 }
-.refresh-btn, .login-btn {
-  margin-top: 20px;
-  width: 80%;
+
+.refresh-btn,
+.login-btn {
+  width: 320rpx;
+  height: 88rpx;
+  background: linear-gradient(135deg, #C41E3A 0%, #8B0000 50%, #FFD700 100%);
+  border: none;
+  border-radius: 44rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: white;
+  box-shadow: 0 8rpx 20rpx rgba(196, 30, 58, 0.4);
+  margin-top: 40rpx;
+  transition: all 0.3s ease;
 }
+
+.refresh-btn:active,
+.login-btn:active {
+  transform: scale(0.98);
+  box-shadow: 0 4rpx 12rpx rgba(196, 30, 58, 0.3);
+}
+
 .login-success {
-  color: green;
-  font-size: 18px;
-  margin-top: 20px;
+  color: #22C55E;
+  font-size: 36rpx;
+  font-weight: 600;
+  margin-top: 40rpx;
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
 }

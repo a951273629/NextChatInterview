@@ -10,7 +10,7 @@ module.exports = {
   
   // 生产环境配置  
   production: {
-    baseUrl: 'https://your-domain.com',
+    baseUrl: 'https://www.mianshiyang.cn',
   },
   
   // 当前使用的环境

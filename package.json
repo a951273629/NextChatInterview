@@ -22,7 +22,8 @@
     "proxy-dev": "sh ./scripts/init-proxy.sh && proxychains -f ./scripts/proxychains.conf yarn dev",
     "test": "node --no-warnings --experimental-vm-modules $(yarn bin jest) --watch",
     "db:migrate": "node ./scripts/migrate-db.cjs",
-    "copy-remote": "node ./scripts/copy-from-remote-docker.cjs"
+    "copy-remote": "node ./scripts/copy-from-remote-docker.cjs",
+    "upload-remote": "node ./scripts/upload-to-remote-docker.cjs"
   },
   "dependencies": {
     "@fortaine/fetch-event-source": "^3.0.6",

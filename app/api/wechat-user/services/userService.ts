@@ -14,6 +14,51 @@ export interface User {
   updated_at?: Date;
 }
 
+// 用户过滤器
+export interface UserFilters {
+  status?: 'active' | 'inactive' | 'banned';
+  is_activated?: boolean;
+  balanceRange?: { min: number; max: number };
+  dateRange?: { start: Date; end: Date };
+}
+
+// 分页选项
+export interface PaginationOptions {
+  page: number;
+  pageSize: number;
+  sortBy?: 'created_at' | 'balance' | 'nickname' | 'updated_at';
+  sortOrder?: 'asc' | 'desc';
+}
+
+// 分页结果
+export interface PaginatedResult<T> {
+  data: T[];
+  pagination: {
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
+}
+
+// 用户统计信息
+export interface UserStatistics {
+  total: number;
+  active: number;
+  inactive: number;
+  banned: number;
+  activated: number;
+  totalBalance: number;
+  averageBalance: number;
+}
+
+// 批量操作结果
+export interface BatchOperationResult {
+  success: number;
+  failed: number;
+  errors?: string[];
+}
+
 /**
  * 用户服务类 - 处理用户相关操作
  */
@@ -50,6 +95,104 @@ class UserService {
   }
 
   /**
+   * 分页查询用户
+   */
+  getUsers(filters: UserFilters = {}, pagination: PaginationOptions): PaginatedResult<User> {
+    let whereClause = 'WHERE 1=1';
+    const params: any[] = [];
+
+    // 构建查询条件
+    if (filters.status) {
+      whereClause += ' AND status = ?';
+      params.push(filters.status);
+    }
+
+    if (filters.is_activated !== undefined) {
+      whereClause += ' AND is_activated = ?';
+      params.push(filters.is_activated ? 1 : 0);
+    }
+
+    if (filters.balanceRange) {
+      whereClause += ' AND balance BETWEEN ? AND ?';
+      params.push(filters.balanceRange.min, filters.balanceRange.max);
+    }
+
+    if (filters.dateRange) {
+      whereClause += ' AND created_at BETWEEN ? AND ?';
+      params.push(filters.dateRange.start.toISOString(), filters.dateRange.end.toISOString());
+    }
+
+    // 构建排序
+    const sortBy = pagination.sortBy || 'created_at';
+    const sortOrder = pagination.sortOrder || 'desc';
+    const orderClause = `ORDER BY ${sortBy} ${sortOrder}`;
+
+    // 计算总数
+    const countQuery = `SELECT COUNT(*) as total FROM users ${whereClause}`;
+    const countResult = db.prepare(countQuery).get(...params) as { total: number };
+    const total = countResult.total;
+
+    // 分页查询
+    const offset = (pagination.page - 1) * pagination.pageSize;
+    const dataQuery = `
+      SELECT * FROM users 
+      ${whereClause} 
+      ${orderClause} 
+      LIMIT ? OFFSET ?
+    `;
+    const data = db.prepare(dataQuery).all(...params, pagination.pageSize, offset) as User[];
+
+    return {
+      data,
+      pagination: {
+        total,
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+        totalPages: Math.ceil(total / pagination.pageSize)
+      }
+    };
+  }
+
+  /**
+   * 搜索用户
+   */
+  searchUsers(keyword: string, pagination: PaginationOptions): PaginatedResult<User> {
+    const whereClause = 'WHERE (nickname LIKE ? OR openid LIKE ?)';
+    const searchTerm = `%${keyword}%`;
+    const params = [searchTerm, searchTerm];
+
+    // 构建排序
+    const sortBy = pagination.sortBy || 'created_at';
+    const sortOrder = pagination.sortOrder || 'desc';
+    const orderClause = `ORDER BY ${sortBy} ${sortOrder}`;
+
+    // 计算总数
+    const countQuery = `SELECT COUNT(*) as total FROM users ${whereClause}`;
+    const countResult = db.prepare(countQuery).get(...params) as { total: number };
+    const total = countResult.total;
+
+    // 分页查询
+    const offset = (pagination.page - 1) * pagination.pageSize;
+    const dataQuery = `
+      SELECT * FROM users 
+      ${whereClause} 
+      ${orderClause} 
+      LIMIT ? OFFSET ?
+    `;
+    const data = db.prepare(dataQuery).all(...params, pagination.pageSize, offset) as User[];
+
+    return {
+      data,
+      pagination: {
+        total,
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+        totalPages: Math.ceil(total / pagination.pageSize)
+      }
+    };
+  }
+
+  /**
    * 更新用户信息
    */
   updateUser(user: Partial<User> & { id: number }): User {
@@ -79,6 +222,16 @@ class UserService {
     );
     
     return this.getUserById(user.id);
+  }
+
+  /**
+   * 更新用户余额
+   */
+  updateUserBalance(userId: number, balance: number): User {
+    return this.updateUser({
+      id: userId,
+      balance: balance
+    });
   }
 
   /**
@@ -112,6 +265,97 @@ class UserService {
       avatar_url: avatarUrl
     });
   }
+
+  /**
+   * 删除用户
+   */
+  deleteUser(id: number): boolean {
+    try {
+      db.prepare('BEGIN').run();
+      
+      // 删除相关记录
+      db.prepare('DELETE FROM consumption_records WHERE user_id = ?').run(id);
+      db.prepare('DELETE FROM recharge_records WHERE user_id = ?').run(id);
+      
+      // 删除用户
+      const result = db.prepare('DELETE FROM users WHERE id = ?').run(id);
+      
+      db.prepare('COMMIT').run();
+      return result.changes > 0;
+    } catch (error) {
+      db.prepare('ROLLBACK').run();
+      throw error;
+    }
+  }
+
+  /**
+   * 批量删除用户
+   */
+  batchDeleteUsers(ids: number[]): BatchOperationResult {
+    if (ids.length === 0 || ids.length > 50) {
+      return {
+        success: 0,
+        failed: ids.length,
+        errors: ['批量删除数量必须在1-50之间']
+      };
+    }
+
+    const errors: string[] = [];
+    let successCount = 0;
+
+    try {
+      db.prepare('BEGIN').run();
+
+      for (const id of ids) {
+        try {
+          const success = this.deleteUser(id);
+          if (success) {
+            successCount++;
+          } else {
+            errors.push(`用户ID ${id} 删除失败（可能不存在）`);
+          }
+        } catch (error) {
+          errors.push(`用户ID ${id} 删除错误: ${error instanceof Error ? error.message : '未知错误'}`);
+        }
+      }
+
+      db.prepare('COMMIT').run();
+    } catch (error) {
+      db.prepare('ROLLBACK').run();
+      return {
+        success: 0,
+        failed: ids.length,
+        errors: ['批量删除事务失败: ' + (error instanceof Error ? error.message : '未知错误')]
+      };
+    }
+
+    return {
+      success: successCount,
+      failed: ids.length - successCount,
+      errors: errors.length > 0 ? errors : undefined
+    };
+  }
+
+  /**
+   * 获取用户统计信息
+   */
+  getUserStatistics(): UserStatistics {
+    const stats = db.prepare(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactive,
+        SUM(CASE WHEN status = 'banned' THEN 1 ELSE 0 END) as banned,
+        SUM(CASE WHEN is_activated = 1 THEN 1 ELSE 0 END) as activated,
+        SUM(balance) as totalBalance,
+        AVG(balance) as averageBalance
+      FROM users
+    `).get() as UserStatistics;
+
+    return stats;
+  }
+
+
 }
 
 // 导出单例实例

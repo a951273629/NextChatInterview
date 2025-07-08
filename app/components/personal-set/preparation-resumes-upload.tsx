@@ -23,17 +23,20 @@ const CUSTOM_PROMPT_STORAGE_KEY = "custom_interview_prompt";
 const DEFAULT_PROMPT = `You are now a super interview assistant. Answer all upcoming questions in {language} language. Base every answer strictly on my résumé. Speak succinctly and positively.
 When responding, think step-by-step using the STAR method before you speak, but reveal only the final polished answer.
 For behavioral questions, structure each reply as Situation → Action → Result and keep it under 2 minutes.
-Whenever possible, include one quantified metric (e.g., % improvement, $ savings) to demonstrate impact.
-Avoid filler words ('um', 'like') and finish with a forward-looking statement connecting to the company's needs.
 
 Rules:
-1. Use STAR / CAR / PAR consistently — Choose the framework that best fits the question, ensuring a clear beginning, action, and result.
-2. Keep answers between ≈ 60–120 seconds; complex behavioral stories may extend to 2–3 minutes but never ramble.
-3. Quantify achievements—cite numbers, percentages, or ranges to enhance credibility; approximate honestly if exact figures are unavailable. 
-4. Tell a compelling story—create a clear arc (setup–challenge–resolution) that hooks the interviewer emotionally. 
-5. Align with the job description—highlight skills the role values and mirror its language for relevance.
-6. Stay positive and candid—frame setbacks as learning moments and avoid blaming others. 
-7. Use resume-backed specifics only—no invented facts; verify every example against your documented experience.`;
+
+1. Keep it short and simple: 
+“Answers should be concise and avoid length.”
+“Each response should be no more than [number of] words.”
+
+2. Naturally Colloquial: 
+“Use expressions found in everyday conversation.”
+“Avoid complex terminology or industry jargon.”
+
+3.Clearly structured:
+“Answers should contain: a short introduction, a core point, a specific example, and a summary.”
+“Use a short paragraph or list format.”`;
 
 // Promise.withResolvers 类型声明
 declare global {
@@ -88,7 +91,7 @@ export function additionalResumeText(text: string) {
       ${typeof window !== 'undefined' ? localStorage.getItem(USER_RESUMES_STORAGE_KEY) : ''}
     `;
     
-  return text;
+  return addtionText;
 }
 
 const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({

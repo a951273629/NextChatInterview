@@ -38,7 +38,7 @@ export async function createClient(
   return client;
 }
 
-export async function removeClient(client: Client) {
+export async function removeClient(client: Client): Promise<void> {
   logger.info(`Removing client...`);
   await client.close();
 }
@@ -50,6 +50,6 @@ export async function listTools(client: Client): Promise<ListToolsResponse> {
 export async function executeRequest(
   client: Client,
   request: McpRequestMessage,
-) {
+): Promise<any> {
   return client.request(request, z.any());
 }

@@ -44,6 +44,46 @@ export interface PDFExtractResult {
 let pdfjsLib: any = null;
 let isInitialized = false;
 
+/**
+ * 检测Worker文件是否可访问
+ */
+async function checkWorkerAvailability(workerUrl: string): Promise<boolean> {
+  try {
+    const response = await fetch(workerUrl, { method: 'HEAD' });
+    return response.ok;
+  } catch (error) {
+    console.warn(`[PDF.js] Worker文件检测失败: ${workerUrl}`, error);
+    return false;
+  }
+}
+
+/**
+ * 获取可用的Worker路径
+ */
+async function getAvailableWorkerPath(): Promise<string> {
+  const workerPaths = [
+    // 方案1: 本地public目录的worker文件
+    '/pdf.worker.min.js',
+    // 方案3: CDN备用方案 - unpkg
+    'https://unpkg.com/pdfjs-dist@5.3.31/build/pdf.worker.min.mjs',
+    // 方案4: CDN备用方案 - cdnjs
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.3.31/pdf.worker.min.mjs'
+  ];
+
+  for (const workerPath of workerPaths) {
+    // console.log(`[PDF.js] 检测Worker路径: ${workerPath}`);
+    const isAvailable = await checkWorkerAvailability(workerPath);
+    if (isAvailable) {
+      // console.log(`[PDF.js] 找到可用的Worker路径: ${workerPath}`);
+      return workerPath;
+    }
+  }
+
+  // 如果所有路径都不可用，返回本地路径作为最后尝试
+  console.warn('[PDF.js] 所有Worker路径检测失败，使用本地路径作为最后尝试');
+  return '/pdf.worker.min.js';
+}
+
 async function initializePDFJS(): Promise<void> {
   if (isInitialized && pdfjsLib) {
     return;
@@ -55,26 +95,19 @@ async function initializePDFJS(): Promise<void> {
     
     // 设置Worker路径 - 针对PDF.js 5.3.31版本
     if (typeof window !== 'undefined') {
-      // 方案1: 使用本地public目录的worker文件
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
-      console.log('[PDF.js] 使用本地Worker文件: /pdf.worker.min.js (版本 5.3.31)');
-      
-      // 如果本地worker加载失败，可以尝试以下备用方案：
-      // 方案2: 使用CDN worker (备用) - 更新到5.3.31版本
-      // pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.3.31/pdf.worker.min.mjs';
-      
-      // 方案3: 使用node_modules中的worker (如果支持)
-      // try {
-      //   const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.min.mjs');
-      //   pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(pdfjsWorker, import.meta.url).toString();
-      // } catch (workerImportError) {
-      //   console.warn('[PDF.js] 静态导入worker失败，使用本地路径');
-      //   pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
-      // }
+      try {
+        // 获取可用的Worker路径
+        const workerSrc = await getAvailableWorkerPath();
+        pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+        // console.log(`[PDF.js] 使用Worker文件: ${workerSrc} (版本 5.3.31)`);
+      } catch (workerError) {
+        console.warn('[PDF.js] Worker路径检测失败，使用默认本地路径', workerError);
+        // pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+      }
     }
 
     isInitialized = true;
-    console.log('[PDF.js] 初始化成功，版本 5.3.31');
+    // console.log('[PDF.js] 初始化成功，版本 5.3.31');
   } catch (error) {
     console.error('[PDF.js] 初始化失败:', error);
     throw new Error('PDF.js 初始化失败');
@@ -99,6 +132,15 @@ export async function extractTextFromPDF(
       throw new Error('PDF.js 未正确初始化');
     }
 
+    // 验证Worker是否正确配置
+    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+      console.warn('[PDF.js] Worker路径未设置，尝试重新初始化');
+      isInitialized = false;
+      await initializePDFJS();
+    }
+
+    // console.log(`[PDF.js] 当前Worker路径: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
+
     // 初始进度
     onProgress?.(10);
 
@@ -114,7 +156,7 @@ export async function extractTextFromPDF(
     onProgress?.(30);
 
     const numPages = pdfDocument.numPages;
-    console.log(`[PDF.js] PDF文档加载成功，共 ${numPages} 页`);
+    // console.log(`[PDF.js] PDF文档加载成功，共 ${numPages} 页`);
 
     let fullText = '';
     
@@ -140,7 +182,7 @@ export async function extractTextFromPDF(
         const progress = 30 + (pageNum / numPages) * 60; // 30-90%
         onProgress?.(Math.round(progress));
 
-        console.log(`[PDF.js] 第 ${pageNum} 页文本提取完成`);
+        // console.log(`[PDF.js] 第 ${pageNum} 页文本提取完成`);
       } catch (pageError) {
         console.warn(`[PDF.js] 第 ${pageNum} 页提取失败:`, pageError);
         // 继续处理下一页，不中断整个过程
@@ -194,4 +236,4 @@ export async function preInitializePDFJS(): Promise<boolean> {
     console.error('[PDF.js] 预初始化失败:', error);
     return false;
   }
-} 
+}

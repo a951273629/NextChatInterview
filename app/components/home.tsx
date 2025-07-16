@@ -36,6 +36,7 @@ import LoginPage from "./login/login";
 import TensorFlow from "./tensor-flow/TensorFlow";
 import { NoticeManager } from "./notice/notice-announcement";
 import { ProtectedRoute } from "./login/ProtectedRoute";
+// import { UserManagement } from "./login/user-management/user-management";
 
 export function Loading(props: { noLogo?: boolean }) {
   return (
@@ -135,7 +136,12 @@ const KeyManagement = dynamic(
     loading: () => <Loading noLogo />,
   },
 );
-
+const UserManagement =dynamic(
+  async ()=>(await import("./login/user-management/user-management")).UserManagement,
+    {
+    loading: () => <Loading noLogo />,
+  },
+)
 const AuthWrapper = dynamic(
   async () => (await import("./wechat-login/auth-wrapper")).AuthWrapper,
   {
@@ -495,6 +501,14 @@ export function Home() {
                 <KeyManagement />
               </ProtectedRoute>
             }
+          />
+          <Route
+           path={Path.UserManagement}
+           element={
+            <ProtectedRoute>
+              <UserManagement/>
+            </ProtectedRoute>
+           }
           />
           <Route path="/*" element={<Screen />} />
         </Routes>

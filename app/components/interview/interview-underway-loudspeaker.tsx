@@ -86,6 +86,8 @@ export const InterviewUnderwayLoudspeaker: React.FC<
   // 控制状态
   const [isPaused, setIsPaused] = useState(false);
   const [isAutoSubmit, setIsAutoSubmit] = useState(defaultAutoSubmit);
+  const isAutoSubmitRef = useRef(isAutoSubmit);
+
   const [showTooltip, setShowTooltip] = useState(true);
 
   // 测试音频播放相关状态
@@ -103,14 +105,14 @@ export const InterviewUnderwayLoudspeaker: React.FC<
 
   // 检查浏览器支持
   useEffect(() => {
-    const checkBrowserSupport = () => {
+    const checkBrowserSupport = async () => {
       const hasGetDisplayMedia = !!(
         navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia
       );
       const hasAudioContext = !!(
         window.AudioContext || window.webkitAudioContext
       );
-      const hasAzureSpeech = isAzureSpeechAvailable();
+      const hasAzureSpeech = await isAzureSpeechAvailable();
 
       setBrowserSupportsApi(
         hasGetDisplayMedia && hasAudioContext && hasAzureSpeech,
@@ -158,7 +160,7 @@ export const InterviewUnderwayLoudspeaker: React.FC<
     }
 
     try {
-      console.log("🚀 开始 Azure 语音识别...");
+      // console.log("🚀 开始 Azure 语音识别...");
 
       // 初始化 Azure Speech 识别器
       const recognizer = await initializeAzureSpeechRecognizer();
@@ -168,35 +170,35 @@ export const InterviewUnderwayLoudspeaker: React.FC<
         // 识别结果回调
         (text: string, isFinal: boolean) => {
           console.log(
-            `🎯 Azure 识别结果 (${isFinal ? "✅最终" : "🔄中间"}):`,
+            // `🎯 Azure 识别结果 (${isFinal ? "✅最终" : "🔄中间"}):`,
             text,
           );
 
           // 🎯 核心改进：任何有内容的识别都会刷新延迟定时器
           if (text.trim() !== "") {
             const trimmedText = text.trim();
-            console.log(`🎙️ 检测到语音内容 (${isFinal ? "✅最终" : "🔄进行中"}):`, trimmedText);
+            // console.log(`🎙️ 检测到语音内容 (${isFinal ? "✅最终" : "🔄进行中"}):`, trimmedText);
             
             // 🎯 延迟定时器刷新逻辑：任何有内容的识别都刷新
             // 清除之前的定时器（如果有）
             if (finalTextDelayTimerRef.current) {
               clearTimeout(finalTextDelayTimerRef.current);
-              console.log("⏱️ 刷新延迟定时器 - 检测到新的语音活动");
+              // console.log("⏱️ 刷新延迟定时器 - 检测到新的语音活动");
             }
             
             // 🎯 文本拼接逻辑：只有最终结果才进行拼接
             if (isFinal) {
               // 避免重复处理相同的文本片段
               if (!pendingTextSegmentsRef.current.has(trimmedText)) {
-                console.log("📝 处理最终语音片段:", trimmedText);
+                // console.log("📝 处理最终语音片段:", trimmedText);
                 
                 // 拼接新文本到待处理文本中，而非替换
                 if (pendingFinalTextRef.current) {
                   pendingFinalTextRef.current += " " + trimmedText;
-                  console.log("🔗 拼接文本:", pendingFinalTextRef.current);
+                  // console.log("🔗 拼接文本:", pendingFinalTextRef.current);
                 } else {
                   pendingFinalTextRef.current = trimmedText;
-                  console.log("📝 首次设置文本:", pendingFinalTextRef.current);
+                  // console.log("📝 首次设置文本:", pendingFinalTextRef.current);
                 }
                 
                 // 记录已处理的文本片段，避免重复拼接
@@ -208,25 +210,24 @@ export const InterviewUnderwayLoudspeaker: React.FC<
             finalTextDelayTimerRef.current = setTimeout(() => {
               const finalText = pendingFinalTextRef.current;
               if (finalText && finalText !== lastSubmittedTextRef.current) {
-                console.log("✅ 延迟3秒后处理拼接的语音结果:", finalText);
+                // console.log("✅ 延迟3秒后处理拼接的语音结果:", finalText);
                 
                 onAddMessage?.(finalText);
                 lastSubmittedTextRef.current = finalText;
                 resetTranscript();
 
                 // 自动提交逻辑：语音识别结果提交给LLM，LLM输出会通过chat.ts自动发送到WebSocket
-                if (isAutoSubmit) {
-                  console.log("🚀 延迟处理完成，自动提交拼接的语音:", finalText);
+                if (isAutoSubmitRef.current) {
+                  console.log("🚀 延迟处理完成，自动提交拼接的语音:", finalText,"isAutoSubmitRef.current",isAutoSubmitRef.current);
                   submitMessage(finalText);
                 }
               }
-              
               // 清理定时器引用和文本片段记录
               finalTextDelayTimerRef.current = null;
               pendingFinalTextRef.current = "";
               pendingTextSegmentsRef.current.clear();
-              console.log("🧹 清理延迟处理状态");
-            }, 2300); // 2.3秒延迟
+              // console.log("🧹 清理延迟处理状态");
+            }, 1800); // 1800秒延迟
           }
           
           // 🎯 更新interim结果显示（不影响延迟处理逻辑）
@@ -323,7 +324,7 @@ export const InterviewUnderwayLoudspeaker: React.FC<
 
   // 消息点击处理函数
   const handleMessageClick = (messageText: string) => {
-    console.log("消息被点击:", messageText);
+    // console.log("消息被点击:", messageText);
     submitMessage(messageText);
     
     // 在移动端模式下，点击消息后最小化页面
@@ -520,7 +521,12 @@ export const InterviewUnderwayLoudspeaker: React.FC<
               <input
                 type="checkbox"
                 checked={isAutoSubmit}
-                onChange={() => setIsAutoSubmit(!isAutoSubmit)}
+                onChange={() => {
+                  setIsAutoSubmit(!isAutoSubmit)
+                  isAutoSubmitRef.current = !isAutoSubmit
+                  console.log("isAutoSubmitRef.current:",isAutoSubmitRef.current);
+                  
+                }}
               />
               <span className={styles.slider}></span>
             </label>

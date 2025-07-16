@@ -49,12 +49,10 @@ export const useInterviewChat = () => {
         }) as ChatMessage;
         
         session.messages.push(assistantMessage);
-        // console.log(`📝 创建新assistant消息: ${data.messageId}`);
       } else {
         // 更新现有消息内容（流式输出）
         assistantMessage.content = data.content;
         assistantMessage.streaming = !data.isComplete;
-        // console.log(`🔄 更新assistant消息: ${data.messageId}, 完成状态: ${data.isComplete}`);
       }
 
       // 更新session时间戳

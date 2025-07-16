@@ -54,9 +54,9 @@ if ! command -v node >/dev/null || ! command -v git >/dev/null || ! command -v y
 fi
 
 # Clone the repository and install dependencies
-git clone https://github.com/ChatGPTNextWeb/ChatGPT-Next-Web
-cd ChatGPT-Next-Web
-yarn install
+# git clone https://github.com/ChatGPTNextWeb/ChatGPT-Next-Web
+# cd ChatGPT-Next-Web
+# yarn install
 
 # Prompt user for environment variables
 read -p "Enter OPENAI_API_KEY: " OPENAI_API_KEY

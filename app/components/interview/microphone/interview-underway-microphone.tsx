@@ -108,7 +108,7 @@ export const InterviewUnderway: React.FC<InterviewUnderwayProps> = ({
   useEffect(() => {
     const checkAvailability = async () => {
       try {
-        const available = isAzureSpeechAvailable();
+        const available = await isAzureSpeechAvailable();
         setAzureSpeechAvailable(available);
         console.log("🔍 Azure Speech 可用性检查:", available);
       } catch (error) {

@@ -73,6 +73,7 @@ export enum Path {
   ConsumBillList = "/chat/consum-bill-list",
   SetNotice = "/login/set-notice",
   KeyManagement = "/login/key-management",
+  UserManagement = "/login/user-management",
   WechatLogin = "/wechat-login",
 
 }

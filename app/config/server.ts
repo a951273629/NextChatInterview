@@ -92,6 +92,9 @@ declare global {
       DEFAULT_INPUT_TEMPLATE?: string;
 
       ENABLE_MCP?: string; // enable mcp functionality
+      
+      AZURE_SPEECH_KEY?:string;
+      AZURE_SPEECH_REGION?:string;
     }
   }
 }
@@ -150,6 +153,8 @@ export const getServerSideConfig = () => {
   const isStability = !!process.env.STABILITY_API_KEY;
 
   const isAzure = !!process.env.AZURE_URL;
+  const isAzureSpeech = !!process.env.AZURE_SPEECH_KEY;
+
   const isGoogle = !!process.env.GOOGLE_API_KEY;
   const isAnthropic = !!process.env.ANTHROPIC_API_KEY;
   const isTencent = !!process.env.TENCENT_API_KEY;
@@ -188,6 +193,10 @@ export const getServerSideConfig = () => {
     azureUrl: process.env.AZURE_URL,
     azureApiKey: getApiKey(process.env.AZURE_API_KEY),
     azureApiVersion: process.env.AZURE_API_VERSION,
+
+    isAzureSpeech,
+    azureSpeechKey: process.env.AZURE_SPEECH_KEY,
+    azureSpeechRegion: process.env.AZURE_SPEECH_REGION,
 
     isGoogle,
     googleApiKey: getApiKey(process.env.GOOGLE_API_KEY),

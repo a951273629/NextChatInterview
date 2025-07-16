@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 使用简单的方式生成QR码 - 调用第三方API
-    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}`;
+    const qrApiUrl = `https://api.qrtool.cn/?text=${encodeURIComponent(text)}`;
     
     // 获取QR码图片
     const response = await fetch(qrApiUrl);

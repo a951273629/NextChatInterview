@@ -10,10 +10,19 @@ import {
 
   PeerStatusData,
   PeerStatusUpdateMessage,
+  
+  WelcomeData,
+  WelcomeMessage,
+  ErrorData,
+  ErrorMessage,
+  RoomStatusData,
+  RoomStatusMessage,
+  RoomStatusUpdateMessage,
+  
   UseWebSocketSyncReturn,
   DEFAULT_WEBSOCKET_URL,
 } from "@/app/types/websocket-sync";
-import { safeLocalStorage } from "@/app/utils";
+
 import { nanoid } from "nanoid";
 
 interface UseWebSocketSyncOptions {
@@ -22,6 +31,10 @@ interface UseWebSocketSyncOptions {
   enabled: boolean;
   onLLMResponse?: (data: LLMResponseData) => void;          // 新增：LLM回答回调
   onPeerStatusChange?: (peerStatus: PeerStatusData) => void;
+  onWelcome?: (data: WelcomeData) => void;                 // 新增：欢迎消息回调
+  onError?: (data: ErrorData) => void;                     // 新增：错误消息回调
+  onRoomStatus?: (data: RoomStatusData) => void;           // 新增：房间状态回调
+  onRoomStatusUpdate?: (data: RoomStatusData) => void;     // 新增：房间状态更新回调
   serverUrl?: string;
 }
 
@@ -31,6 +44,10 @@ export const useWebSocketSync = ({
   enabled,
   onLLMResponse,
   onPeerStatusChange,
+  onWelcome,
+  onError,
+  onRoomStatus,
+  onRoomStatusUpdate,
   serverUrl = DEFAULT_WEBSOCKET_URL,
 }: UseWebSocketSyncOptions): UseWebSocketSyncReturn => {
 
@@ -38,6 +55,8 @@ export const useWebSocketSync = ({
   const [connectedClients, setConnectedClients] = useState(0);
   const [lastError, setLastError] = useState<string | undefined>();
   const [peerStatus, setPeerStatus] = useState<PeerStatusData | undefined>();
+  const [roomStatus, setRoomStatus] = useState<RoomStatusData | undefined>();
+  const [clientId, setClientId] = useState<string | undefined>();
   const sessionIdRef = useRef<string>(nanoid());
 
   // WebSocket URL，使用openId作为密钥
@@ -74,7 +93,6 @@ export const useWebSocketSync = ({
               // console.log("🤖 接收端处理LLM回答消息 llm_response:", message.data);
               const llmMessage = message as LLMResponseMessage;
               if (mode === SyncMode.RECEIVER && onLLMResponse) {
-                // console.log("🤖 接收端处理LLM回答消息:", llmMessage.data);
                 onLLMResponse(llmMessage.data);
               }
               break;
@@ -102,6 +120,42 @@ export const useWebSocketSync = ({
               setPeerStatus(peerStatusMessage.data.peerStatus);
               if (onPeerStatusChange) {
                 onPeerStatusChange(peerStatusMessage.data.peerStatus);
+              }
+              break;
+
+            case "welcome":
+              const welcomeMessage = message as WelcomeMessage;
+              console.log("🎉 收到欢迎消息:", welcomeMessage.data);
+              setClientId(welcomeMessage.data.clientId);
+              if (onWelcome) {
+                onWelcome(welcomeMessage.data);
+              }
+              break;
+
+            case "error":
+              const errorMessage = message as ErrorMessage;
+              console.error("❌ 收到错误消息:", errorMessage.data);
+              setLastError(`${errorMessage.data.code}: ${errorMessage.data.message}`);
+              if (onError) {
+                onError(errorMessage.data);
+              }
+              break;
+
+            case "room_status":
+              const roomStatusMessage = message as RoomStatusMessage;
+              console.log("🏠 收到房间状态:", roomStatusMessage.data);
+              setRoomStatus(roomStatusMessage.data);
+              if (onRoomStatus) {
+                onRoomStatus(roomStatusMessage.data);
+              }
+              break;
+
+            case "room_status_update":
+              const roomStatusUpdateMessage = message as RoomStatusUpdateMessage;
+              console.log("🔄 收到房间状态更新:", roomStatusUpdateMessage.data);
+              setRoomStatus(roomStatusUpdateMessage.data);
+              if (onRoomStatusUpdate) {
+                onRoomStatusUpdate(roomStatusUpdateMessage.data);
               }
               break;
 
@@ -232,6 +286,8 @@ export const useWebSocketSync = ({
     connectedClients,
     lastError,
     peerStatus,
+    roomStatus,
+    clientId,
 
     // 实时状态获取方法
     getConnectionStatus,
@@ -246,5 +302,9 @@ export const useWebSocketSync = ({
     // 回调
     onLLMResponse,                  // 新增：LLM回答回调
     onPeerStatusChange,
+    onWelcome,                      // 新增：欢迎消息回调
+    onError,                        // 新增：错误消息回调
+    onRoomStatus,                   // 新增：房间状态回调
+    onRoomStatusUpdate,             // 新增：房间状态更新回调
   };
 };

@@ -30,15 +30,9 @@ export class MessageHandler {
 
     const { message } = validation;
     
-    // console.log(formatLog('info', '收到客户端消息', {
-    //   clientId: client.id,
-    //   type: message.type,
-    //   mode: client.mode
-    // }));
 
     // 根据消息类型分发处理
     switch (message.type) {
-
       
       case 'llm_response':
         this.handleLLMResponse(client, message);
@@ -82,21 +76,6 @@ export class MessageHandler {
     }
 
     const { activationKey } = client;
-    const { data } = message;
-
-    // 验证LLM回答数据
-    // if (!this.validateLLMResponseData(data)) {
-    //   this.sendErrorMessage(client, 'LLM回答数据格式错误');
-    //   return;
-    // }
-
-    // console.log(formatLog('info', '处理LLM回答消息', {
-    //   clientId: client.id,
-    //   activationKey,
-    //   content: data.content.substring(0, 50), // 只记录前50字符
-    //   isComplete: data.isComplete,
-    //   messageId: data.messageId
-    // }));
 
     // 转发消息给同房间的所有接收端
     this.forwardToReceivers(activationKey, message, client.id);

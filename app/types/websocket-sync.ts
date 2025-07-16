@@ -16,7 +16,7 @@ export enum ConnectionStatus {
 
 // WebSocket 消息类型
 export interface WebSocketMessage {
-  type: "llm_response" | "ping" | "pong" | "peer_status_update" | "room_status_update";
+  type: "llm_response" | "ping" | "pong" | "peer_status_update" | "room_status_update" | "welcome" | "error" | "room_status";
   timestamp: number;
   data: any;
 }
@@ -65,6 +65,59 @@ export interface PeerStatusUpdateMessage extends WebSocketMessage {
   };
 }
 
+// 欢迎消息数据
+export interface WelcomeData {
+  clientId: string;
+  message: string;
+  serverVersion: string;
+  features: string[];
+}
+
+// 欢迎消息
+export interface WelcomeMessage extends WebSocketMessage {
+  type: "welcome";
+  data: WelcomeData;
+}
+
+// 错误消息数据
+export interface ErrorData {
+  code: string;
+  message: string;
+  details?: any;
+}
+
+// 错误消息
+export interface ErrorMessage extends WebSocketMessage {
+  type: "error";
+  data: ErrorData;
+}
+
+// 房间状态数据
+export interface RoomStatusData {
+  roomId: string;
+  senders: number;
+  receivers: number;
+  total: number;
+  clients: Array<{
+    id: string;
+    mode: "sender" | "receiver";
+    sessionId: string;
+    joinTime: number;
+  }>;
+}
+
+// 房间状态消息
+export interface RoomStatusMessage extends WebSocketMessage {
+  type: "room_status";
+  data: RoomStatusData;
+}
+
+// 房间状态更新消息
+export interface RoomStatusUpdateMessage extends WebSocketMessage {
+  type: "room_status_update";
+  data: RoomStatusData;
+}
+
 // 同步配置
 export interface SyncConfig {
   enabled: boolean;
@@ -89,6 +142,8 @@ export interface UseWebSocketSyncReturn {
   connectedClients: number;
   lastError?: string;
   peerStatus?: PeerStatusData;
+  roomStatus?: RoomStatusData;
+  clientId?: string;
 
   // 实时状态获取方法
   getConnectionStatus: () => ConnectionStatus;
@@ -103,6 +158,10 @@ export interface UseWebSocketSyncReturn {
   // 回调设置
   onLLMResponse?: (data: LLMResponseData) => void;          // 新增：LLM回答回调
   onPeerStatusChange?: (peerStatus: PeerStatusData) => void;
+  onWelcome?: (data: WelcomeData) => void;                 // 新增：欢迎消息回调
+  onError?: (data: ErrorData) => void;                     // 新增：错误消息回调
+  onRoomStatus?: (data: RoomStatusData) => void;           // 新增：房间状态回调
+  onRoomStatusUpdate?: (data: RoomStatusData) => void;     // 新增：房间状态更新回调
 }
 
 // 常量

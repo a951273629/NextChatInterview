@@ -52,8 +52,10 @@ ENV CODE=""
 ENV NODE_ENV=production
 
 # 接收构建参数
-ARG NEXT_PUBLIC_AZURE_SPEECH_KEY
-ENV NEXT_PUBLIC_AZURE_SPEECH_KEY=$NEXT_PUBLIC_AZURE_SPEECH_KEY
+# ARG AZURE_SPEECH_KEY
+# ENV AZURE_SPEECH_KEY=$AZURE_SPEECH_KEY
+
+# ARG AZURE_SPEECH_REGION
 
 # 构建应用
 RUN if [ -f yarn.lock ]; then yarn build; else npm run build; fi
@@ -78,7 +80,8 @@ ENV ENABLE_MCP=""
 ENV DB_PATH="/app/data/nextchat.db"
 ENV WS_PORT="8080"
 ENV WS_HOST="0.0.0.0"
-
+ENV AZURE_SPEECH_KEY=""
+ENV AZURE_SPEECH_REGION=""
 # 复制构建产物（使用 standalone 输出）
 COPY --from=builder /app/public ./public
 

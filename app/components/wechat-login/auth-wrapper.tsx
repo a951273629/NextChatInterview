@@ -10,7 +10,8 @@ const PUBLIC_PATHS = [
   Path.HomePortal, 
   Path.Login, 
   Path.WechatLogin,
-  Path.Auth
+  Path.Auth,
+  Path.InterviewLoudspeaker
 ];
 
 export function AuthWrapper({ children }: { children: React.ReactNode }) {

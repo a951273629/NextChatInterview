@@ -3,6 +3,8 @@
  * 统一管理 Azure 相关的环境变量读取
  */
 
+import { getServerSideConfig } from "@/app/config/server";
+
 export interface AzureSpeechEnvironmentConfig {
   key: string[];
   region: string[];
@@ -33,9 +35,10 @@ export function getAzureSpeechEnvironmentConfig(): AzureSpeechEnvironmentConfig 
     };
   }
 
-  // 从环境变量读取配置
-  const keyEnv = process.env.NEXT_PUBLIC_AZURE_SPEECH_KEY;
-  const regionEnv = process.env.NEXT_PUBLIC_AZURE_SPEECH_REGION;
+  // 从服务端配置读取配置
+  const serverConfig = getServerSideConfig();
+  const keyEnv = serverConfig.azureSpeechKey;
+  const regionEnv = serverConfig.azureSpeechRegion;
   
   const key = keyEnv ? keyEnv.split(',').map(k => k.trim()).filter(k => k.length > 0) : [];
   const region = regionEnv ? regionEnv.split(',').map(r => r.trim()).filter(r => r.length > 0) : [];
@@ -50,7 +53,7 @@ export function getAzureSpeechEnvironmentConfig(): AzureSpeechEnvironmentConfig 
 
   if (key.length === 0 || region.length === 0) {
     const errorMsg =
-      "Azure Speech 配置缺失。请设置 NEXT_PUBLIC_AZURE_SPEECH_KEY 和 NEXT_PUBLIC_AZURE_SPEECH_REGION 环境变量。";
+      "Azure Speech 配置缺失。请设置 AZURE_SPEECH_KEY 和 AZURE_SPEECH_REGION 环境变量。";
     console.error("❌", errorMsg);
     throw new Error(errorMsg);
   }
@@ -152,8 +155,8 @@ export function isValidAzureRegion(region: string): boolean {
 export function getAzureSpeechSubscriptionInfo(index: number = 0) {
   const config = getAzureSpeechEnvironmentConfig();
   
-  const selectedKey = config.key[index] || config.key[0];
-  const selectedRegion = config.region[index] || config.region[0];
+  const selectedKey = config.key[index] || config.key[0] || "";
+  const selectedRegion = config.region[index] || config.region[0] || "";
   
   if (!isValidAzureRegion(selectedRegion)) {
     console.warn("⚠️ Azure 区域格式可能不正确:", selectedRegion);
@@ -166,4 +169,4 @@ export function getAzureSpeechSubscriptionInfo(index: number = 0) {
     availableKeys: config.key.length,
     availableRegions: config.region.length,
   };
-} 
+}

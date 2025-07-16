@@ -44,7 +44,7 @@ export function WechatLogin({  }: WechatLoginProps = {}) {
     setErrorMessage("");
     let scene = "12345678";
     if(process.env.NODE_ENV === "production"){
-      const scene = uuid().toString().slice(0, 31);
+       scene = uuid().toString().slice(0, 31);
     }
     setCurrentScene(scene);
     try {
@@ -91,31 +91,6 @@ export function WechatLogin({  }: WechatLoginProps = {}) {
         let data: any = {};
         const response = await fetch(`/api/wechat/check-login?scene=${encodeURIComponent(scene)}`);
         data = await response.json();
-        // if(process.env.NODE_ENV === "production"){
-
-        // }else {
-        //   data = {
-        //     success: true,
-        //     loggedIn: true,
-        //     data:{
-        //     openid: 'oRGIi5XRM5yen3xD_vL_jPlyyLUc',
-        //     unionid: undefined,
-        //     session_key: '8OZFvZjnVwLBPE9HEYG0gw==',
-        //     userInfo: {
-        //       nickName: '开发测试用户',
-        //       avatarUrl: 'https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTKxCqRzuYWQmpwiaqQEjNxbK7NbFCsBAfMA0Wm6g0R8HXjE7WLo47ZG1IU4PYOQEOxUGxJJmvfwkTA/132',
-        //       gender: 1,
-        //       country: '中国',
-        //       province: '广东',
-        //       city: '深圳',
-        //       language: 'zh_CN'
-        //     },
-        //     scene: '12345678',
-        //     loginTime: '2025-06-22T12:22:04.887Z'
-        //    }
-        //   }
-          
-        // }
         if (data.success && data.loggedIn) {
           // 登录成功
           console.log("用户已完成登录:", data.data);

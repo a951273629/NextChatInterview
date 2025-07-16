@@ -1,4 +1,4 @@
-import { log } from "console";
+
 import { NextRequest, NextResponse } from "next/server";
 
 /**

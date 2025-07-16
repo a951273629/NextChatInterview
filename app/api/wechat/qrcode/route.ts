@@ -6,23 +6,14 @@ export async function POST(req: NextRequest) {
   
   try {
     // 记录请求信息
-    console.log("请求URL:", req.url);
-    console.log("请求方法:", req.method);
-    console.log("请求头:", Object.fromEntries(req.headers.entries()));
-    
     const requestBody = await req.json();
-    console.log("请求body:", requestBody);
     
     const { scene = "test_login", page = "pages/login",env_version="trial" } = requestBody;
-    console.log("解析后的参数:", { scene, page, env_version });
-
     // 直接调用获取access_token函数（避免内部fetch调用和SSL问题）
-    console.log("正在获取access_token...");
     const tokenData = await getWechatAccessToken();
-    console.log("access_token获取结果:", tokenData);
 
     if (!tokenData.success) {
-      console.log("❌ 获取access_token失败:", tokenData);
+
       return NextResponse.json(
         {
           success: false,
@@ -63,7 +54,7 @@ export async function POST(req: NextRequest) {
 
     // 检查响应是否是图片数据
     const contentType = qrcodeResponse.headers.get("content-type");
-    console.log("响应Content-Type:", contentType);
+ 
     
     if (contentType && contentType.includes("application/json")) {
       // 如果返回的是JSON，说明有错误

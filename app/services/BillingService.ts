@@ -3,6 +3,7 @@
  */
 
 import { WECHAT_USER_INFO_KEY } from "../constant";
+import { toast } from "react-hot-toast";
 
 // 模型价格配置（按次收费，单位：元）
 const MODEL_PRICING: Record<string, number> = {
@@ -123,18 +124,28 @@ export class BillingService {
 
       // 🚨 第二步：余额不足检查
       if (balanceCheck.balance < amount) {
-        console.log(`[BillingService] 余额不足 - 当前余额: ${balanceCheck.balance}点, 需要: ${amount}点`);
+        console.log(`[BillingService] 余额不足 - 当前余额: ${balanceCheck.balance}点`);
+        
+        const insufficientMessage = `余额不足，当前余额: ${balanceCheck.balance}点`;
+        
+        // 🍞 显示toast提示
+        if (typeof window !== 'undefined') {
+          toast.error(insufficientMessage + '\n', {
+            duration: 3000,
+            position: 'top-center',
+          });
+        }
         
         // 🔄 路由到充值页面
         if (typeof window !== 'undefined') {
           setTimeout(() => {
-            window.location.href = '/chat/recharge';
+            window.location.href = '/#/chat/recharge';
           }, 100); // 短暂延迟确保错误信息能够显示
         }
         
         return {
           success: false,
-          message: `余额不足，当前余额: ${balanceCheck.balance}点，需要: ${amount}点`,
+          message: insufficientMessage,
           balance: balanceCheck.balance,
           error: 'INSUFFICIENT_BALANCE',
         };

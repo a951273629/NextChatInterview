@@ -191,19 +191,6 @@ export const InterviewLoudspeaker: React.FC = () => {
     openId: openId,
   });
 
-
-  // useEffect(()=>{
-  //   // openId已在状态初始化时设置，这里只需要检查Azure Speech使用量
-  //   checkAzureSpeechUsage().then((res)=>{
-  //     // console.log("🔍 检查 Azure Speech 使用量:", JSON.stringify(res, null, 2) );
-  //   }).catch((err)=>{
-  //     console.error("❌ 检查 Azure Speech 使用量失败:", err);
-  //   });
-    
-  //   // 记录当前使用的openId用于调试
-  //   console.log("🔑 当前使用的openId:", openId);
-  // },[])
-  // 监听WebSocket连接状态变化，重置对端连接状态
   useEffect(() => {
     if (webSocketSync.connectionStatus !== "connected") {
       setPeerConnected(false);
@@ -814,7 +801,7 @@ export const InterviewLoudspeaker: React.FC = () => {
                       padding: "5px",
                     }}
                   >
-                    当前是监听端，请打开接收端获取答案。
+                    当前是【监听端】
                   </div>
                 )}
                 <InterviewUnderwayLoudspeaker

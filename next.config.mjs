@@ -8,6 +8,7 @@ console.log("[Next] build with chunk: ", !disableChunk);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode:false,
   webpack(config) {
     config.module.rules.push({
       test: /\.svg$/,
@@ -20,8 +21,29 @@ const nextConfig = {
       );
     }
 
+    /**
+     * 告诉webpack不要包含这些模块 因为浏览器不支持
+     */
     config.resolve.fallback = {
       child_process: false,
+      fs: false,
+      path: false,
+      canvas: false,
+    };
+
+    // 把这个js当做静态资源，不要进行编译(因为编译器会使用hash改变文件的名称)
+    config.module.rules.push({
+      test: /pdf\.worker\.(min\.)?js/,
+      type: 'asset/resource',
+      generator: {
+        filename: 'static/worker/[hash][ext][query]'
+      }
+    });
+
+    // 重定向 加载.js 会映射.mjs
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'pdfjs-dist/build/pdf.worker.min.js': 'pdfjs-dist/build/pdf.worker.min.mjs',
     };
 
     return config;
@@ -58,6 +80,28 @@ if (mode !== "export") {
       {
         source: "/api/:path*",
         headers: CorsHeaders,
+      },
+      {
+        // 为PDF.js worker文件添加正确的MIME类型和CORS头
+        source: "/pdf.worker.min.js",
+        headers: [
+          {
+            key: "Content-Type",
+            value: "application/javascript",
+          },
+          {
+            key: "Cross-Origin-Embedder-Policy",
+            value: "require-corp",
+          },
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin",
+          },
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
       },
     ];
   };

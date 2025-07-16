@@ -62,9 +62,6 @@ if (typeof (Promise as any).withResolvers === 'undefined') {
   };
 }
 
-// 判断当前是否为开发环境
-const isDevelopment = process.env.NODE_ENV === "development";
-
 interface PreparationResumesUploadProps {
   onClose?: () => void; // 添加关闭回调函数
 }
@@ -124,7 +121,7 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
     // 确保在客户端环境中初始化
     if (typeof window !== 'undefined') {
       setIsClientReady(true);
-      console.log("[PDF] 客户端环境已就绪，可以处理PDF文件");
+      // console.log("[PDF] 客户端环境已就绪，可以处理PDF文件");
     }
   }, []);
 
@@ -152,38 +149,6 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
     }
   }, [isClientReady]);
 
-  /**
-   * 测试环境读取指定PDF文件
-   * 读取 app/mock/net 江西财经大学 王楠 2年工作经验.pdf 文件
-   */
-  const TestFileSelect = async () => {
-    try {
-      setErrorMessage("");
-      console.log("测试环境，自动加载测试简历...");
-
-      // 在测试环境中尝试读取模拟PDF文件
-      // 注意：文件路径是相对于public目录的，确保文件已放在正确位置
-      const response = await fetch(
-        "/mock/net 江西财经大学 王楠 2年工作经验.pdf",
-      );
-
-      // 将获取的内容转换为Blob
-      const pdfBlob = await response.blob();
-
-      // 创建File对象
-      const file = new File([pdfBlob], "江西财经大学 王楠 2年工作经验.pdf", {
-        type: "application/pdf",
-      });
-
-      // 调用处理文件的函数
-      handleFile(file);
-
-      console.log("测试简历加载成功！");
-    } catch (error) {
-      console.error("加载测试简历失败:", error);
-      setErrorMessage("加载测试简历失败");
-    }
-  };
 
   // 处理文件选择
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -234,7 +199,7 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
 
   // 统一处理文件的函数
   const handleFile = (file: File) => {
-    console.log("开始处理文件:", file.name, "大小:", file.size);
+    // console.log("开始处理文件:", file.name, "大小:", file.size);
 
     // 重置状态
     setUploadedFile(file);
@@ -265,7 +230,7 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
 
   // 提取PDF文本 - 使用PDF.js库提取
   const extractPdfText = async () => {
-    console.log("开始提取PDF文本");
+    // console.log("开始提取PDF文本");
 
     if (!uploadedFileRef.current) return;
 
@@ -281,7 +246,7 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
 
     try {
       const fileToProcess = uploadedFileRef.current;
-      console.log("准备提取PDF文本...");
+      // console.log("准备提取PDF文本...");
 
       // 读取文件为ArrayBuffer
       const arrayBuffer = await readFileAsArrayBuffer(fileToProcess);
@@ -297,7 +262,7 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
       if (result.success && result.text && result.text.trim().length > 0) {
         console.log("成功提取文本，长度:", result.text.length);
         console.log("PDF页数:", result.numPages);
-        console.log(result.text); // 按要求输出提取内容
+        // console.log(result.text); // 按要求输出提取内容
 
         setExtractProgress(100);
         
@@ -333,7 +298,7 @@ const PreparationResumesUpload: React.FC<PreparationResumesUploadProps> = ({
       if (cachedSummary) {
         try {
           const cachedData: ResumeData = JSON.parse(cachedSummary);
-          console.log("发现缓存的总结数据，直接使用");
+          // console.log("发现缓存的总结数据，直接使用");
           
           // 使用缓存的总结
           setResumeText(cachedData.summaryText);
